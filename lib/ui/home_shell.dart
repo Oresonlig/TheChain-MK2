@@ -5,12 +5,14 @@ library;
 import 'package:flutter/material.dart';
 
 import '../app/app_controller.dart';
+import '../domain/domain.dart';
 import '../theme/chain_theme.dart';
 import '../theme/surfaces.dart';
 import 'chain/chain_screen.dart';
 import 'progress/progress_screen.dart';
 import 'settings/settings_screen.dart';
 import 'weight/weight_screen.dart';
+import 'workout/workout_screen.dart';
 
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key, required this.app, required this.email, required this.versionLabel});
@@ -36,7 +38,64 @@ class _HomeShellState extends State<HomeShell> {
     ];
     return Scaffold(
       body: IndexedStack(index: _tab, children: pages),
-      bottomNavigationBar: _NavBar(index: _tab, onTap: (i) => setState(() => _tab = i)),
+      bottomNavigationBar: ListenableBuilder(
+        listenable: widget.app,
+        builder: (context, _) {
+          final active = widget.app.repo?.activeWorkouts().firstOrNull;
+          return Column(mainAxisSize: MainAxisSize.min, children: [
+            // Förslag (a), Niklas ja 2026-10-02: pågående pass nås med ett tryck
+            // från vilken flik som helst. Kedjefliken har redan CONTINUE-knappen.
+            if (active != null && _tab != 0) _ContinueBar(app: widget.app, workout: active),
+            _NavBar(index: _tab, onTap: (i) => setState(() => _tab = i)),
+          ]);
+        },
+      ),
+    );
+  }
+}
+
+class _ContinueBar extends StatelessWidget {
+  const _ContinueBar({required this.app, required this.workout});
+  final AppController app;
+  final Workout workout;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.chain;
+    final text = Theme.of(context).textTheme;
+    final session = app.repo!.program().sessionById(workout.sessionId);
+    final done = workout.exercises.where((e) => e.status != ExerciseStatus.open).length;
+    return Semantics(
+      button: true,
+      label: 'Continue session',
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () {
+          final wc = app.openWorkout(workout.sessionId);
+          Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => WorkoutScreen(controller: wc)));
+        },
+        child: Container(
+          height: 52,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
+            color: c.surface,
+            border: Border(top: BorderSide(color: c.success.withValues(alpha: .6))),
+          ),
+          child: Row(children: [
+            Container(width: 8, height: 8, decoration: BoxDecoration(color: c.success, shape: BoxShape.circle)),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                '${(session?.name ?? workout.sessionId.value)} · $done/${workout.exercises.length}',
+                style: text.titleMedium,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            Text('CONTINUE', style: text.labelLarge!.copyWith(color: c.success)),
+            Icon(Icons.chevron_right, color: c.success),
+          ]),
+        ),
+      ),
     );
   }
 }

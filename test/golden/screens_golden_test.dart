@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:the_chain/app/app_controller.dart';
+import 'package:the_chain/domain/domain.dart';
 import 'package:the_chain/main.dart';
 
 import '../app/app_flow_test.dart' show mk1;
@@ -101,6 +102,28 @@ void main() {
       await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/tab_${tab.toLowerCase()}.png'));
     });
   }
+
+  testWidgets('fortsätt-listen när pass pågår', (tester) async {
+    await _loadSaira();
+    final b = FakeBackend(mk1: {...mk1(), 'sessionOrder': ['A', 'B']});
+    final app = AppController(b);
+    await _phone(tester, TheChainApp(app: app, emailOf: () => ''));
+    await tester.runAsync(() async {
+      await app.start();
+      await app.signIn('x', 'secret');
+      await pumpEventQueue();
+      await app.importFromWebsite();
+    });
+    app.openWorkout(const SessionId('B'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('WEIGHT'));
+    await tester.pumpAndSettle();
+    expect(find.text('CONTINUE'), findsOneWidget);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/continue_bar.png'));
+    await tester.tap(find.text('CONTINUE'));
+    await tester.pumpAndSettle();
+    expect(find.text('FINISH SESSION'), findsOneWidget);
+  });
 
   testWidgets('passvyn', (tester) async {
     await _loadSaira();
