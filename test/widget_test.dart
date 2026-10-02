@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:the_chain/main.dart';
 import 'package:the_chain/theme/chain_theme.dart';
 import 'package:the_chain/theme/hex_field.dart';
+import 'package:the_chain/theme/nanosuit.dart';
+import 'package:the_chain/ui/theme_preview.dart';
 
 void main() {
   testWidgets('Nanosuit-förhandsvisningen renderar med temat och SafeArea', (tester) async {
-    await tester.pumpWidget(const MediaQuery(
-      data: MediaQueryData(disableAnimations: true, padding: EdgeInsets.only(top: 40)),
-      child: TheChainApp(),
+    await tester.pumpWidget(MediaQuery(
+      data: const MediaQueryData(disableAnimations: true, padding: EdgeInsets.only(top: 40)),
+      child: MaterialApp(theme: nanosuitThemeData(), home: const ThemePreviewScreen()),
     ));
     expect(find.text('CHAIN'), findsOneWidget);
     expect(find.text('Dead Hang'), findsOneWidget);
@@ -25,6 +26,6 @@ void main() {
       m.step();
     }
     expect(m.frame, 400);
-    expect(m.waves.length, lessThan(12)); // gamla vågor städas bort
+    expect(m.waves.length, lessThan(12));
   });
 }

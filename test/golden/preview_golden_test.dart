@@ -9,7 +9,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:the_chain/main.dart';
+import 'package:the_chain/theme/nanosuit.dart';
+import 'package:the_chain/ui/theme_preview.dart';
 
 Future<void> _loadSaira() async {
   final loader = FontLoader('Saira')
@@ -24,16 +25,20 @@ void main() {
     tester.view.physicalSize = const Size(1080, 2340);
     tester.view.devicePixelRatio = 2.625;
     addTearDown(tester.view.reset);
-    await tester.pumpWidget(const MediaQuery(
-      data: MediaQueryData(
+    await tester.pumpWidget(MediaQuery(
+      data: const MediaQueryData(
         size: Size(411.4, 891.4),
         devicePixelRatio: 2.625,
         padding: EdgeInsets.only(top: 36, bottom: 24),
         disableAnimations: true,
       ),
-      child: TheChainApp(),
+      child: MaterialApp(
+        theme: nanosuitThemeData(),
+        debugShowCheckedModeBanner: false,
+        home: const ThemePreviewScreen(channelLabel: 'local · build 0'),
+      ),
     ));
     await tester.pumpAndSettle();
-    await expectLater(find.byType(TheChainApp), matchesGoldenFile('goldens/preview.png'));
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/preview.png'));
   });
 }

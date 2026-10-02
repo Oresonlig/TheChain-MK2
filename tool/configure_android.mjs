@@ -65,6 +65,10 @@ const manifestPath = 'android/app/src/main/AndroidManifest.xml';
 let manifest = readFileSync(manifestPath, 'utf8');
 if (!/android:label="[^"]*"/.test(manifest)) { console.error('android:label not found'); process.exit(1); }
 manifest = manifest.replace(/android:label="[^"]*"/, `android:label="${cfg.label}"`);
+// Flutters mall ger bara debug-byggen INTERNET — release behöver den för Supabase.
+if (!manifest.includes('android.permission.INTERNET')) {
+  manifest = manifest.replace(/<application/, '<uses-permission android:name="android.permission.INTERNET"/>\n    <application');
+}
 writeFileSync(manifestPath, manifest);
 
 console.log(`Configured ${channel}: ${cfg.appId} "${cfg.label}" · ${signed ? 'release-signed' : 'DEBUG-signed (no keystore secret)'}`);
