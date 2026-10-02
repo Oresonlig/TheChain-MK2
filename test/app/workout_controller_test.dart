@@ -149,6 +149,19 @@ void main() {
     expect(app.repo!.chain().isDone(const SessionId('V')), isFalse);
   });
 
+  test('vikt: en per dag (samma dag skrivs över), radering; inställningar sparas', () async {
+    final app = await ready();
+    await app.logBodyweight(99.5);
+    await app.logBodyweight(99.2);
+    final today = app.repo!.bodyweight().where((e) => e.date == AppController.dayKey(DateTime(2026, 10, 2))).toList();
+    expect(today.single.kg, 99.2);
+    await app.deleteBodyweight(today.single.date);
+    expect(app.repo!.bodyweight().where((e) => e.date == today.single.date), isEmpty);
+    await app.updateSettings(const UserSettings(weightUnit: WeightUnit.lbs, ambientEffects: false));
+    expect(app.repo!.settings().weightUnit, WeightUnit.lbs);
+    expect(app.repo!.settings().ambientEffects, isFalse);
+  });
+
   test('vilodag markeras klar med anteckning', () async {
     final app = await ready();
     await app.markRestDone(const SessionId('V'), note: 'walk');

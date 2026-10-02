@@ -4,12 +4,15 @@ import 'app/app_controller.dart';
 import 'app/supabase_backend.dart';
 import 'app/updater.dart';
 import 'theme/nanosuit.dart';
-import 'ui/chain/chain_screen.dart';
+import 'ui/home_shell.dart';
 import 'ui/login_screen.dart';
 
 /// Kanal och byggnummer injiceras av CI via --dart-define.
 const String kChannel = String.fromEnvironment('CHANNEL', defaultValue: 'local');
 const String kBuild = String.fromEnvironment('BUILD', defaultValue: '0');
+
+/// "MK2 DEV · build 21" — syns i inloggningen och i Settings.
+String get kVersionLabel => 'MK2 ${kChannel.toUpperCase()} · build $kBuild';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -37,9 +40,9 @@ class TheChainApp extends StatelessWidget {
       home: ListenableBuilder(
         listenable: app,
         builder: (context, _) => switch (app.phase) {
-          Phase.signedOut => LoginScreen(app: app),
+          Phase.signedOut => LoginScreen(app: app, versionLabel: kVersionLabel),
           Phase.loading => const Scaffold(body: Center(child: CircularProgressIndicator())),
-          Phase.ready => ChainScreen(app: app, email: emailOf(), buildLabel: '$kChannel · build $kBuild'),
+          Phase.ready => HomeShell(app: app, email: emailOf(), versionLabel: kVersionLabel),
         },
       ),
     );

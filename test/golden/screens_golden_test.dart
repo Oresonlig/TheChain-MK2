@@ -83,6 +83,25 @@ void main() {
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/done.png'));
   });
 
+  for (final tab in ['WEIGHT', 'PROGRESS', 'SETTINGS']) {
+    testWidgets('flik $tab', (tester) async {
+      await _loadSaira();
+      final b = FakeBackend(mk1: {...mk1(), 'sessionOrder': ['A', 'B']});
+      final app = AppController(b);
+      await _phone(tester, TheChainApp(app: app, emailOf: () => 'niklas@example.com'));
+      await tester.runAsync(() async {
+        await app.start();
+        await app.signIn('x', 'secret');
+        await pumpEventQueue();
+        await app.importFromWebsite();
+      });
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(tab));
+      await tester.pumpAndSettle();
+      await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/tab_${tab.toLowerCase()}.png'));
+    });
+  }
+
   testWidgets('passvyn', (tester) async {
     await _loadSaira();
     final b = FakeBackend(mk1: {...mk1(), 'sessionOrder': ['A', 'B']});

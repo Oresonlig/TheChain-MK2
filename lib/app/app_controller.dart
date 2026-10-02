@@ -206,6 +206,29 @@ class AppController extends ChangeNotifier {
     await syncNow();
   }
 
+  // ── vikt och inställningar ──
+  static String dayKey(DateTime d) =>
+      '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+  /// Dagens vägning (en per dag — samma dag skrivs över, senaste vinner i synken).
+  Future<void> logBodyweight(double kg) async {
+    await repo!.saveBodyweight(BodyweightEntry(date: dayKey(_now()), kg: kg), _now());
+    notifyListeners();
+    await syncNow();
+  }
+
+  Future<void> deleteBodyweight(String date) async {
+    await repo!.deleteBodyweight(date, _now());
+    notifyListeners();
+    await syncNow();
+  }
+
+  Future<void> updateSettings(UserSettings s) async {
+    await repo!.saveSettings(s, _now());
+    notifyListeners();
+    await syncNow();
+  }
+
   /// Undo av en avklarad vilodag.
   Future<void> undoRest(RestEntry entry) async {
     await repo!.deleteHistory(entry, _now());

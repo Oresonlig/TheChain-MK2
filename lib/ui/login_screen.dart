@@ -9,8 +9,12 @@ import '../theme/surfaces.dart';
 import 'nanosuit_scaffold.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key, required this.app});
+  const LoginScreen({super.key, required this.app, this.versionLabel = ''});
   final AppController app;
+
+  /// T.ex. "MK2 DEV · build 21" — Niklas ska se direkt vid inloggning om
+  /// rätt version är installerad.
+  final String versionLabel;
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -87,6 +91,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   if (widget.app.error != null) ...[
                     const SizedBox(height: 12),
                     Text(widget.app.error!, style: text.bodySmall!.copyWith(color: const Color(0xFFFF6B6B))),
+                  ],
+                  if (widget.versionLabel.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    Text(widget.versionLabel, style: text.labelSmall, textAlign: TextAlign.center),
                   ],
                 ]),
               ),

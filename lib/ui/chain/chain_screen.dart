@@ -41,8 +41,18 @@ class _ChainScreenState extends State<ChainScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return ChainScaffold(
-      child: ListenableBuilder(
+    return ListenableBuilder(
+      listenable: widget.app,
+      builder: (context, _) => ChainScaffold(
+        ambient: widget.app.repo?.settings().ambientEffects ?? true,
+        child: _content(context),
+      ),
+    );
+  }
+
+  Widget _content(BuildContext context) {
+    return Builder(
+      builder: (context) => ListenableBuilder(
         listenable: widget.app,
         builder: (context, _) {
           final repo = widget.app.repo;
@@ -104,11 +114,6 @@ class _ChainScreenState extends State<ChainScreen> {
                       ),
                     ),
                   ]),
-                  IconButton(
-                    tooltip: 'Data check',
-                    onPressed: () => _openDev(context),
-                    icon: Icon(Icons.tune, color: c.textMuted),
-                  ),
                 ]),
               ]),
               if (widget.app.update != null) ...[
