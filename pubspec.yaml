@@ -19,3 +19,10 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  # Saira (OFL, assets/fonts/Saira-OFL.txt) — variabel vikt/bredd, hämtad med tool/fetch_fonts.mjs
+  fonts:
+    - family: Saira
+      fonts:
+        - asset: assets/fonts/Saira-Variable.ttf
+        - asset: assets/fonts/Saira-Italic-Variable.ttf
+          style: italic

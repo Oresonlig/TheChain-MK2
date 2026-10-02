@@ -1,0 +1,6 @@
+# Golden-renderingar är ett lokalt granskningsverktyg (pixlar skiljer mellan
+# Windows och CI:ns Linux). Kör lokalt:
+#   node tool/flutter.mjs test test/golden --run-skipped --update-goldens
+tags:
+  golden:
+    skip: "Lokal granskning — kör med --run-skipped --update-goldens"

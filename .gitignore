@@ -26,6 +26,13 @@ windows/
 *.p12
 key.properties
 
+# Golden-bilder (lokal granskning)
+test/golden/goldens/
+
+# Riktig användardata (MK1-backup för codec-paritet) — repot är PUBLIKT
+test/fixtures/private/
+*.backup.json
+
 # Planeringsdokument — lokala, aldrig till GitHub
 BESLUTSUNDERLAG.md
 LESSONS_MK1_ANDROID.md
