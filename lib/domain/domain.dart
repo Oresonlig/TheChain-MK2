@@ -6,6 +6,7 @@ export 'chain.dart';
 export 'exercise.dart';
 export 'history.dart';
 export 'ids.dart';
+export 'library.dart';
 export 'measure.dart';
 export 'note.dart';
 export 'program.dart';
