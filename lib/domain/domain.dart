@@ -11,4 +11,5 @@ export 'note.dart';
 export 'program.dart';
 export 'records.dart';
 export 'set_entry.dart';
+export 'sync.dart';
 export 'workout.dart';
