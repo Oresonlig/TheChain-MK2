@@ -25,7 +25,24 @@ class Repository {
   TableSync get _w => engine[Tables.workouts];
 
   // ── läsning ──
-  List<HistoryEntry> history() => [for (final j in _w.liveValues) historyFromJson(j)];
+  /// Avslutade pass och vilodagar. Pågående pass räknas inte (PR, kedja, "förra gången").
+  List<HistoryEntry> history() => [
+        for (final j in _w.liveValues)
+          if (historyFromJson(j) case final h when h is! WorkoutEntry || h.workout.isFinished) h,
+      ];
+
+  /// Pågående pass (synkas mellan enheter, beslut 2026-10-02). Normalt högst ett.
+  List<Workout> activeWorkouts() => [
+        for (final j in _w.liveValues)
+          if (historyFromJson(j) case WorkoutEntry(:final workout) when !workout.isFinished) workout,
+      ];
+
+  Workout? activeWorkoutFor(SessionId id) {
+    for (final w in activeWorkouts()) {
+      if (w.sessionId == id) return w;
+    }
+    return null;
+  }
 
   Program program() {
     final j = engine[Tables.program].items[_programId];
@@ -83,6 +100,13 @@ class Repository {
       };
 
   Future<void> saveHistory(HistoryEntry h, DateTime now) => _w.put(historyId(h), historyToJson(h), now);
+
+  /// Sparar ett pågående pass (varje ändring). Samma id som när det avslutas,
+  /// så det avslutade passet ersätter det pågående.
+  Future<void> saveActiveWorkout(Workout w, DateTime now) => saveHistory(WorkoutEntry(workout: w), now);
+
+  /// Avbryter ett pågående pass (raderas överallt).
+  Future<void> discardActiveWorkout(Workout w, DateTime now) => _w.remove(w.id.value, now);
   Future<void> deleteHistory(HistoryEntry h, DateTime now) => _w.remove(historyId(h), now);
 
   Future<void> saveProgram(Program p, DateTime now, {ChainMeta? meta}) {

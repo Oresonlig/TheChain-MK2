@@ -3,12 +3,15 @@
 library;
 
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 
 import '../data/repository.dart';
 import '../data/sync_engine.dart';
+import '../domain/domain.dart';
 import '../mk1/mk1_codec.dart';
+import 'workout_controller.dart';
 
 /// Det appen behöver av servern (Supabase i appen, fake i tester).
 abstract class Backend {
@@ -129,6 +132,49 @@ class AppController extends ChangeNotifier {
       busy = false;
       notifyListeners();
     }
+    await syncNow();
+  }
+
+  // ── pass ──
+  final _rnd = Random.secure();
+  int _seq = 0;
+
+  /// Unika id:n: tid + räknare + slump (krockar inte mellan enheter).
+  String newId() =>
+      '${_now().millisecondsSinceEpoch.toRadixString(36)}${(_seq++).toRadixString(36)}${_rnd.nextInt(1 << 30).toRadixString(36)}';
+
+  /// Startar ett pass, eller återupptar det pågående för samma pass.
+  WorkoutController openWorkout(SessionId sessionId) {
+    final r = repo!;
+    final session = r.program().sessionById(sessionId)!;
+    var w = r.activeWorkoutFor(sessionId);
+    if (w == null) {
+      w = startWorkout(
+        session,
+        (id) => r.exercise(id) ?? Exercise(id: id, name: id.value, group: MuscleGroup.other, measure: Measure.weight),
+        r.history(),
+        _now(),
+        newId,
+      );
+      r.saveActiveWorkout(w, _now());
+    }
+    return WorkoutController(
+      repo: r,
+      workout: w,
+      newId: newId,
+      clock: _now,
+      onFinished: () async {
+        notifyListeners();
+        await syncNow();
+      },
+    );
+  }
+
+  Future<void> markRestDone(SessionId sessionId, {String? note}) async {
+    final r = repo!;
+    final session = r.program().sessionById(sessionId)!;
+    await r.saveHistory(completeRest(session, _now(), note: note), _now());
+    notifyListeners();
     await syncNow();
   }
 
