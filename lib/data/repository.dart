@@ -1,0 +1,145 @@
+/// Det typade lagret appen pratar med: domänobjekt in och ut, synkmotorn under.
+/// Plus engångsimporten från MK1 (beslut 2026-10-02).
+library;
+
+import '../domain/domain.dart';
+import '../mk1/mk1_codec.dart';
+import 'json_codec.dart';
+import 'sync_engine.dart';
+
+const _programId = 'program';
+const _settingsId = 'settings';
+
+/// Kedjans metadata från MK1 (omstarter + rundans startvärde).
+class ChainMeta {
+  const ChainMeta({this.restarts = const [], this.roundOffset = 0});
+  final List<DateTime> restarts;
+  final int roundOffset;
+}
+
+class Repository {
+  Repository(this.engine);
+
+  final SyncEngine engine;
+
+  TableSync get _w => engine[Tables.workouts];
+
+  // ── läsning ──
+  List<HistoryEntry> history() => [for (final j in _w.liveValues) historyFromJson(j)];
+
+  Program program() {
+    final j = engine[Tables.program].items[_programId];
+    if (j == null || j.isDeleted) return const Program(sessions: []);
+    return programFromJson(_sub(j.value!, 'program'));
+  }
+
+  ChainMeta chainMeta() {
+    final j = engine[Tables.program].items[_programId];
+    if (j == null || j.isDeleted) return const ChainMeta();
+    final c = _sub(j.value!, 'chain');
+    return ChainMeta(
+      restarts: [for (final ms in (c['restarts'] as List?) ?? const []) DateTime.fromMillisecondsSinceEpoch((ms as num).toInt())],
+      roundOffset: (c['roundOffset'] as num?)?.toInt() ?? 0,
+    );
+  }
+
+  ChainState chain() {
+    final m = chainMeta();
+    return chainState(program(), history(), manualRestarts: m.restarts, roundOffset: m.roundOffset);
+  }
+
+  List<BodyweightEntry> bodyweight() =>
+      [for (final j in engine[Tables.bodyweight].liveValues) bodyweightFromJson(j)]..sort((a, b) => a.date.compareTo(b.date));
+
+  List<ExerciseNote> notes() => [for (final j in engine[Tables.notes].liveValues) noteFromJson(j)];
+
+  Map<ExerciseId, Exercise> customExercises() => {
+        for (final j in engine[Tables.exercises].liveValues)
+          if (j['kind'] == 'custom') ExerciseId(j['id'] as String): customExerciseFromJson(j),
+      };
+
+  Map<ExerciseId, ExerciseOverride> overrides() => {
+        for (final j in engine[Tables.exercises].liveValues)
+          if (j['kind'] == 'override') overrideFromJson(j).$1: overrideFromJson(j).$2,
+      };
+
+  UserSettings settings() {
+    final j = engine[Tables.settings].items[_settingsId];
+    return (j == null || j.isDeleted) ? const UserSettings() : settingsFromJson(j.value!);
+  }
+
+  Set<ExerciseId> hiddenRecords() {
+    final j = engine[Tables.settings].items[_settingsId];
+    if (j == null || j.isDeleted) return {};
+    return {for (final id in (j.value!['hiddenRecords'] as List?) ?? const []) ExerciseId(id as String)};
+  }
+
+  Exercise? exercise(ExerciseId id) => resolveExercise(id, custom: customExercises(), overrides: overrides());
+
+  // ── skrivning ──
+  static String historyId(HistoryEntry h) => switch (h) {
+        WorkoutEntry(:final workout) => workout.id.value,
+        RestEntry(:final sessionId, :final date) => 'rest.${sessionId.value}.${date.millisecondsSinceEpoch}',
+      };
+
+  Future<void> saveHistory(HistoryEntry h, DateTime now) => _w.put(historyId(h), historyToJson(h), now);
+  Future<void> deleteHistory(HistoryEntry h, DateTime now) => _w.remove(historyId(h), now);
+
+  Future<void> saveProgram(Program p, DateTime now, {ChainMeta? meta}) {
+    final m = meta ?? chainMeta();
+    return engine[Tables.program].put(_programId, {
+      'program': programToJson(p),
+      'chain': {
+        'restarts': [for (final d in m.restarts) d.millisecondsSinceEpoch],
+        'roundOffset': m.roundOffset,
+      },
+    }, now);
+  }
+
+  Future<void> saveBodyweight(BodyweightEntry b, DateTime now) =>
+      engine[Tables.bodyweight].put(b.date, bodyweightToJson(b), now);
+  Future<void> deleteBodyweight(String date, DateTime now) => engine[Tables.bodyweight].remove(date, now);
+
+  Future<void> saveNote(ExerciseNote n, DateTime now) => engine[Tables.notes].put(n.id, noteToJson(n), now);
+  Future<void> deleteNote(String id, DateTime now) => engine[Tables.notes].remove(id, now);
+
+  Future<void> saveCustomExercise(Exercise e, DateTime now) =>
+      engine[Tables.exercises].put('custom:${e.id.value}', customExerciseToJson(e), now);
+  Future<void> saveOverride(ExerciseId id, ExerciseOverride o, DateTime now) =>
+      engine[Tables.exercises].put('override:${id.value}', overrideToJson(id, o), now);
+
+  Future<void> saveSettings(UserSettings s, DateTime now, {Set<ExerciseId>? hidden}) => engine[Tables.settings].put(
+        _settingsId,
+        {
+          ...settingsToJson(s),
+          'hiddenRecords': [for (final id in hidden ?? hiddenRecords()) id.value],
+        },
+        now,
+      );
+
+  /// Engångsimport från MK1. Under testfasen kan den köras om (MK2-ändringar
+  /// skrivs då över). Killswitch-markeringen sätts INTE här — det görs vid den
+  /// riktiga övergången efter F3.
+  Future<void> importMk1(Mk1Snapshot s, DateTime now) async {
+    await saveProgram(s.program, now,
+        meta: ChainMeta(restarts: s.manualRestarts, roundOffset: s.roundOffsetFor(s.program)));
+    for (final h in s.history) {
+      await saveHistory(h, now);
+    }
+    for (final b in s.bodyweight) {
+      await saveBodyweight(b, now);
+    }
+    for (final n in s.notes) {
+      await saveNote(n, now);
+    }
+    for (final e in s.custom.values) {
+      await saveCustomExercise(e, now);
+    }
+    for (final o in s.overrides.entries) {
+      await saveOverride(o.key, o.value, now);
+    }
+    await saveSettings(s.settings, now, hidden: s.hiddenRecords);
+  }
+}
+
+Json _sub(Json j, String key) => (j[key] as Map?)?.cast<String, Object?>() ?? const {};
