@@ -1,6 +1,10 @@
 /// KARANTÄN — läser MK1:s state-JSON (en `app_state.data`-rad) till MK2:s modell.
 /// All kunskap om MK1:s format bor här och i mk1_legacy.dart; inget av det får
-/// läcka in i lib/domain/. Raderas den dag hemsidan stängs.
+/// läcka in i lib/domain/. Raderas när sista användaren migrerats.
+///
+/// Beslut 2026-10-02: MK2 är HELT frikopplat från hemsidan. Det här är en
+/// ENGÅNGSIMPORT per användare — MK2 skriver aldrig till MK1:s data (skrivdelen
+/// mk1_writer raderades). Efter importen visar hemsidan en killswitch för kontot.
 ///
 /// Status: UTKAST byggt mot MK1-koden och syntetiska exempel. Verifieras mot en
 /// riktig (anonymiserad) backup innan det används mot molnet.
