@@ -7,5 +7,6 @@ export 'history.dart';
 export 'ids.dart';
 export 'measure.dart';
 export 'program.dart';
+export 'records.dart';
 export 'set_entry.dart';
 export 'workout.dart';

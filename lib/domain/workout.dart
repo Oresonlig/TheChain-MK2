@@ -3,6 +3,7 @@
 library;
 
 import 'ids.dart';
+import 'measure.dart';
 import 'set_entry.dart';
 
 enum ExerciseStatus { open, done, skipped }
@@ -10,6 +11,7 @@ enum ExerciseStatus { open, done, skipped }
 class WorkoutExercise {
   const WorkoutExercise({
     required this.exerciseId,
+    required this.measure,
     this.slotId,
     this.temporarySwapFrom,
     this.status = ExerciseStatus.open,
@@ -18,6 +20,10 @@ class WorkoutExercise {
 
   /// Övningen som faktiskt körs.
   final ExerciseId exerciseId;
+
+  /// Mätsättet när övningen lades i passet. Historik tolkas alltid i den form
+  /// den loggades, även om användaren byter mätsätt senare (MK1 3.56.0).
+  final Measure measure;
 
   /// Platsen i programmet; null = extraövning "bara idag".
   final SlotId? slotId;
