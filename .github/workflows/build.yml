@@ -43,6 +43,10 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      # Appikonen (assets/icon/, Nanosuit-omfärgad) in i det genererade android/.
+      - name: App icon
+        run: dart run flutter_launcher_icons
+
       - name: Analyze
         run: flutter analyze
 
