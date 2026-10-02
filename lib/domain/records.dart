@@ -119,7 +119,7 @@ Map<ExerciseId, PersonalRecord> personalRecords(
 /// viktnedgång inte ser ut som styrketapp (MK1 3.78.6).
 double? progressionValue(Measure m, SetEntry s) {
   if (m.pr == PrMetric.extra) {
-    return (!s.isLogged || s.failed || s.values.extra == null) ? null : s.values.extra;
+    return m.prValue(s) == null ? null : s.values.extra;
   }
   return m.prValue(s);
 }

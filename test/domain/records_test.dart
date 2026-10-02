@@ -8,8 +8,14 @@ const chins = ExerciseId('chins');
 const sessionA = SessionId('A');
 var _n = 0;
 
-SetEntry work(SetValues v, {bool failed = false, bool logged = true, double? bw}) =>
-    SetEntry(id: SetId('s${_n++}'), kind: SetKind.work, values: v, isLogged: logged, failed: failed, bodyweightKg: bw);
+SetEntry work(SetValues v, {bool excluded = false, bool logged = true, double? bw, SetValues? target}) => SetEntry(
+    id: SetId('s${_n++}'),
+    kind: SetKind.work,
+    values: v,
+    target: target,
+    isLogged: logged,
+    excludeFromRecords: excluded,
+    bodyweightKg: bw);
 SetEntry warmup(SetValues v) => SetEntry(id: SetId('s${_n++}'), kind: SetKind.warmup, values: v, isLogged: true);
 
 WorkoutEntry entry(
@@ -45,10 +51,19 @@ void main() {
       expect(prs[bench]!.date, d2);
     });
 
-    test('uppvärmning, failade och överhoppade räknas aldrig', () {
+    test('missat set med utförda reps blir PR', () {
+      final prs = personalRecords([
+        entry(d1, [ex(bench, [work(const SetValues(weight: 100, reps: 5))])]),
+        entry(d2, [ex(bench, [work(const SetValues(weight: 105, reps: 3), target: const SetValues(reps: 4))])]),
+      ]);
+      expect(prs[bench]!.value, 105);
+      expect(prs[bench]!.set.missed(Measure.weight), isTrue);
+    });
+
+    test('uppvärmning, exkluderade och överhoppade räknas aldrig', () {
       final prs = personalRecords([
         entry(d1, [
-          ex(bench, [warmup(const SetValues(weight: 200, reps: 1)), work(const SetValues(weight: 150), failed: true), work(const SetValues(weight: 100, reps: 5))]),
+          ex(bench, [warmup(const SetValues(weight: 200, reps: 1)), work(const SetValues(weight: 150, reps: 2), excluded: true), work(const SetValues(weight: 100, reps: 5))]),
         ]),
         entry(d2, [ex(bench, [work(const SetValues(weight: 300, reps: 1))], status: ExerciseStatus.skipped)]),
       ]);

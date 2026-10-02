@@ -3,12 +3,13 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:the_chain/domain/domain.dart';
 
-SetEntry logged(SetValues v, {bool failed = false, double? bw}) => SetEntry(
+SetEntry logged(SetValues v, {bool excluded = false, double? bw, SetValues? target}) => SetEntry(
       id: const SetId('s1'),
       kind: SetKind.work,
       values: v,
+      target: target,
       isLogged: true,
-      failed: failed,
+      excludeFromRecords: excluded,
       bodyweightKg: bw,
     );
 
@@ -54,8 +55,31 @@ void main() {
         () => expect(Measure.cardioSprint.prValue(logged(const SetValues(secs: 600, sprints: 12))), 12));
     test('carry → vikt', () => expect(Measure.carry.prValue(logged(const SetValues(weight: 80, distM: 40))), 80));
     test('sauna → sekunder', () => expect(Measure.sauna.prValue(logged(const SetValues(temp: 90, secs: 900))), 900));
-    test('failat set räknas aldrig',
-        () => expect(Measure.weight.prValue(logged(const SetValues(weight: 100), failed: true)), isNull));
+    test('exkluderat set (t.ex. MK1:s gamla fail) räknas aldrig',
+        () => expect(Measure.weight.prValue(logged(const SetValues(weight: 100, reps: 5), excluded: true)), isNull));
+    test('missat set räknas på det utförda: 100 kg × 3 av målet 4', () {
+      final s = logged(const SetValues(weight: 100, reps: 3), target: const SetValues(reps: 4));
+      expect(s.missed(Measure.weight), isTrue);
+      expect(Measure.weight.prValue(s), 100);
+    });
+    test('missad singel (0 reps) är ett försök, ingen PR', () {
+      final s = logged(const SetValues(weight: 140, reps: 0), target: const SetValues(reps: 1));
+      expect(s.missed(Measure.weight), isTrue);
+      expect(Measure.weight.prValue(s), isNull);
+    });
+    test('vikt utan utförda reps bär ingen PR', () {
+      expect(Measure.weight.prValue(logged(const SetValues(weight: 100))), isNull);
+      expect(Measure.bodyweight.prValue(logged(const SetValues(extra: 10), bw: 90)), isNull);
+    });
+    test('nått mål eller inget mål = inte missat', () {
+      expect(logged(const SetValues(weight: 100, reps: 4), target: const SetValues(reps: 4)).missed(Measure.weight), isFalse);
+      expect(logged(const SetValues(weight: 100, reps: 4)).missed(Measure.weight), isFalse);
+    });
+    test('mål på tid: häng 70 s av 90 s är missat men räknas', () {
+      final s = logged(const SetValues(secs: 70, extra: 0), target: const SetValues(secs: 90));
+      expect(s.missed(Measure.bodyweightTimed), isTrue);
+      expect(Measure.bodyweightTimed.prValue(s), 70);
+    });
     test('ej loggat set räknas aldrig', () {
       const s = SetEntry(id: SetId('s'), kind: SetKind.work, values: SetValues(weight: 100, reps: 5));
       expect(Measure.weight.prValue(s), isNull);

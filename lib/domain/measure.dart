@@ -51,10 +51,16 @@ enum Measure {
   final bool minutesInput;
 
   /// PR-värdet för ett set, eller null om settet inte kan bära en PR.
-  /// Failade och ej loggade set räknas aldrig.
+  /// Räknas på det UTFÖRDA: ej loggade och exkluderade set räknas aldrig, och en
+  /// vikt kräver minst en utförd rep (en missad singel är ett försök, inte en PR).
+  /// Ett missat set med utförda reps räknas (beslut 2026-10-02).
   double? prValue(SetEntry s) {
-    if (!s.isLogged || s.failed) return null;
+    if (!s.isLogged || s.excludeFromRecords) return null;
     final v = s.values;
+    final hasReps = fields.contains(SetField.reps);
+    if (hasReps && (pr == PrMetric.weight || pr == PrMetric.extra) && (v.reps ?? 0) < 1) {
+      return null;
+    }
     return switch (pr) {
       PrMetric.weight => v.weight,
       PrMetric.extra => v.extra == null ? null : v.extra! + (s.bodyweightKg ?? 0),
