@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'app/app_controller.dart';
 import 'app/supabase_backend.dart';
 import 'theme/nanosuit.dart';
-import 'ui/dev_home_screen.dart';
+import 'ui/chain/chain_screen.dart';
 import 'ui/login_screen.dart';
 
 /// Kanal och byggnummer injiceras av CI via --dart-define.
@@ -35,7 +35,7 @@ class TheChainApp extends StatelessWidget {
         builder: (context, _) => switch (app.phase) {
           Phase.signedOut => LoginScreen(app: app),
           Phase.loading => const Scaffold(body: Center(child: CircularProgressIndicator())),
-          Phase.ready => DevHomeScreen(app: app, email: emailOf(), buildLabel: '$kChannel · build $kBuild'),
+          Phase.ready => ChainScreen(app: app, email: emailOf(), buildLabel: '$kChannel · build $kBuild'),
         },
       ),
     );

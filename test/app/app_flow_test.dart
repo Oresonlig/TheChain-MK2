@@ -2,9 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:the_chain/app/app_controller.dart';
 import 'package:the_chain/data/sync_engine.dart';
+import 'package:the_chain/domain/domain.dart';
 import 'package:the_chain/main.dart';
 
 import 'fake_backend.dart';
+
+double? personalRecordsOf(AppController app) =>
+    personalRecords(app.repo!.history())[const ExerciseId('ex_bench_press_bb')]?.value;
 
 final t1 = DateTime(2026, 9, 20, 18).millisecondsSinceEpoch;
 
@@ -94,11 +98,61 @@ void main() {
       await pumpEventQueue();
     });
     await tester.pump();
-    expect(find.text('MK2 · F2 DATA CHECK'), findsOneWidget);
+    expect(find.text('No program yet'), findsOneWidget); // före import
     await tester.runAsync(app.importFromWebsite);
     await tester.pump();
-    expect(find.text('Workouts logged'), findsOneWidget);
-    expect(find.text('LATEST RECORDS'), findsOneWidget);
-    expect(find.text('110 kg × 4'), findsOneWidget);
+    expect(find.textContaining('Round'), findsOneWidget);
+    expect(find.text('START SESSION'), findsOneWidget);
+  });
+
+  testWidgets('UI: helt pass — starta, logga, klar, avsluta, tillbaka till kedjan', (tester) async {
+    tester.view.physicalSize = const Size(1080, 4000);
+    tester.view.devicePixelRatio = 2.625;
+    addTearDown(tester.view.reset);
+    final b = FakeBackend(mk1: {
+      'sessionOrder': ['A'],
+      'restSlots': <int>[],
+      'weightLog': [
+        {'date': '2026-09-20', 'weight': 100.0},
+      ],
+    });
+    final app = AppController(b);
+    await tester.pumpWidget(MediaQuery(
+      data: const MediaQueryData(disableAnimations: true),
+      child: TheChainApp(app: app, emailOf: () => ''),
+    ));
+    await tester.runAsync(() async {
+      await app.start();
+      await app.signIn('x', 'secret');
+      await pumpEventQueue();
+      await app.importFromWebsite();
+    });
+    await tester.pump();
+    await tester.tap(find.text('START SESSION'));
+    await tester.pumpAndSettle();
+    expect(find.text('Bench Press (BB)'), findsOneWidget);
+    expect(find.text('FINISH SESSION'), findsOneWidget);
+
+    // Första övningen är expanderad: skriv vikt + reps i sista arbetssetet och logga.
+    final fields = find.byType(TextField);
+    await tester.enterText(fields.at(fields.evaluate().length - 3), '100');
+    await tester.enterText(fields.at(fields.evaluate().length - 2), '5');
+    await tester.tap(find.text('LOG').last);
+    await tester.pump();
+    expect(find.byIcon(Icons.check), findsWidgets);
+
+    // Klarmarkera alla fyra övningarna.
+    for (var i = 0; i < 4; i++) {
+      await tester.tap(find.text('DONE').last);
+      await tester.pump();
+    }
+    await tester.tap(find.text('FINISH SESSION'));
+    await tester.runAsync(() => pumpEventQueue());
+    await tester.pumpAndSettle();
+    expect(find.text('TRAIN AGAIN'), findsNothing);
+    final h = app.repo!.history();
+    expect(h.length, 1);
+    final bench = personalRecordsOf(app);
+    expect(bench, 100);
   });
 }

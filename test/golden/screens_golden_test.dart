@@ -18,6 +18,11 @@ Future<void> _loadSaira() async {
   final loader = FontLoader('Saira')
     ..addFont(Future.value(ByteData.sublistView(File('assets/fonts/Saira-Variable.ttf').readAsBytesSync())));
   await loader.load();
+  // Ikontypsnittet ur den lokala SDK:n, så att ikoner syns i bilderna.
+  final icons = File('../.flutter-sdk/bin/cache/artifacts/material_fonts/MaterialIcons-Regular.otf');
+  if (icons.existsSync()) {
+    await (FontLoader('MaterialIcons')..addFont(Future.value(ByteData.sublistView(icons.readAsBytesSync())))).load();
+  }
 }
 
 Future<void> _phone(WidgetTester tester, Widget app) async {
@@ -44,6 +49,38 @@ void main() {
     await tester.runAsync(app.start);
     await tester.pumpAndSettle();
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/login.png'));
+  });
+
+  testWidgets('kedjevyn', (tester) async {
+    await _loadSaira();
+    final b = FakeBackend(mk1: {...mk1(), 'restSlots': [2], 'sessionOrder': ['A', 'B', 'C', 'D']});
+    final app = AppController(b);
+    await _phone(tester, TheChainApp(app: app, emailOf: () => ''));
+    await tester.runAsync(() async {
+      await app.start();
+      await app.signIn('x', 'secret');
+      await pumpEventQueue();
+      await app.importFromWebsite();
+    });
+    await tester.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/chain.png'));
+  });
+
+  testWidgets('passvyn', (tester) async {
+    await _loadSaira();
+    final b = FakeBackend(mk1: {...mk1(), 'sessionOrder': ['A', 'B']});
+    final app = AppController(b);
+    await _phone(tester, TheChainApp(app: app, emailOf: () => ''));
+    await tester.runAsync(() async {
+      await app.start();
+      await app.signIn('x', 'secret');
+      await pumpEventQueue();
+      await app.importFromWebsite();
+    });
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('START SESSION'));
+    await tester.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/workout.png'));
   });
 
   testWidgets('dev home efter import', (tester) async {
