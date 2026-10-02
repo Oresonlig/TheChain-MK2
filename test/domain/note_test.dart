@@ -13,7 +13,8 @@ Workout workout(Map<ExerciseId, ExerciseStatus> exs, {DateTime? finished}) => Wo
       startedAt: start,
       finishedAt: finished ?? end,
       exercises: [
-        for (final e in exs.entries) WorkoutExercise(exerciseId: e.key, measure: Measure.weight, status: e.value),
+        for (final e in exs.entries)
+          WorkoutExercise(id: e.key.value, exerciseId: e.key, measure: Measure.weight, status: e.value),
       ],
     );
 
@@ -49,7 +50,9 @@ void main() {
       id: const WorkoutId('w2'),
       sessionId: const SessionId('A'),
       startedAt: start,
-      exercises: const [WorkoutExercise(exerciseId: bench, measure: Measure.weight, status: ExerciseStatus.done)],
+      exercises: const [
+        WorkoutExercise(id: 'r', exerciseId: bench, measure: Measure.weight, status: ExerciseStatus.done),
+      ],
     );
     expect(archiveAfterWorkout([note('b', bench)], w).single.isActive, isTrue);
   });

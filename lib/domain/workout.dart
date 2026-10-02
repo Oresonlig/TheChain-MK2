@@ -10,6 +10,7 @@ enum ExerciseStatus { open, done, skipped }
 
 class WorkoutExercise {
   const WorkoutExercise({
+    required this.id,
     required this.exerciseId,
     required this.measure,
     this.slotId,
@@ -17,6 +18,9 @@ class WorkoutExercise {
     this.status = ExerciseStatus.open,
     this.sets = const [],
   });
+
+  /// Unikt inom passet. Samma övning kan förekomma två gånger (t.ex. som extra).
+  final String id;
 
   /// Övningen som faktiskt körs.
   final ExerciseId exerciseId;
@@ -39,6 +43,23 @@ class WorkoutExercise {
   final List<SetEntry> sets;
 
   bool get isExtra => slotId == null;
+
+  WorkoutExercise copyWith({
+    ExerciseId? exerciseId,
+    Measure? measure,
+    ExerciseId? temporarySwapFrom,
+    ExerciseStatus? status,
+    List<SetEntry>? sets,
+  }) =>
+      WorkoutExercise(
+        id: id,
+        exerciseId: exerciseId ?? this.exerciseId,
+        measure: measure ?? this.measure,
+        slotId: slotId,
+        temporarySwapFrom: temporarySwapFrom ?? this.temporarySwapFrom,
+        status: status ?? this.status,
+        sets: sets ?? this.sets,
+      );
 }
 
 class Workout {
@@ -59,6 +80,14 @@ class Workout {
   final List<WorkoutExercise> exercises;
 
   bool get isFinished => finishedAt != null;
+
+  Workout copyWith({DateTime? finishedAt, List<WorkoutExercise>? exercises}) => Workout(
+        id: id,
+        sessionId: sessionId,
+        startedAt: startedAt,
+        finishedAt: finishedAt ?? this.finishedAt,
+        exercises: exercises ?? this.exercises,
+      );
 
   /// Klart att avsluta när varje övning är gjord eller överhoppad.
   bool get canFinish =>

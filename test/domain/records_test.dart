@@ -36,7 +36,7 @@ WorkoutEntry entry(
 
 WorkoutExercise ex(ExerciseId id, List<SetEntry> sets,
         {Measure m = Measure.weight, ExerciseStatus status = ExerciseStatus.done}) =>
-    WorkoutExercise(exerciseId: id, measure: m, sets: sets, status: status);
+    WorkoutExercise(id: 'r${_n++}', exerciseId: id, measure: m, sets: sets, status: status);
 
 final d1 = DateTime(2026, 9, 1), d2 = DateTime(2026, 9, 8), d3 = DateTime(2026, 9, 15);
 
