@@ -171,9 +171,12 @@ class _Decoder {
   WorkoutExercise readRow(Map<String, Object?> ex, int i, String workoutKey) {
     final rowId = _s(ex['id']) ?? '$workoutKey.r$i';
     final name = _s(ex['name']) ?? 'Unknown exercise';
-    final exId = _s(ex['exId']) != null
-        ? ExerciseId(_s(ex['exId'])!)
-        : exIdForName(name, rowId);
+    // Gamla rader kan bära PLATSENS id som exId (K1, extra_E_0 …) — då löses
+    // övningen upp via namnet i stället, så historiken hamnar på rätt övning
+    // (hittat i Niklas riktiga backup 2026-10-02).
+    final rawEx = _s(ex['exId']);
+    final slotLike = rawEx != null && RegExp(r'^([A-Z]\d+|extra_.*|added_.*)$').hasMatch(rawEx);
+    final exId = rawEx != null && !slotLike ? ExerciseId(rawEx) : exIdForName(name, rowId);
     final isExtra = rowId.startsWith('extra_') || ex['extra'] == true;
     final key = '$workoutKey.$rowId';
     return WorkoutExercise(
