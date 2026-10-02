@@ -2,6 +2,7 @@
 /// Bakgrund och beslut: domänöversynen (Claude Doc) och BESLUTSUNDERLAG.md.
 library;
 
+export 'body.dart';
 export 'chain.dart';
 export 'exercise.dart';
 export 'history.dart';
