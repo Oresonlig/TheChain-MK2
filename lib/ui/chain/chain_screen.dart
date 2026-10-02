@@ -3,11 +3,13 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../app/app_controller.dart';
 import '../../domain/domain.dart';
 import '../../theme/chain_theme.dart';
 import '../../theme/surfaces.dart';
+import '../copy_text.dart';
 import '../dev_home_screen.dart';
 import '../nanosuit_scaffold.dart';
 import '../units.dart';
@@ -129,6 +131,12 @@ class _ChainScreenState extends State<ChainScreen> {
                   key: ValueKey('rest-${session.id.value}'),
                   done: chain.isDone(session.id),
                   onDone: (note) => widget.app.markRestDone(session.id, note: note),
+                  onUndo: () async {
+                    final last = (history.whereType<RestEntry>().where((e) => e.sessionId == session.id).toList()
+                          ..sort((a, b) => b.date.compareTo(a.date)))
+                        .firstOrNull;
+                    if (last != null && await _confirmUndo(context, rest: true)) await widget.app.undoRest(last);
+                  },
                 )
               else
                 _SessionPanel(
@@ -142,6 +150,22 @@ class _ChainScreenState extends State<ChainScreen> {
                   exerciseOf: (id) => repo.exercise(id),
                   settings: repo.settings(),
                   onStart: () => _openWorkout(session.id),
+                  onCopy: (entry) async {
+                    await Clipboard.setData(ClipboardData(
+                      text: buildCopyText(
+                        workout: entry.workout,
+                        sessionName: session.name,
+                        nameOf: (id) => repo.exercise(id)?.name ?? id.value,
+                        settings: repo.settings(),
+                      ),
+                    ));
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Copied')));
+                    }
+                  },
+                  onUndo: (entry) async {
+                    if (await _confirmUndo(context)) await widget.app.undoWorkout(entry);
+                  },
                 ),
             ],
           );
@@ -149,6 +173,23 @@ class _ChainScreenState extends State<ChainScreen> {
       ),
     );
   }
+
+  Future<bool> _confirmUndo(BuildContext context, {bool rest = false}) async =>
+      await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text(rest ? 'Undo rest day?' : 'Undo this session?'),
+          content: Text(rest
+              ? 'The rest day is marked as not done again.'
+              : 'The session opens again with everything you logged, so you can fix it. '
+                  'It counts as done again when you finish it.'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+            TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Undo')),
+          ],
+        ),
+      ) ==
+      true;
 
   void _openDev(BuildContext context) => Navigator.of(context).push(MaterialPageRoute<void>(
         builder: (_) => DevHomeScreen(app: widget.app, email: widget.email, buildLabel: widget.buildLabel),
@@ -200,6 +241,8 @@ class _SessionPanel extends StatelessWidget {
     required this.exerciseOf,
     required this.settings,
     required this.onStart,
+    required this.onCopy,
+    required this.onUndo,
   });
 
   final Session session;
@@ -210,6 +253,8 @@ class _SessionPanel extends StatelessWidget {
   final Exercise? Function(ExerciseId) exerciseOf;
   final UserSettings settings;
   final VoidCallback onStart;
+  final ValueChanged<WorkoutEntry> onCopy;
+  final ValueChanged<WorkoutEntry> onUndo;
 
   @override
   Widget build(BuildContext context) {
@@ -237,27 +282,95 @@ class _SessionPanel extends StatelessWidget {
         const SizedBox(height: 4),
         Text(statusText, style: text.labelSmall!.copyWith(color: statusColor)),
         const SizedBox(height: 12),
-        for (final slot in session.slots) _ExercisePreview(
-          exercise: exerciseOf(slot.exerciseId),
-          id: slot.exerciseId,
-          last: lastPerformance(history, slot.exerciseId),
-          now: now,
-          settings: settings,
-        ),
-        const SizedBox(height: 16),
-        GestureDetector(
-          onTap: onStart,
-          child: Raised(
-            material: done && !inProgress ? c.raisedIdle : c.raisedActive,
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            child: Center(
-              child: Text(
-                inProgress ? 'CONTINUE SESSION' : (done ? 'TRAIN AGAIN' : 'START SESSION'),
-                style: text.labelLarge,
+        // Avslutat pass är LÅST (Niklas 2026-10-02): visa vad som gjordes +
+        // COPY och UNDO. Ingen "train again".
+        if (done && !inProgress && lastOfSession != null) ...[
+          for (final ex in lastOfSession.workout.exercises) _DoneExercise(
+            name: exerciseOf(ex.exerciseId)?.name ?? ex.exerciseId.value,
+            row: ex,
+            settings: settings,
+          ),
+          const SizedBox(height: 16),
+          Row(children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () => onUndo(lastOfSession),
+                icon: const Icon(Icons.undo, size: 18),
+                label: const Text('UNDO'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: c.textMuted,
+                  side: BorderSide(color: c.borderStrong),
+                  minimumSize: const Size(0, 52),
+                  shape: const RoundedRectangleBorder(),
+                  textStyle: text.labelSmall,
+                ),
               ),
             ),
+            const SizedBox(width: 12),
+            Expanded(
+              flex: 2,
+              child: GestureDetector(
+                onTap: () => onCopy(lastOfSession),
+                child: Raised(
+                  material: c.raisedActive,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                    Icon(Icons.copy, size: 18, color: c.textStrong),
+                    const SizedBox(width: 8),
+                    Text('COPY', style: text.labelLarge),
+                  ]),
+                ),
+              ),
+            ),
+          ]),
+        ] else ...[
+          for (final slot in session.slots) _ExercisePreview(
+            exercise: exerciseOf(slot.exerciseId),
+            id: slot.exerciseId,
+            last: lastPerformance(history, slot.exerciseId),
+            now: now,
+            settings: settings,
           ),
-        ),
+          const SizedBox(height: 16),
+          GestureDetector(
+            onTap: onStart,
+            child: Raised(
+              material: c.raisedActive,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Center(child: Text(inProgress ? 'CONTINUE SESSION' : 'START SESSION', style: text.labelLarge)),
+            ),
+          ),
+        ],
+      ]),
+    );
+  }
+}
+
+class _DoneExercise extends StatelessWidget {
+  const _DoneExercise({required this.name, required this.row, required this.settings});
+  final String name;
+  final WorkoutExercise row;
+  final UserSettings settings;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.chain;
+    final text = Theme.of(context).textTheme;
+    final sets = row.sets.where((s) => s.isLogged).toList();
+    var w = 0, s = 0;
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      decoration: BoxDecoration(border: Border(top: BorderSide(color: c.border))),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(name, style: text.titleMedium!.copyWith(color: row.status == ExerciseStatus.skipped ? c.textFaint : c.textStrong)),
+        if (row.status == ExerciseStatus.skipped)
+          Text('Skipped', style: text.bodySmall)
+        else
+          for (final set in [...sets.where((x) => x.kind == SetKind.warmup), ...sets.where((x) => x.kind == SetKind.work)])
+            Text(
+              '${set.kind == SetKind.warmup ? 'W${++w}' : 'S${++s}'}  ${fmtSet(set, row.measure, settings)}',
+              style: text.bodySmall!.copyWith(color: set.kind == SetKind.work ? c.textBody : c.textMuted),
+            ),
       ]),
     );
   }
@@ -294,10 +407,11 @@ class _ExercisePreview extends StatelessWidget {
 }
 
 class _RestPanel extends StatefulWidget {
-  const _RestPanel({super.key, required this.done, required this.onDone});
+  const _RestPanel({super.key, required this.done, required this.onDone, required this.onUndo});
 
   final bool done;
   final Future<void> Function(String? note) onDone;
+  final VoidCallback onUndo;
 
   @override
   State<_RestPanel> createState() => _RestPanelState();
@@ -326,6 +440,21 @@ class _RestPanelState extends State<_RestPanel> {
         const SizedBox(height: 4),
         Text(widget.done ? 'DONE' : 'Active rest — a light walk or stretching.',
             style: text.labelSmall!.copyWith(color: widget.done ? c.textFaint : c.restGold)),
+        if (widget.done) ...[
+          const SizedBox(height: 16),
+          OutlinedButton.icon(
+            onPressed: widget.onUndo,
+            icon: const Icon(Icons.undo, size: 18),
+            label: const Text('UNDO'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: c.textMuted,
+              side: BorderSide(color: c.borderStrong),
+              minimumSize: const Size(0, 52),
+              shape: const RoundedRectangleBorder(),
+              textStyle: text.labelSmall,
+            ),
+          ),
+        ],
         if (!widget.done) ...[
           const SizedBox(height: 16),
           TextField(

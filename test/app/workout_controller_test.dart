@@ -115,6 +115,40 @@ void main() {
     expect(active, {'seat 4'});
   });
 
+  test('UNDO: avslutat pass öppnas igen med allt loggat; nytt avslut ger INGEN dubblett', () async {
+    final app = await ready();
+    final wc = app.openWorkout(const SessionId('A'));
+    final r = wc.workout.exercises.first;
+    wc.setValues(r.id, r.sets.last.id, const SetValues(weight: 100, reps: 5));
+    wc.toggleLog(r.id, r.sets.last.id);
+    for (final x in wc.workout.exercises) {
+      wc.markDone(x.id);
+    }
+    await wc.finish();
+    final repo = app.repo!;
+    expect(repo.chain().isDone(const SessionId('A')), isTrue);
+    final entry = repo.history().whereType<WorkoutEntry>().firstWhere((e) => e.workout.sessionId == const SessionId('A'));
+
+    await app.undoWorkout(entry);
+    expect(repo.chain().isDone(const SessionId('A')), isFalse);
+    expect(repo.history().whereType<WorkoutEntry>().length, 1); // bara MK1-passet
+    final again = app.openWorkout(const SessionId('A'));
+    expect(again.workout.id, entry.workout.id);
+    expect(again.workout.exercises.first.sets.last.values.weight, 100);
+
+    await again.finish();
+    expect(repo.history().whereType<WorkoutEntry>().length, 2);
+    expect(repo.chain().isDone(const SessionId('A')), isTrue);
+  });
+
+  test('UNDO av vilodag', () async {
+    final app = await ready();
+    await app.markRestDone(const SessionId('V'));
+    expect(app.repo!.chain().isDone(const SessionId('V')), isTrue);
+    await app.undoRest(app.repo!.history().whereType<RestEntry>().single);
+    expect(app.repo!.chain().isDone(const SessionId('V')), isFalse);
+  });
+
   test('vilodag markeras klar med anteckning', () async {
     final app = await ready();
     await app.markRestDone(const SessionId('V'), note: 'walk');

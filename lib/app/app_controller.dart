@@ -194,6 +194,25 @@ class AppController extends ChangeNotifier {
     );
   }
 
+  /// Undo av ett avslutat pass: blir pågående igen med allt loggat kvar. Kedjan
+  /// räknar det som ogjort tills det avslutas på nytt. Samma id → ingen dubblett.
+  Future<void> undoWorkout(WorkoutEntry entry) async {
+    final w = entry.workout;
+    await repo!.saveActiveWorkout(
+      Workout(id: w.id, sessionId: w.sessionId, startedAt: w.startedAt, exercises: w.exercises),
+      _now(),
+    );
+    notifyListeners();
+    await syncNow();
+  }
+
+  /// Undo av en avklarad vilodag.
+  Future<void> undoRest(RestEntry entry) async {
+    await repo!.deleteHistory(entry, _now());
+    notifyListeners();
+    await syncNow();
+  }
+
   Future<void> markRestDone(SessionId sessionId, {String? note}) async {
     final r = repo!;
     final session = r.program().sessionById(sessionId)!;
