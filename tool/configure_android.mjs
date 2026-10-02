@@ -7,7 +7,19 @@
 //
 // stable = SAMMA paket som MK1-appen → med samma nyckel kommer MK2 som en
 // uppdatering av MK1 (se LESSONS_MK1_ANDROID.md §1).
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
+import { dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+// Arbeta ALLTID i MK2-repots rot, oavsett var skriptet startas. 2026-10-02 kördes
+// det av misstag från C:\Resistance och ändrade MK1:s android/ (återställt, aldrig
+// pushat). Vakten: kräv ett Flutter-projekt (pubspec.yaml med the_chain).
+const REPO = dirname(dirname(fileURLToPath(import.meta.url)));
+process.chdir(REPO);
+if (!existsSync('pubspec.yaml') || !readFileSync('pubspec.yaml', 'utf8').includes('name: the_chain')) {
+  console.error('Vägrar: ' + REPO + ' är inte MK2-projektet');
+  process.exit(1);
+}
 
 const CHANNELS = {
   dev:    { appId: 'com.oresonlig.thechain.dev', label: 'The Chain DEV' },
@@ -58,6 +70,12 @@ if (signed) {
   if (!dbgRe.test(gradle)) { console.error('release signingConfig line not found'); process.exit(1); }
   gradle = gradle.replace(dbgRe, isKts ? 'signingConfigs.getByName("release")' : 'signingConfigs.release');
 }
+// Java-desugaring (krävs av ota_update ≥ 7, självuppdateringen).
+if (isKts && !gradle.includes('isCoreLibraryDesugaringEnabled')) {
+  if (!/compileOptions\s*\{/.test(gradle)) { console.error('compileOptions block not found'); process.exit(1); }
+  gradle = gradle.replace(/compileOptions\s*\{/, 'compileOptions {\n        isCoreLibraryDesugaringEnabled = true');
+  gradle += '\ndependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")\n}\n';
+}
 writeFileSync(gradlePath, gradle);
 
 // Appnamn
@@ -69,6 +87,27 @@ manifest = manifest.replace(/android:label="[^"]*"/, `android:label="${cfg.label
 if (!manifest.includes('android.permission.INTERNET')) {
   manifest = manifest.replace(/<application/, '<uses-permission android:name="android.permission.INTERNET"/>\n    <application');
 }
+// Självuppdateringen (ota_update): filprovider så att Androids installations-
+// dialog kan läsa den nedladdade APK:n. Installationen bekräftas alltid av
+// användaren (ACTION_VIEW) — aldrig tyst (MK1-lärdom: Samsung Auto Blocker).
+if (!manifest.includes('OtaUpdateFileProvider')) {
+  manifest = manifest.replace(/<\/application>/, `    <provider
+            android:name="sk.fourq.otaupdate.OtaUpdateFileProvider"
+            android:authorities="\${applicationId}.ota_update_provider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/filepaths" />
+        </provider>
+    </application>`);
+}
 writeFileSync(manifestPath, manifest);
+mkdirSync('android/app/src/main/res/xml', { recursive: true });
+writeFileSync('android/app/src/main/res/xml/filepaths.xml', `<?xml version="1.0" encoding="utf-8"?>
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <files-path name="internal_apk_storage" path="ota_update/"/>
+</paths>
+`);
 
 console.log(`Configured ${channel}: ${cfg.appId} "${cfg.label}" · ${signed ? 'release-signed' : 'DEBUG-signed (no keystore secret)'}`);

@@ -1,0 +1,90 @@
+/// Självuppdatering (MK1-lärdomar, LESSONS_MK1_ANDROID.md §6–7):
+///   * versionskollen läser en version.json som CI lägger i releasen — ingen
+///     GitHub-API-kvot;
+///   * APK:n laddas ner I APPEN och lämnas till Androids installationsdialog —
+///     användaren bekräftar alltid (aldrig tyst; Samsung Auto Blocker);
+///   * SHA-256 kontrolleras innan installation.
+library;
+
+import 'dart:convert';
+
+import 'package:http/http.dart' as http;
+import 'package:ota_update/ota_update.dart';
+
+class UpdateInfo {
+  const UpdateInfo({required this.build, required this.apkUrl, this.sha256});
+  final int build;
+  final String apkUrl;
+  final String? sha256;
+}
+
+/// Kanalens release i MK2-repot. DEV = `dev-latest`.
+String releaseBase(String channel) =>
+    'https://github.com/Oresonlig/TheChain-MK2/releases/download/${channel == 'dev' ? 'dev-latest' : 'stable-latest'}';
+
+/// Tolkar version.json; null om filen är trasig.
+UpdateInfo? parseVersionJson(String body, String base) {
+  try {
+    final j = (jsonDecode(body) as Map).cast<String, Object?>();
+    final build = (j['build'] as num?)?.toInt();
+    if (build == null) return null;
+    return UpdateInfo(build: build, apkUrl: '$base/${j['apk'] ?? 'thechain-dev.apk'}', sha256: j['sha256'] as String?);
+  } catch (_) {
+    return null;
+  }
+}
+
+class Updater {
+  Updater({required this.channel, required this.currentBuild, http.Client? client}) : _client = client ?? http.Client();
+
+  final String channel;
+  final int currentBuild;
+  final http.Client _client;
+
+  /// Nyare bygge finns, eller null. Tyst vid nätfel (appen fungerar ändå).
+  Future<UpdateInfo?> check() async {
+    if (currentBuild <= 0) return null; // lokala byggen uppdaterar inte sig själva
+    final base = releaseBase(channel);
+    try {
+      final res = await _client
+          .get(Uri.parse('$base/version.json?t=${DateTime.now().millisecondsSinceEpoch}'))
+          .timeout(const Duration(seconds: 15));
+      if (res.statusCode != 200) return null;
+      final info = parseVersionJson(res.body, base);
+      return info != null && info.build > currentBuild ? info : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Laddar ner och öppnar installationsdialogen. Strömmar läsbar status.
+  Stream<String> install(UpdateInfo info) async* {
+    yield 'Downloading…';
+    await for (final e in OtaUpdate().execute(
+      info.apkUrl,
+      destinationFilename: 'thechain-update.apk',
+      sha256checksum: info.sha256,
+    )) {
+      switch (e.status) {
+        case OtaStatus.DOWNLOADING:
+          yield 'Downloading… ${e.value ?? ''}%';
+        case OtaStatus.INSTALLING:
+          yield 'Confirm the install in the dialog';
+        case OtaStatus.INSTALLATION_DONE:
+          yield 'Installed';
+        case OtaStatus.PERMISSION_NOT_GRANTED_ERROR:
+          yield 'Allow The Chain DEV to install apps, then tap Update again';
+        case OtaStatus.CHECKSUM_ERROR:
+          yield 'Download was corrupted — tap Update again';
+        case OtaStatus.ALREADY_RUNNING_ERROR:
+          yield 'An update is already downloading';
+        case OtaStatus.CANCELED:
+          yield 'Update canceled';
+        case OtaStatus.INSTALLATION_ERROR:
+          yield 'Install blocked — if you use Samsung Auto Blocker, turn it off and tap Update again';
+        case OtaStatus.DOWNLOAD_ERROR || OtaStatus.INTERNAL_ERROR:
+          yield 'Update failed: ${e.value ?? 'unknown error'}';
+      }
+    }
+  }
+}

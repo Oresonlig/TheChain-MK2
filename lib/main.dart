@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'app/app_controller.dart';
 import 'app/supabase_backend.dart';
+import 'app/updater.dart';
 import 'theme/nanosuit.dart';
 import 'ui/chain/chain_screen.dart';
 import 'ui/login_screen.dart';
@@ -13,7 +14,10 @@ const String kBuild = String.fromEnvironment('BUILD', defaultValue: '0');
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final backend = await SupabaseBackend.init();
-  final app = AppController(backend);
+  final app = AppController(
+    backend,
+    updater: kChannel == 'dev' ? Updater(channel: kChannel, currentBuild: int.tryParse(kBuild) ?? 0) : null,
+  );
   runApp(TheChainApp(app: app, emailOf: () => backend.userEmail ?? ''));
   await app.start();
 }

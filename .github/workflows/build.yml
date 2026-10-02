@@ -88,8 +88,25 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           cp build/app/outputs/flutter-apk/app-release.apk thechain-dev.apk
-          gh release delete dev-latest --yes --cleanup-tag || true
-          gh release create dev-latest thechain-dev.apk \
-            --prerelease --latest=false --target "${{ github.sha }}" \
-            --title "MK2 DEV build ${{ github.run_number }}" \
-            --notes "DEV channel (com.oresonlig.thechain.dev). Build ${{ github.run_number }}, commit ${{ github.sha }}."
+          # version.json = appens självuppdatering (lib/app/updater.dart).
+          SHA=$(sha256sum thechain-dev.apk | cut -d' ' -f1)
+          echo "{\"build\": ${{ github.run_number }}, \"sha256\": \"$SHA\", \"apk\": \"thechain-dev.apk\"}" > version.json
+          cat version.json
+          # Byt ut filen i befintlig release i stället för att radera releasen —
+          # en radering mitt under en nedladdning lämnade den hängande på 99,9 %
+          # (Niklas 2026-10-02). APK först, version.json SIST: versionsfilen ska
+          # aldrig peka på en APK som inte finns än. Taggen flyttas till commit.
+          if gh release view dev-latest >/dev/null 2>&1; then
+            gh release upload dev-latest thechain-dev.apk --clobber
+            gh release upload dev-latest version.json --clobber
+            git tag -f dev-latest "${{ github.sha }}"
+            git push -f origin dev-latest
+            gh release edit dev-latest \
+              --title "MK2 DEV build ${{ github.run_number }}" \
+              --notes "DEV channel (com.oresonlig.thechain.dev). Build ${{ github.run_number }}, commit ${{ github.sha }}."
+          else
+            gh release create dev-latest thechain-dev.apk version.json \
+              --prerelease --latest=false --target "${{ github.sha }}" \
+              --title "MK2 DEV build ${{ github.run_number }}" \
+              --notes "DEV channel (com.oresonlig.thechain.dev). Build ${{ github.run_number }}, commit ${{ github.sha }}."
+          fi

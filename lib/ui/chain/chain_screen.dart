@@ -109,6 +109,10 @@ class _ChainScreenState extends State<ChainScreen> {
                   ),
                 ]),
               ]),
+              if (widget.app.update != null) ...[
+                const SizedBox(height: 8),
+                _UpdateBanner(app: widget.app),
+              ],
               const SizedBox(height: 8),
               Text('${chain.done.length}/$trainingCount sessions done · Round ${chain.round}', style: text.bodySmall),
               const SizedBox(height: 10),
@@ -149,6 +153,39 @@ class _ChainScreenState extends State<ChainScreen> {
   void _openDev(BuildContext context) => Navigator.of(context).push(MaterialPageRoute<void>(
         builder: (_) => DevHomeScreen(app: widget.app, email: widget.email, buildLabel: widget.buildLabel),
       ));
+}
+
+class _UpdateBanner extends StatelessWidget {
+  const _UpdateBanner({required this.app});
+  final AppController app;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.chain;
+    final text = Theme.of(context).textTheme;
+    final busy = app.updateStatus != null && app.updateStatus!.startsWith('Downloading');
+    return Glass(
+      padding: const EdgeInsets.fromLTRB(14, 10, 10, 10),
+      child: Row(children: [
+        Icon(Icons.system_update, color: c.accent),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('Update available · build ${app.update!.build}', style: text.titleMedium),
+            if (app.updateStatus != null) Text(app.updateStatus!, style: text.bodySmall),
+          ]),
+        ),
+        GestureDetector(
+          onTap: busy ? null : app.installUpdate,
+          child: Raised(
+            material: c.raisedActive,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Text(busy ? '…' : 'UPDATE', style: text.labelLarge!.copyWith(fontSize: 12)),
+          ),
+        ),
+      ]),
+    );
+  }
 }
 
 class _SessionPanel extends StatelessWidget {

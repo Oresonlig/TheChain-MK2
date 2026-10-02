@@ -11,6 +11,7 @@ import '../data/repository.dart';
 import '../data/sync_engine.dart';
 import '../domain/domain.dart';
 import '../mk1/mk1_codec.dart';
+import 'updater.dart';
 import 'workout_controller.dart';
 
 /// Det appen behöver av servern (Supabase i appen, fake i tester).
@@ -31,9 +32,14 @@ abstract class Backend {
 enum Phase { signedOut, loading, ready }
 
 class AppController extends ChangeNotifier {
-  AppController(this.backend, {DateTime Function()? clock}) : _now = clock ?? DateTime.now;
+  AppController(this.backend, {DateTime Function()? clock, this.updater}) : _now = clock ?? DateTime.now;
 
   final Backend backend;
+
+  /// Självuppdatering (null i tester och lokala byggen).
+  final Updater? updater;
+  UpdateInfo? update;
+  String? updateStatus;
   final DateTime Function() _now;
   StreamSubscription<String?>? _sub;
 
@@ -70,6 +76,24 @@ class AppController extends ChangeNotifier {
     phase = Phase.ready;
     notifyListeners();
     await syncNow();
+    await checkForUpdate();
+  }
+
+  Future<void> checkForUpdate() async {
+    final u = updater;
+    if (u == null) return;
+    update = await u.check();
+    notifyListeners();
+  }
+
+  /// Laddar ner i appen och öppnar Androids installationsdialog.
+  Future<void> installUpdate() async {
+    final u = updater, info = update;
+    if (u == null || info == null) return;
+    await for (final s in u.install(info)) {
+      updateStatus = s;
+      notifyListeners();
+    }
   }
 
   Future<void> signIn(String email, String password) async {
