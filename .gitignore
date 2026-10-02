@@ -1,0 +1,31 @@
+# Flutter / Dart
+.dart_tool/
+.packages
+.pub-cache/
+.pub/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+*.iml
+.idea/
+.vscode/
+
+# F0: plattformsmappar genereras i CI (`flutter create`). Tas in i git den dag
+# vi behöver egen native-kod (t.ex. självuppdateringen).
+android/
+ios/
+web/
+linux/
+macos/
+windows/
+.metadata
+
+# Signering — får ALDRIG in i git
+*.jks
+*.keystore
+*.p12
+key.properties
+
+# Planeringsdokument — lokala, aldrig till GitHub
+BESLUTSUNDERLAG.md
+LESSONS_MK1_ANDROID.md

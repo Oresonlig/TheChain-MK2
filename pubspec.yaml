@@ -1,0 +1,21 @@
+name: the_chain
+description: The Chain MK2 — workout tracking, Flutter rewrite of the MK1 web app.
+publish_to: 'none'
+
+# Versionen sätts av CI (--build-name/--build-number), inte här.
+version: 0.1.0+1
+
+environment:
+  sdk: '>=3.5.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
