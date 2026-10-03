@@ -11,9 +11,10 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:ota_update/ota_update.dart';
 
-/// Samsungs Auto Blocker släpper bara Play/Galaxy Store-installationer.
+/// Telefonens installationsspärr (Samsungs Auto Blocker släpper bara Play/Galaxy
+/// Store) — allmänt formulerat, Samsungs sökväg som exempel.
 const _autoBlocker =
-    'Turn off Samsung Auto Blocker (Settings › Security and privacy › Auto Blocker) and tap Update again.';
+    "Turn off your phone's auto blocker (Samsung: Settings › Security and privacy › Auto Blocker) and tap Update again.";
 
 class UpdateInfo {
   const UpdateInfo({required this.build, required this.apkUrl, this.sha256});

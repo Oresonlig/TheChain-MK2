@@ -45,6 +45,17 @@ class RaisedMaterial {
       );
 }
 
+/// Hur temat lyfter fram ett pågående pass i kedjan (utöver den gröna pricken).
+/// Sluten lista: varje tema väljer en, ett nytt tema får lägga till sin egen
+/// variant (Niklas 2026-10-03: Nanosuit pulsen, Cosmic Horror/Obsidian annat).
+enum ActiveMark {
+  /// Bara pricken.
+  none,
+
+  /// Nanosuit: ett kort ljusspår som löper runt flikens chevron-kontur.
+  tracePulse,
+}
+
 @immutable
 class ChainTheme extends ThemeExtension<ChainTheme> {
   const ChainTheme({
@@ -72,8 +83,12 @@ class ChainTheme extends ThemeExtension<ChainTheme> {
     required this.hexLine,
     required this.hexEnergy,
     required this.hasAmbient,
+    required this.activeMark,
     Color? fail,
   }) : fail = fail ?? restGold;
+
+  /// Pågående pass i kedjan — obligatoriskt: varje tema tar ställning.
+  final ActiveMark activeMark;
 
   final String name;
 
@@ -158,6 +173,7 @@ class ChainTheme extends ThemeExtension<ChainTheme> {
       hexLine: c(hexLine, other.hexLine),
       hexEnergy: c(hexEnergy, other.hexEnergy),
       hasAmbient: t < 0.5 ? hasAmbient : other.hasAmbient,
+      activeMark: t < 0.5 ? activeMark : other.activeMark,
       fail: c(fail, other.fail),
     );
   }

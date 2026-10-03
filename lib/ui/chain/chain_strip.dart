@@ -8,6 +8,7 @@ library;
 import 'package:flutter/material.dart';
 
 import '../../domain/domain.dart';
+import '../../theme/active_mark.dart';
 import '../../theme/chain_theme.dart';
 import '../../theme/surfaces.dart';
 
@@ -19,6 +20,7 @@ class ChainStrip extends StatefulWidget {
     required this.selected,
     required this.onSelect,
     this.inProgress = const {},
+    this.animate = true,
   });
 
   final Program program;
@@ -26,6 +28,9 @@ class ChainStrip extends StatefulWidget {
   final SessionId selected;
   final ValueChanged<SessionId> onSelect;
   final Set<SessionId> inProgress;
+
+  /// Användarens ambient-inställning (av = pågående pass markeras stillastående).
+  final bool animate;
 
   /// Visningsbokstav: pass får A, B, C … i ordning; vilodagar ALLTID "V".
   static Map<SessionId, String> letters(Program p) {
@@ -105,7 +110,11 @@ class _ChainStripState extends State<ChainStrip> {
                   label: '${s.isRest ? 'Rest day' : s.name}${done ? ', done' : ''}',
                   child: GestureDetector(
                     onTap: () => widget.onSelect(s.id),
-                    child: Raised(
+                    // Pågående pass: temats markering runt fliken (Nanosuit: puls).
+                    child: ActiveMarkFrame(
+                      active: widget.inProgress.contains(s.id),
+                      animate: widget.animate,
+                      child: Raised(
                       material: material,
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                       child: Row(mainAxisSize: MainAxisSize.min, children: [
@@ -119,6 +128,7 @@ class _ChainStripState extends State<ChainStrip> {
                           Container(width: 6, height: 6, decoration: BoxDecoration(color: c.success, shape: BoxShape.circle)),
                         ],
                       ]),
+                    ),
                     ),
                   ),
                 ),

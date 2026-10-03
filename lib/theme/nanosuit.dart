@@ -54,6 +54,7 @@ const nanosuit = ChainTheme(
   hexLine: Color(0x1400D4FF), // 8 % — MK1 BASE
   hexEnergy: _cyanBright,
   hasAmbient: true,
+  activeMark: ActiveMark.tracePulse,
 );
 
 const _font = 'Saira';

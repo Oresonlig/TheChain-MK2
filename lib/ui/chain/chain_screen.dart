@@ -130,6 +130,7 @@ class _ChainScreenState extends State<ChainScreen> {
                 chain: chain,
                 selected: session.id,
                 inProgress: inProgress,
+                animate: repo.settings().ambientEffects,
                 onSelect: (id) => setState(() => _selected = id),
               ),
               const SizedBox(height: 20),
