@@ -99,9 +99,8 @@ class AppController extends ChangeNotifier {
     repo = Repository(engine);
     phase = Phase.ready;
     notifyListeners();
-    await syncNow();
+    await syncNow(); // tar även första versionskollen
     await checkMoved();
-    await checkForUpdate();
   }
 
   Future<void> checkMoved() async {
@@ -133,12 +132,27 @@ class AppController extends ChangeNotifier {
   String exportBackup(String appVersion) =>
       encodeBackup(buildBackup(repo!.engine, email: backend.userEmail, now: _now(), appVersion: appVersion));
 
+  /// Versionskollen åker med synken (Niklas 2026-10-03: bannern ska dyka upp
+  /// utan omstart), men högst var [updateInterval] — under ett pass synkar
+  /// appen efter nästan varje set.
+  static const updateInterval = Duration(minutes: 10);
+  DateTime? _lastUpdateCheck;
+
   Future<void> checkForUpdate() async {
     final u = updater;
     if (u == null) return;
-    update = await u.check();
+    final now = _now(), last = _lastUpdateCheck;
+    if (last != null && now.difference(last) < updateInterval) return;
+    _lastUpdateCheck = now;
+    // null = ingen nyare ELLER nätfel: en redan hittad version försvinner inte
+    // ur bannern för att en koll misslyckas.
+    final found = await u.check();
+    if (_disposed) return;
+    update = found ?? update;
     notifyListeners();
   }
+
+  bool _disposed = false;
 
   /// Laddar ner i appen och öppnar Androids installationsdialog.
   Future<void> installUpdate() async {
@@ -194,6 +208,8 @@ class AppController extends ChangeNotifier {
     busy = false;
     if (reports.values.any((x) => x.localChanged)) _openWorkout?.reloadFromRepo();
     notifyListeners();
+    // Efter synken och utan att vänta in den — kan aldrig fälla synken.
+    unawaited(checkForUpdate());
     if (_syncAgain && repo != null) {
       _syncAgain = false;
       await syncNow();
@@ -339,6 +355,7 @@ class AppController extends ChangeNotifier {
 
   @override
   void dispose() {
+    _disposed = true;
     _syncTimer?.cancel();
     _sub?.cancel();
     super.dispose();
