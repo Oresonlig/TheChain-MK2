@@ -1,5 +1,4 @@
-/// Weight-fliken: logga dagens vikt, se senaste vägningarna. Kurva och trend
-/// kommer i F4.
+/// Weight-fliken: trendgraf, logga dagens vikt, se senaste vägningarna.
 library;
 
 import 'package:flutter/material.dart';
@@ -9,6 +8,9 @@ import '../../app/app_controller.dart';
 import '../../domain/domain.dart';
 import '../../theme/chain_theme.dart';
 import '../../theme/surfaces.dart';
+import '../charts/chain_chart.dart';
+import '../charts/chart_data.dart';
+import '../charts/series.dart';
 import '../nanosuit_scaffold.dart';
 
 const _lbsPerKg = 2.20462;
@@ -23,6 +25,20 @@ class WeightScreen extends StatefulWidget {
 
 class _WeightScreenState extends State<WeightScreen> {
   final _ctl = TextEditingController();
+  ChartRange _range = ChartRange.all;
+
+  @override
+  void initState() {
+    super.initState();
+    loadRange('weight', ChartRange.all).then((r) {
+      if (mounted) setState(() => _range = r);
+    });
+  }
+
+  void _setRange(ChartRange r) {
+    setState(() => _range = r);
+    saveRange('weight', r);
+  }
 
   @override
   void dispose() {
@@ -61,6 +77,8 @@ class _WeightScreenState extends State<WeightScreen> {
         final entries = repo.bodyweight().reversed.toList();
         final today = AppController.dayKey(DateTime.now());
         final todays = entries.where((e) => e.date == today).firstOrNull;
+        final series = weightSeries(entries, _range, DateTime.now(), s);
+        final change = weightChange(series, _range, s);
 
         return ChainScaffold(
           ambient: s.ambientEffects,
@@ -69,6 +87,22 @@ class _WeightScreenState extends State<WeightScreen> {
             children: [
               Text('WEIGHT', style: text.titleLarge!.copyWith(letterSpacing: 4)),
               const SizedBox(height: 16),
+              if (entries.isNotEmpty) ...[
+                Glass(
+                  padding: const EdgeInsets.fromLTRB(14, 12, 10, 8),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                    Row(children: [
+                      Expanded(child: Text('TREND', style: text.labelSmall)),
+                      if (change != null) Text(change, style: text.labelSmall!.copyWith(color: c.textStrong)),
+                    ]),
+                    const SizedBox(height: 6),
+                    RangeChips(value: _range, onChanged: _setRange),
+                    const SizedBox(height: 4),
+                    ChainChart(series: series, animate: s.ambientEffects),
+                  ]),
+                ),
+                const SizedBox(height: 16),
+              ],
               Glass(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                   Text(todays == null ? 'TODAY' : 'TODAY · ${_fmt(todays.kg, s.weightUnit)} logged', style: text.labelSmall),

@@ -137,6 +137,16 @@ void main() {
       ], bench);
       expect(pts.map((p) => p.value), [100, 95, 105]);
       expect(pts.map((p) => p.isPr), [true, false, true]);
+      expect(pts.last.set.values.weight, 105, reason: 'passets bästa set följer med (grafetiketten)');
+    });
+
+    test('PR-markering följer RECORDS: fler reps på samma vikt är också PR', () {
+      final pts = progression([
+        entry(d1, [ex(bench, [work(const SetValues(weight: 130, reps: 1))])]),
+        entry(d2, [ex(bench, [work(const SetValues(weight: 130, reps: 2))])]),
+        entry(d3, [ex(bench, [work(const SetValues(weight: 130, reps: 2))])]),
+      ], bench);
+      expect(pts.map((p) => p.isPr), [true, true, false]);
     });
 
     test('kroppsviktsövning plottar bara tillagd vikt — viktnedgång straffas inte', () {

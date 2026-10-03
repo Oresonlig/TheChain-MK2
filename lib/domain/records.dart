@@ -32,13 +32,17 @@ class PersonalRecord {
 }
 
 class ProgressionPoint {
-  const ProgressionPoint({required this.date, required this.value, required this.isPr});
+  const ProgressionPoint({required this.date, required this.value, required this.isPr, required this.set, required this.measure});
 
   final DateTime date;
   final double value;
 
-  /// Nytt all-time-high i serien vid den här punkten.
+  /// Nytt PR vid den här punkten — samma regel som RECORDS (värde, sedan tiebreak).
   final bool isPr;
+
+  /// Passets bästa set (för etiketten "130 kg × 1") och mätsättet det loggades i.
+  final SetEntry set;
+  final Measure measure;
 }
 
 class LastPerformance {
@@ -124,18 +128,18 @@ double? progressionValue(Measure m, SetEntry s) {
   return m.prValue(s);
 }
 
-/// En punkt per pass där övningen loggats, äldst först.
+/// En punkt per pass där övningen loggats (passets bästa set), äldst först.
 List<ProgressionPoint> progression(Iterable<HistoryEntry> history, ExerciseId id) {
   final rows = _performed(history, id).toList().reversed;
   final out = <ProgressionPoint>[];
-  double? high;
+  (double, double)? high;
   for (final (date, _, ex) in rows) {
     final b = bestSet(ex.measure, ex.sets, valueOf: (s) => progressionValue(ex.measure, s));
     if (b == null) continue;
-    final v = b.$2;
-    final isPr = high == null || v > high;
-    if (isPr) high = v;
-    out.add(ProgressionPoint(date: date, value: v, isPr: isPr));
+    final (set, v, tb) = b;
+    final isPr = high == null || v > high.$1 || (v == high.$1 && tb > high.$2);
+    if (isPr) high = (v, tb);
+    out.add(ProgressionPoint(date: date, value: v, isPr: isPr, set: set, measure: ex.measure));
   }
   return out;
 }

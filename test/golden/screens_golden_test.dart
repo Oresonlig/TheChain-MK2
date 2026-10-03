@@ -11,6 +11,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:the_chain/app/app_controller.dart';
 import 'package:the_chain/domain/domain.dart';
 import 'package:the_chain/main.dart';
+import 'package:the_chain/ui/charts/chain_chart.dart';
 import 'package:the_chain/ui/workout/workout_screen.dart';
 
 import '../app/app_flow_test.dart' show mk1;
@@ -238,6 +239,90 @@ void main() {
     FocusManager.instance.primaryFocus?.unfocus();
     await tester.pumpAndSettle();
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/picker.png'));
+  });
+
+  // Realistisk historik: bänk stiger till PR 130, två månader runt halva vikten,
+  // ett uppehåll på åtta veckor, sedan tillbaka. Vikt 92 → 86 med brus.
+  Map<String, Object?> chartData() {
+    final now = DateTime.now();
+    final log = <Map<String, Object?>>[];
+    final weights = <Map<String, Object?>>[];
+    var day = now.subtract(const Duration(days: 300));
+    var i = 0;
+    while (day.isBefore(now.subtract(const Duration(days: 2)))) {
+      final age = now.difference(day).inDays;
+      final inGap = age < 110 && age > 54;
+      if (!inGap) {
+        final w = age > 200
+            ? 100 + (300 - age) / 100 * 25 // upp mot 125
+            : age > 180
+                ? 130.0 // PR-tiden
+                : age > 120
+                    ? 65.0 + (i % 3) * 2.5 // "vad hände här?"
+                    : 105.0 + (54 - age.clamp(0, 54)) / 54 * 10;
+        log.add({
+          'passId': 'A',
+          'timestamp': day.millisecondsSinceEpoch,
+          'exercises': [
+            {
+              'id': 'A1',
+              'name': 'Bench Press (BB)',
+              'exId': 'ex_bench_press_bb',
+              'measure': 'weight',
+              'sets': [
+                {'warmup': true, 'weight': 60, 'reps': 8},
+                {'warmup': false, 'weight': (w / 2.5).round() * 2.5, 'reps': age > 180 && age <= 200 ? 1 + (i % 2) : 5},
+              ],
+            },
+          ],
+        });
+      }
+      weights.add({
+        'date': '${day.year}-${day.month.toString().padLeft(2, '0')}-${day.day.toString().padLeft(2, '0')}',
+        'weight': double.parse((92 - (300 - age) / 300 * 6 + ((i * 7) % 5 - 2) * 0.35).toStringAsFixed(1)),
+      });
+      day = day.add(Duration(days: 4 + i % 3));
+      i++;
+    }
+    return {...mk1(), 'sessionOrder': ['A', 'B'], 'log': log, 'weightLog': weights, 'weightGoal': 85, 'weightGoalEnabled': true};
+  }
+
+  Future<AppController> chartApp(WidgetTester tester) async {
+    await _loadSaira();
+    final app = _app(FakeBackend(mk1: chartData()));
+    await _phone(tester, TheChainApp(app: app, emailOf: () => ''));
+    await tester.runAsync(() async {
+      await app.start();
+      await app.signIn('x', 'secret');
+      await pumpEventQueue();
+      await app.importFromWebsite();
+    });
+    await tester.pumpAndSettle();
+    return app;
+  }
+
+  testWidgets('viktgrafen', (tester) async {
+    await chartApp(tester);
+    await tester.tap(find.text('WEIGHT'));
+    await tester.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/chart_weight.png'));
+  });
+
+  testWidgets('PR-grafen: ALL + tumme på en punkt, sedan 3M', (tester) async {
+    await chartApp(tester);
+    await tester.tap(find.text('PROGRESS'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('CHEST'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Bench Press (BB)'));
+    await tester.pumpAndSettle();
+    final chart = find.byType(ChainChart);
+    await tester.tapAt(tester.getTopLeft(chart) + Offset(tester.getSize(chart).width * .3, 120));
+    await tester.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/chart_pr.png'));
+    await tester.tap(find.text('3M'));
+    await tester.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/chart_pr_3m.png'));
   });
 
   testWidgets('dev home efter import', (tester) async {

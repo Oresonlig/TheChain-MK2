@@ -13,6 +13,7 @@ import '../copy_text.dart';
 import '../format.dart';
 import '../nanosuit_scaffold.dart';
 import '../units.dart';
+import 'exercise_detail_screen.dart';
 import '../workout/exercise_picker.dart' show GroupHeader, groupLabel;
 
 class ProgressScreen extends StatefulWidget {
@@ -93,7 +94,11 @@ class _ProgressScreenState extends State<ProgressScreen> {
             ),
             if (_openGroups.contains(g)) ...[
               for (final pr in byGroup[g]!..sort((a, b) => (exerciseOf(a.exerciseId)?.name ?? '').compareTo(exerciseOf(b.exerciseId)?.name ?? '')))
-                Container(
+                InkWell(
+                onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
+                  builder: (_) => ExerciseDetailScreen(app: widget.app, exerciseId: pr.exerciseId),
+                )),
+                child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 decoration: BoxDecoration(border: Border(top: BorderSide(color: c.border))),
                 child: Row(children: [
@@ -104,8 +109,10 @@ class _ProgressScreenState extends State<ProgressScreen> {
                     ]),
                   ),
                   Text(fmtRecord(pr, s.weightUnit), style: text.titleMedium!.copyWith(color: c.accentBright)),
+                  Icon(Icons.chevron_right, color: c.textFaint, size: 20),
                 ]),
               ),
+                ),
               const SizedBox(height: 8),
             ],
           ]),
