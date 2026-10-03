@@ -183,17 +183,20 @@ class HexFieldPainter extends CustomPainter {
 /// Bakgrundslagret. [enabled] = användarens ambient-inställning; systemets
 /// "minska rörelse" stänger också av animationen.
 class HexFieldBackground extends StatefulWidget {
-  const HexFieldBackground({super.key, required this.line, this.enabled = true});
+  const HexFieldBackground({super.key, required this.line, this.enabled = true, this.model});
 
   final Color line;
   final bool enabled;
+
+  /// Injiceras bara i tester, för att kunna läsa [HexFieldModel.frame].
+  final HexFieldModel? model;
 
   @override
   State<HexFieldBackground> createState() => _HexFieldBackgroundState();
 }
 
 class _HexFieldBackgroundState extends State<HexFieldBackground> with SingleTickerProviderStateMixin {
-  final _model = HexFieldModel();
+  late final _model = widget.model ?? HexFieldModel();
   late final Ticker _ticker = createTicker(_onTick);
   Duration _last = Duration.zero;
 
@@ -218,7 +221,12 @@ class _HexFieldBackgroundState extends State<HexFieldBackground> with SingleTick
   }
 
   void _sync() {
-    if (_animate && !_ticker.isActive) _ticker.start();
+    // En omstartad Ticker räknar från noll igen — utan nollställning blir
+    // now - _last negativt för alltid och väven fryser (av → på, 2026-10-03).
+    if (_animate && !_ticker.isActive) {
+      _last = Duration.zero;
+      _ticker.start();
+    }
     if (!_animate && _ticker.isActive) _ticker.stop();
   }
 
