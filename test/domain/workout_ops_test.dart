@@ -195,13 +195,18 @@ void main() {
       expect(row().sets.where((s) => s.kind == SetKind.warmup).length, 2);
     });
 
-    test('FAIL: bara på loggat set; tomt mål = ✗; mål 4 av 3 = missat; av = inget mål', () {
+    test('FAIL på loggat set låser upp (väntar på LOG FAIL); tomt mål = ✗; mål 4 av 3 = missat; av = inget mål', () {
       final sid = r.sets.last.id;
-      expect(() => setFailed(w, r.id, sid, true), throwsA(isA<WorkoutError>()));
       w = logSet(setValues(w, r.id, sid, const SetValues(weight: 100, reps: 3)), r.id, sid);
       w = setFailed(w, r.id, sid, true);
       expect(row().sets.last.target, isNotNull);
+      expect(row().sets.last.isLogged, isFalse, reason: 'upplåst tills LOG FAIL');
+      expect(row().sets.last.values.reps, 3, reason: 'siffrorna ligger kvar');
+      w = logSet(w, r.id, sid); // LOG FAIL
+      expect(row().sets.last.isLogged, isTrue);
       expect(row().sets.last.missed(Measure.weight), isTrue);
+      // ✓ igen (lås upp) behåller målet → knappen säger LOG FAIL igen.
+      expect(unlogSet(w, r.id, sid).exercises.firstWhere((x) => x.id == r.id).sets.last.target, isNotNull);
       w = setTarget(w, r.id, sid, const SetValues(reps: 4));
       expect(row().sets.last.missed(Measure.weight), isTrue);
       w = setTarget(w, r.id, sid, const SetValues(reps: 3));

@@ -538,7 +538,9 @@ class _SetRowState extends State<SetRow> {
     final text = Theme.of(context).textTheme;
     final s = widget.set;
     final locked = s.isLogged || !widget.editable;
-    final failed = s.isLogged && s.target != null;
+    final failed = s.target != null;
+    // FAIL tryckt, inte låst än: LOG blir LOG FAIL och GOAL går att fylla i.
+    final failPending = failed && !s.isLogged;
     final missed = s.isLogged && s.missed(widget.row.measure);
     final ex = widget.controller.exerciseOf(widget.row);
 
@@ -573,7 +575,7 @@ class _SetRowState extends State<SetRow> {
             Text(fieldLabel(f, widget.row.measure, _settings), style: text.labelSmall),
             // Förra gångens mål under rätt fält, tills setet är loggat.
             if (!s.isLogged && f == _goalField && widget.lastGoal != null)
-              Text('goal ${widget.lastGoal}', style: text.labelSmall!.copyWith(color: c.restGold)),
+              Text('goal ${widget.lastGoal}', style: text.labelSmall!.copyWith(color: c.fail)),
           ]),
         ),
         const SizedBox(width: 6),
@@ -604,28 +606,33 @@ class _SetRowState extends State<SetRow> {
             width: 72,
             height: 48,
             child: Raised(
-              material: s.isLogged ? c.raisedDone : c.raisedActive,
+              material: s.isLogged ? c.raisedDone : (failPending ? c.raisedFail : c.raisedActive),
               padding: EdgeInsets.zero,
               child: Center(
                 child: s.isLogged
                     ? Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                        Icon(Icons.check, size: 20, color: missed ? c.restGold : c.success),
+                        Icon(Icons.check, size: 20, color: missed ? c.fail : c.success),
                         if (missed) ...[
                           const SizedBox(width: 4),
                           // Saira saknar ✗ (som ✓) — ikon när inget mål finns.
                           if (_missedText(s) case final t?)
-                            Text(t, style: text.labelLarge!.copyWith(color: c.restGold, fontSize: 13))
+                            Text(t, style: text.labelLarge!.copyWith(color: c.fail, fontSize: 13))
                           else
-                            Icon(Icons.close, size: 18, color: c.restGold),
+                            Icon(Icons.close, size: 18, color: c.fail),
                         ],
                       ])
-                    : Text('LOG', style: text.labelLarge!.copyWith(fontSize: 13)),
+                    : failPending
+                        ? Text('LOG\nFAIL',
+                            textAlign: TextAlign.center,
+                            style: text.labelLarge!.copyWith(fontSize: 12, height: 1.1, letterSpacing: 1.5))
+                        : Text('LOG', style: text.labelLarge!.copyWith(fontSize: 13)),
               ),
             ),
           ),
         ),
-        // FAIL finns bara på loggade set: man vet först efteråt att det gick fel.
-        if (s.isLogged) ...[
+        // FAIL på loggade set (man vet först efteråt att det gick fel) och på
+        // upplåst fail, där ett tryck till ångrar.
+        if (s.isLogged || failPending) ...[
           const SizedBox(height: 6),
           Semantics(
             button: true,
@@ -639,9 +646,9 @@ class _SetRowState extends State<SetRow> {
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: c.background,
-                  border: Border.all(color: failed ? c.restGold : c.border),
+                  border: Border.all(color: failed ? c.fail : c.border),
                 ),
-                child: Text('FAIL', style: text.labelSmall!.copyWith(color: failed ? c.restGold : c.textMuted, letterSpacing: 1.5)),
+                child: Text('FAIL', style: text.labelSmall!.copyWith(color: failed ? c.fail : c.textMuted, letterSpacing: 1.5)),
               ),
             ),
           ),
@@ -654,12 +661,13 @@ class _SetRowState extends State<SetRow> {
       padding: const EdgeInsets.only(top: 10),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         main,
-        // GOAL visas när FAIL är tryckt — valfritt: "siktade på 4" ger 3/4.
-        if (failed && goalField != null)
+        // GOAL medan FAIL väntar på låsning — valfritt: "siktade på 4" ger 3/4.
+        // Låst syns målet i LOG-rutan ("3/4").
+        if (failPending && goalField != null)
           Padding(
             padding: const EdgeInsets.only(left: 44, top: 6),
             child: Row(children: [
-              Text('GOAL', style: text.labelSmall!.copyWith(color: c.restGold)),
+              Text('GOAL', style: text.labelSmall!.copyWith(color: c.fail)),
               const SizedBox(width: 10),
               SizedBox(
                 width: 72,

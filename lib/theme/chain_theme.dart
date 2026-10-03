@@ -28,6 +28,14 @@ class RaisedMaterial {
   /// Yttre glöd; transparent = ingen.
   final Color glow;
 
+  /// Samma material i en annan kulör: varje färg behåller ljushet och alfa men
+  /// får [tint]s kulör och mättnad.
+  RaisedMaterial tinted(Color tint) {
+    final h = HSLColor.fromColor(tint);
+    Color t(Color c) => HSLColor.fromColor(c).withHue(h.hue).withSaturation(h.saturation).toColor();
+    return RaisedMaterial(top: t(top), bottom: t(bottom), highlight: t(highlight), edge: t(edge), glow: t(glow));
+  }
+
   static RaisedMaterial lerp(RaisedMaterial a, RaisedMaterial b, double t) => RaisedMaterial(
         top: Color.lerp(a.top, b.top, t)!,
         bottom: Color.lerp(a.bottom, b.bottom, t)!,
@@ -64,9 +72,18 @@ class ChainTheme extends ThemeExtension<ChainTheme> {
     required this.hexLine,
     required this.hexEnergy,
     required this.hasAmbient,
-  });
+    Color? fail,
+  }) : fail = fail ?? restGold;
 
   final String name;
+
+  /// FAIL / GOAL / missat set. Förval = temats vilodagsfärg (Niklas 2026-10-03),
+  /// men ett tema kan ange egen om vilodagsfärgen inte läses som "fail".
+  final Color fail;
+
+  /// LOG FAIL-knappen: temats [raisedActive] tonad i [fail] — samma djup och
+  /// ljusstruktur, fail-färgens kulör. Inget tema behöver egen kod för den.
+  RaisedMaterial get raisedFail => raisedActive.tinted(fail);
 
   final Color background;
 
@@ -141,6 +158,7 @@ class ChainTheme extends ThemeExtension<ChainTheme> {
       hexLine: c(hexLine, other.hexLine),
       hexEnergy: c(hexEnergy, other.hexEnergy),
       hasAmbient: t < 0.5 ? hasAmbient : other.hasAmbient,
+      fail: c(fail, other.fail),
     );
   }
 }

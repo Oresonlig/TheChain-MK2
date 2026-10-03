@@ -87,10 +87,13 @@ Workout setTarget(Workout w, String rowId, SetId setId, SetValues? target) =>
 
 /// FAIL på ett loggat set: på = missat (tomt mål tills användaren anger ett),
 /// av = varken fail eller mål. Påverkar aldrig PR — den räknas på det utförda.
-Workout setFailed(Workout w, String rowId, SetId setId, bool failed) => _mapSet(w, rowId, setId, (s) {
-      if (failed && !s.isLogged) throw const WorkoutError('Log the set before marking it failed');
-      return s.withTarget(failed ? (s.target ?? SetValues.empty) : null);
-    });
+/// FAIL på ett loggat set låser upp det (siffror och mål kan rättas) och väntar
+/// på LOG FAIL. FAIL av före låsning = vanligt set igen (Niklas 2026-10-03).
+Workout setFailed(Workout w, String rowId, SetId setId, bool failed) {
+  final marked = _mapSet(w, rowId, setId, (s) => s.withTarget(failed ? (s.target ?? SetValues.empty) : null));
+  final s = marked.exercises.firstWhere((r) => r.id == rowId).sets.firstWhere((x) => x.id == setId);
+  return failed && s.isLogged ? unlogSet(marked, rowId, setId) : marked;
+}
 
 /// L/R för unilaterala övningar: ingen sida → L → R → ingen sida.
 Workout cycleSide(Workout w, String rowId, SetId setId) => _mapSet(w, rowId, setId, (s) {

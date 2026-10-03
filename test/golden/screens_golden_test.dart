@@ -199,6 +199,7 @@ void main() {
       }
       wc.toggleFailed(row.id, work.last.id);
       wc.setTarget(row.id, work.last.id, const SetValues(reps: 5));
+      wc.toggleLog(row.id, work.last.id); // LOG FAIL
       wc.markDone(row.id);
       for (final r in wc.workout.exercises.skip(1)) {
         wc.skip(r.id);

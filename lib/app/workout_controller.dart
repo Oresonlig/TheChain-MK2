@@ -105,9 +105,11 @@ class WorkoutController extends ChangeNotifier {
 
   void setTarget(String rowId, SetId setId, SetValues? target) => _apply(() => setTargetOp(workout, rowId, setId, target));
 
+  /// FAIL-knappen: på ett loggat set → upplåst och väntar på LOG FAIL (målet
+  /// ligger kvar); på ett upplåst fail → vanligt set igen.
   void toggleFailed(String rowId, SetId setId) {
     final s = workout.exercises.firstWhere((x) => x.id == rowId).sets.firstWhere((x) => x.id == setId);
-    _apply(() => setFailed(workout, rowId, setId, s.target == null));
+    _apply(() => setFailed(workout, rowId, setId, s.isLogged || s.target == null));
   }
 
   /// Loggar eller låser upp ett set. Kroppsvikt fångas för kroppsviktsmätsätt.
