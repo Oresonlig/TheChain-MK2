@@ -26,20 +26,14 @@ class ExerciseDetailScreen extends StatefulWidget {
   State<ExerciseDetailScreen> createState() => _ExerciseDetailScreenState();
 }
 
-class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
-  ChartRange _range = ChartRange.all;
+class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> with ChartRangeState {
+  @override
+  String get rangeKey => 'pr';
 
   @override
   void initState() {
     super.initState();
-    loadRange('pr', ChartRange.all).then((r) {
-      if (mounted) setState(() => _range = r);
-    });
-  }
-
-  void _setRange(ChartRange r) {
-    setState(() => _range = r);
-    saveRange('pr', r);
+    loadSavedRange();
   }
 
   @override
@@ -54,10 +48,9 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
     final prog = progression(history, widget.exerciseId);
     final measure = ex?.measure ?? (prog.isEmpty ? Measure.weight : prog.last.measure);
     final record = personalRecords(history)[widget.exerciseId];
-    final now = DateTime.now();
-    final series = prSeries(prog, measure, _range, now, s, (p) => fmtSet(p.set, p.measure, s));
-    final from = _range.start(now);
-    final rows = inWindow(prog, (p) => p.date, from).reversed.toList();
+    final win = window(DateTime.now());
+    final series = prSeries(prog, measure, win, s, (p) => fmtSet(p.set, p.measure, s));
+    final rows = inWindow(prog, (p) => p.date, win).reversed.toList();
 
     return ChainScaffold(
       ambient: s.ambientEffects,
@@ -88,8 +81,10 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                     alignment: Alignment.centerRight,
                     child: Text(fmtDate(record.date), style: text.labelSmall),
                   ),
+                if (range == ChartRange.custom)
+                  Text(win.label, style: text.labelSmall!.copyWith(color: c.textStrong)),
                 const SizedBox(height: 6),
-                RangeChips(value: _range, onChanged: _setRange),
+                RangeChips(value: range, onChanged: selectRange),
                 const SizedBox(height: 4),
                 ChainChart(series: series, height: 240, animate: s.ambientEffects),
               ]),

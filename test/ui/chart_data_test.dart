@@ -21,13 +21,19 @@ void main() {
     ];
 
     test('ett steg per PR', () {
-      expect(bestSoFarSteps(pts, null).map((p) => p.y), [100, 130]);
+      expect(bestSoFarSteps(pts, ChartWindow.of(ChartRange.all, now)).map((p) => p.y), [100, 130]);
     });
 
     test('PR före fönstret syns ändå — som första steget vid fönstrets början', () {
-      final steps = bestSoFarSteps(pts, DateTime(2026, 9, 3));
+      final steps = bestSoFarSteps(pts, ChartWindow.of(ChartRange.m1, now));
       expect(steps.single.y, 130);
       expect(steps.single.x, DateTime(2026, 9, 3));
+    });
+
+    test('egen period: bara den, slutdagen inräknad; PR efter perioden räknas inte', () {
+      final feb = ChartWindow(DateTime(2026, 2, 1), DateTime(2026, 3, 1), 'Feb');
+      expect(inWindow(pts, (p) => p.x, feb).map((p) => p.y), [130]);
+      expect(bestSoFarSteps(pts, feb).map((p) => p.y), [100, 130]);
     });
   });
 

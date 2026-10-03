@@ -13,6 +13,7 @@ import 'package:flutter/material.dart';
 import '../../theme/chain_theme.dart';
 import '../../theme/surfaces.dart';
 import 'chart_data.dart';
+import 'series.dart';
 
 class ChainChart extends StatefulWidget {
   const ChainChart({super.key, required this.series, this.height = 220, this.animate = true});
@@ -363,7 +364,52 @@ class _ChartPainter extends CustomPainter {
   bool shouldRepaint(_ChartPainter old) => true;
 }
 
-/// Intervallchips ovanför en graf: 1M · 3M · YTD · 1Y · ALL.
+/// Intervallet för en graf: förval (sparas per graf) eller CUSTOM via datumväljare.
+/// Delas av viktgrafen och PR-graferna.
+mixin ChartRangeState<T extends StatefulWidget> on State<T> {
+  /// Nyckel för det sparade valet ("weight", "pr").
+  String get rangeKey;
+
+  ChartRange range = ChartRange.all;
+  DateTimeRange? custom;
+
+  void loadSavedRange() => loadRange(rangeKey, ChartRange.all).then((r) {
+        if (mounted) setState(() => range = r);
+      });
+
+  ChartWindow window(DateTime now) {
+    final c = custom;
+    if (range == ChartRange.custom && c != null) {
+      return ChartWindow(c.start, c.end, windowLabel(c.start, c.end, now));
+    }
+    return ChartWindow.of(range == ChartRange.custom ? ChartRange.all : range, now);
+  }
+
+  Future<void> selectRange(ChartRange r) async {
+    if (r != ChartRange.custom) {
+      setState(() => range = r);
+      saveRange(rangeKey, r);
+      return;
+    }
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final picked = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2000),
+      lastDate: today,
+      initialDateRange: custom ?? DateTimeRange(start: DateTime(today.year, today.month - 1, today.day), end: today),
+      helpText: 'Choose a period',
+    );
+    if (picked != null && mounted) {
+      setState(() {
+        custom = picked;
+        range = ChartRange.custom;
+      });
+    }
+  }
+}
+
+/// Intervallchips ovanför en graf: 1M · 3M · YTD · 1Y · ALL · (egen period).
 class RangeChips extends StatelessWidget {
   const RangeChips({super.key, required this.value, required this.onChanged});
   final ChartRange value;
@@ -392,14 +438,19 @@ class RangeChips extends StatelessWidget {
                           material: c.raisedActive,
                           inset: 6,
                           padding: EdgeInsets.zero,
-                          child: Center(child: Text(r.label, style: text.labelSmall!.copyWith(color: c.textStrong))),
+                          child: Center(child: _label(r, c.textStrong, text)),
                         ),
                       )
-                    : Center(child: Text(r.label, style: text.labelSmall!.copyWith(color: c.textMuted))),
+                    : Center(child: _label(r, c.textMuted, text)),
               ),
             ),
           ),
         ),
     ]);
   }
+
+  // CUSTOM är för brett för en sjättedel av raden — en kalenderikon.
+  Widget _label(ChartRange r, Color color, TextTheme text) => r == ChartRange.custom
+      ? Icon(Icons.date_range, size: 18, color: color)
+      : Text(r.label, style: text.labelSmall!.copyWith(color: color));
 }

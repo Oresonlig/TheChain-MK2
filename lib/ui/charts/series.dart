@@ -21,15 +21,13 @@ String _unit(UserSettings s) => s.weightUnit == WeightUnit.lbs ? 'lbs' : 'kg';
 
 /// Vägningar som punkter, tidsviktad trend som linje (räknad över ALL historik,
 /// så trenden i fönstrets början väger in dagarna före), målvikt streckad.
-ChartSeries weightSeries(List<BodyweightEntry> entries, ChartRange range, DateTime now, UserSettings s) {
-  final sorted = [...entries]..sort((a, b) => a.date.compareTo(b.date));
-  final raw = [for (final e in sorted) ChartPoint(DateTime.parse(e.date), _w(e.kg, s))];
+ChartSeries weightSeries(List<BodyweightEntry> entries, ChartWindow w, UserSettings s) {
+  final raw = _raw(entries, s);
   final trend = trendLine(raw);
-  final from = range.start(now);
   final dots = <ChartPoint>[];
   final line = <ChartPoint>[];
   for (var i = 0; i < raw.length; i++) {
-    if (from != null && raw[i].x.isBefore(from)) continue;
+    if (!w.contains(raw[i].x)) continue;
     final p = raw[i], t = trend[i];
     dots.add(ChartPoint(p.x, p.y, label: '${_short(p.x)} · ${_num(p.y)} ${_unit(s)} · trend ${_num(t.y)}'));
     line.add(t);
@@ -39,18 +37,51 @@ ChartSeries weightSeries(List<BodyweightEntry> entries, ChartRange range, DateTi
     line: line,
     goal: s.weightGoalKg == null ? null : _w(s.weightGoalKg!, s),
     gapDays: 30,
-    from: from ?? (dots.isEmpty ? _day(now) : dots.first.x),
-    to: _day(now),
+    from: w.from ?? (dots.isEmpty ? w.to : dots.first.x),
+    to: w.to,
     formatY: _num,
   );
 }
 
-/// "−1.8 kg · 3M": trendens förändring i fönstret, eller null.
-String? weightChange(ChartSeries s, ChartRange range, UserSettings settings) {
-  if (s.line.length < 2) return null;
-  final d = s.line.last.y - s.line.first.y;
+List<ChartPoint> _raw(List<BodyweightEntry> entries, UserSettings s) {
+  final sorted = [...entries]..sort((a, b) => a.date.compareTo(b.date));
+  return [for (final e in sorted) ChartPoint(DateTime.parse(e.date), _w(e.kg, s))];
+}
+
+String _signed(double d, UserSettings s) {
   final sign = d > 0.05 ? '+' : (d < -0.05 ? _minus : '±');
-  return '$sign${_num(d.abs())} ${_unit(settings)} · ${range.label}';
+  return '$sign${_num(d.abs())} ${_unit(s)}';
+}
+
+/// "−1.8 kg · 3M": trendens förändring i fönstret, eller null.
+String? weightChange(ChartSeries s, ChartWindow w, UserSettings settings) {
+  if (s.line.length < 2) return null;
+  return '${_signed(s.line.last.y - s.line.first.y, settings)} · ${w.label}';
+}
+
+/// Siffrorna under TREND (Niklas 2026-10-03): NOW och TO GOAL på senaste
+/// vägningen — efter en 72-timmarsfasta inför tävling är det vågen som gäller,
+/// inte trenden. 7 DAYS på trenden, där brus från dag till dag gör mest skada.
+class WeightStats {
+  const WeightStats({required this.now, this.week, this.toGoal});
+  final String now;
+  final String? week;
+  final String? toGoal;
+}
+
+WeightStats? weightStats(List<BodyweightEntry> entries, UserSettings s) {
+  final raw = _raw(entries, s);
+  if (raw.isEmpty) return null;
+  final trend = trendLine(raw);
+  final latest = raw.last;
+  final weekAgo = latest.x.subtract(const Duration(days: 7));
+  final i = trend.lastIndexWhere((p) => !p.x.isAfter(weekAgo));
+  final goal = s.weightGoalKg == null ? null : _w(s.weightGoalKg!, s);
+  return WeightStats(
+    now: '${_num(latest.y)} ${_unit(s)}',
+    week: i < 0 ? null : _signed(trend.last.y - trend[i].y, s),
+    toGoal: goal == null ? null : _signed(goal - latest.y, s),
+  );
 }
 
 // ── PR per övning ──
@@ -72,8 +103,7 @@ String Function(double) axisFormat(Measure m) => switch (m.pr) {
 ChartSeries prSeries(
   List<ProgressionPoint> progression,
   Measure current,
-  ChartRange range,
-  DateTime now,
+  ChartWindow w,
   UserSettings s,
   String Function(ProgressionPoint) setText,
 ) {
@@ -86,31 +116,39 @@ ChartSeries prSeries(
         label: '${_short(p.date)} · ${setText(p)}${p.isPr ? ' · PR' : ''}',
       ),
   ];
-  final from = range.start(now);
-  final dots = inWindow(all, (p) => p.x, from);
+  final dots = inWindow(all, (p) => p.x, w);
   return ChartSeries(
     dots: dots,
     line: dots,
-    steps: bestSoFarSteps(all, from),
+    steps: bestSoFarSteps(all, w),
     gapDays: 42,
-    from: from ?? (dots.isEmpty ? _day(now) : _day(dots.first.x)),
-    to: _day(now),
+    from: w.from ?? (dots.isEmpty ? w.to : _day(dots.first.x)),
+    to: w.to,
     formatY: axisFormat(current),
   );
 }
 
+/// "1 Apr–30 Apr" (år bara om perioden inte är i år).
+String windowLabel(DateTime from, DateTime to, DateTime now) {
+  const m = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  String d(DateTime x) => '${x.day} ${m[x.month - 1]}${x.year == now.year ? '' : ' ${x.year}'}';
+  return '${d(from)}–${d(to)}';
+}
+
 // ── valt intervall, per graf och enhet (bekvämlighet — får saknas) ──
 
+/// Senast valda förvalda intervall. CUSTOM sparas inte (perioden är tillfällig).
 Future<ChartRange> loadRange(String key, ChartRange fallback) async {
   try {
     final v = (await SharedPreferences.getInstance()).getString('chartRange.$key');
-    return ChartRange.values.firstWhere((r) => r.name == v, orElse: () => fallback);
+    return ChartRange.values.firstWhere((r) => r.name == v && r != ChartRange.custom, orElse: () => fallback);
   } catch (_) {
     return fallback;
   }
 }
 
 Future<void> saveRange(String key, ChartRange r) async {
+  if (r == ChartRange.custom) return;
   try {
     await (await SharedPreferences.getInstance()).setString('chartRange.$key', r.name);
   } catch (_) {}

@@ -9,12 +9,15 @@ enum ChartRange {
   m3('3M'),
   ytd('YTD'),
   y1('1Y'),
-  all('ALL');
+  all('ALL'),
+
+  /// Egen period (t.ex. en deff i april) — från/till väljs i en datumväljare.
+  custom('CUSTOM');
 
   const ChartRange(this.label);
   final String label;
 
-  /// Första dagen som visas, eller null = allt.
+  /// Första dagen som visas, eller null = allt (och för custom, se [ChartWindow]).
   DateTime? start(DateTime now) {
     final today = DateTime(now.year, now.month, now.day);
     return switch (this) {
@@ -22,9 +25,26 @@ enum ChartRange {
       ChartRange.m3 => DateTime(today.year, today.month - 3, today.day),
       ChartRange.ytd => DateTime(today.year),
       ChartRange.y1 => DateTime(today.year - 1, today.month, today.day),
-      ChartRange.all => null,
+      ChartRange.all || ChartRange.custom => null,
     };
   }
+}
+
+/// Det synliga fönstret: från (null = första datapunkten) till och med [to].
+class ChartWindow {
+  const ChartWindow(this.from, this.to, this.label);
+
+  /// Ett förvalt intervall, fram till idag.
+  factory ChartWindow.of(ChartRange r, DateTime now) =>
+      ChartWindow(r.start(now), DateTime(now.year, now.month, now.day), r.label);
+
+  final DateTime? from;
+  final DateTime to;
+
+  /// "3M" eller "1 Apr–30 Apr".
+  final String label;
+
+  bool contains(DateTime d) => (from == null || !d.isBefore(from!)) && d.isBefore(to.add(const Duration(days: 1)));
 }
 
 /// En punkt i grafen. [highlight] = PR-markering. [label] visas när tummen
@@ -86,20 +106,20 @@ class ChartSeries {
   }
 }
 
-/// Bara det som ligger i fönstret (null = allt).
-List<T> inWindow<T>(List<T> items, DateTime Function(T) dateOf, DateTime? from) =>
-    from == null ? items : items.where((e) => !dateOf(e).isBefore(from)).toList();
+/// Bara det som ligger i fönstret.
+List<T> inWindow<T>(List<T> items, DateTime Function(T) dateOf, ChartWindow w) =>
+    items.where((e) => w.contains(dateOf(e))).toList();
 
-/// "Bästa hittills": ett steg per PR. Ett PR satt före fönstret syns ändå —
-/// det blir första steget, vid fönstrets början (Niklas: se hur långt ifrån
-/// det bästa man ligger, även i månadsvyn).
-List<ChartPoint> bestSoFarSteps(List<ChartPoint> all, DateTime? from) {
+/// "Bästa hittills": ett steg per PR i fönstret. Ett PR satt före fönstret syns
+/// ändå — det blir första steget, vid fönstrets början (Niklas: se hur långt
+/// ifrån det bästa man ligger, även i månadsvyn).
+List<ChartPoint> bestSoFarSteps(List<ChartPoint> all, ChartWindow w) {
   final prs = all.where((p) => p.highlight).toList();
-  if (from == null) return prs;
-  final before = prs.where((p) => p.x.isBefore(from)).lastOrNull;
+  final from = w.from;
+  final before = from == null ? null : prs.where((p) => p.x.isBefore(from)).lastOrNull;
   return [
-    if (before != null) ChartPoint(from, before.y),
-    ...prs.where((p) => !p.x.isBefore(from)),
+    if (before != null) ChartPoint(from!, before.y),
+    ...prs.where((p) => w.contains(p.x)),
   ];
 }
 
