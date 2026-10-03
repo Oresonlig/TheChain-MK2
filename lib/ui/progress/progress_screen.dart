@@ -13,7 +13,7 @@ import '../copy_text.dart';
 import '../format.dart';
 import '../nanosuit_scaffold.dart';
 import '../units.dart';
-import '../workout/exercise_picker.dart' show groupLabel;
+import '../workout/exercise_picker.dart' show GroupHeader, groupLabel;
 
 class ProgressScreen extends StatefulWidget {
   const ProgressScreen({super.key, required this.app});
@@ -25,6 +25,9 @@ class ProgressScreen extends StatefulWidget {
 
 class _ProgressScreenState extends State<ProgressScreen> {
   bool _history = false;
+
+  /// Öppna muskelgrupper i RECORDS — kollapsade som standard (Niklas 2026-10-03).
+  final _openGroups = <MuscleGroup>{};
 
   @override
   Widget build(BuildContext context) {
@@ -79,10 +82,18 @@ class _ProgressScreenState extends State<ProgressScreen> {
     return [
       for (final g in groups) ...[
         Glass(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            Text(groupLabel(g).toUpperCase(), style: text.labelSmall!.copyWith(color: c.accent)),
-            for (final pr in byGroup[g]!..sort((a, b) => (exerciseOf(a.exerciseId)?.name ?? '').compareTo(exerciseOf(b.exerciseId)?.name ?? '')))
-              Container(
+            GroupHeader(
+              groupLabel(g),
+              count: byGroup[g]!.length,
+              open: _openGroups.contains(g),
+              padding: 0,
+              onTap: () => setState(() => _openGroups.contains(g) ? _openGroups.remove(g) : _openGroups.add(g)),
+            ),
+            if (_openGroups.contains(g)) ...[
+              for (final pr in byGroup[g]!..sort((a, b) => (exerciseOf(a.exerciseId)?.name ?? '').compareTo(exerciseOf(b.exerciseId)?.name ?? '')))
+                Container(
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 decoration: BoxDecoration(border: Border(top: BorderSide(color: c.border))),
                 child: Row(children: [
@@ -95,9 +106,11 @@ class _ProgressScreenState extends State<ProgressScreen> {
                   Text(fmtRecord(pr, s.weightUnit), style: text.titleMedium!.copyWith(color: c.accentBright)),
                 ]),
               ),
+              const SizedBox(height: 8),
+            ],
           ]),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
       ],
     ];
   }

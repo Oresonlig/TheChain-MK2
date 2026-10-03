@@ -37,6 +37,20 @@ class _Picker extends StatefulWidget {
 class _PickerState extends State<_Picker> {
   String _q = '';
 
+  /// Öppna grupper. Kollapsade som standard (Niklas 2026-10-03); en sökning
+  /// visar alla träffar oavsett.
+  final _open = <String>{};
+
+  void _toggle(String label) => setState(() => _open.contains(label) ? _open.remove(label) : _open.add(label));
+
+  List<Widget> _group(String label, List<Exercise> items) {
+    final open = _q.isNotEmpty || _open.contains(label);
+    return [
+      GroupHeader(label, count: items.length, open: open, onTap: _q.isNotEmpty ? null : () => _toggle(label)),
+      if (open) for (final e in items) _Row(e),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = context.chain;
@@ -74,14 +88,8 @@ class _PickerState extends State<_Picker> {
         Expanded(
           child: ListView(padding: const EdgeInsets.only(bottom: 24), children: [
             for (final g in _groupOrder)
-              if (lib.any((e) => e.group == g)) ...[
-                _Header(groupLabel(g)),
-                for (final e in lib.where((e) => e.group == g)) _Row(e),
-              ],
-            if (mine.isNotEmpty) ...[
-              const _Header('Your exercises'),
-              for (final e in mine) _Row(e),
-            ],
+              if (lib.any((e) => e.group == g)) ..._group(groupLabel(g), lib.where((e) => e.group == g).toList()),
+            if (mine.isNotEmpty) ..._group('Your exercises', mine),
           ]),
         ),
       ]),
@@ -89,15 +97,39 @@ class _PickerState extends State<_Picker> {
   }
 }
 
-class _Header extends StatelessWidget {
-  const _Header(this.label);
+/// Grupprubrik: hela raden är träffytan (≥ 52 px), pil + antal till höger.
+class GroupHeader extends StatelessWidget {
+  const GroupHeader(this.label, {super.key, required this.count, required this.open, this.onTap, this.padding = 16});
   final String label;
+  final int count;
+  final bool open;
+  final VoidCallback? onTap;
+  final double padding;
 
   @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-        child: Text(label.toUpperCase(), style: Theme.of(context).textTheme.labelSmall!.copyWith(color: context.chain.accent)),
-      );
+  Widget build(BuildContext context) {
+    final c = context.chain;
+    final text = Theme.of(context).textTheme;
+    return Semantics(
+      button: onTap != null,
+      expanded: open,
+      child: InkWell(
+        onTap: onTap,
+        child: SizedBox(
+          height: 52,
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: padding),
+            child: Row(children: [
+              Expanded(child: Text(label.toUpperCase(), style: text.labelSmall!.copyWith(color: c.accent))),
+              Text('$count', style: text.labelSmall),
+              const SizedBox(width: 6),
+              Icon(open ? Icons.expand_less : Icons.expand_more, color: c.textFaint, size: 20),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _Row extends StatelessWidget {

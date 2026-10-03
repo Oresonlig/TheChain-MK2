@@ -213,6 +213,33 @@ void main() {
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/workout_last.png'));
   });
 
+  testWidgets('övningsväljaren: kollapsade grupper, en öppnad', (tester) async {
+    await _loadSaira();
+    final b = FakeBackend(mk1: {...mk1(), 'sessionOrder': ['A', 'B']});
+    final app = _app(b);
+    await _phone(tester, TheChainApp(app: app, emailOf: () => ''));
+    await tester.runAsync(() async {
+      await app.start();
+      await app.signIn('x', 'secret');
+      await pumpEventQueue();
+      await app.importFromWebsite();
+    });
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('START SESSION'));
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(ListView).last, const Offset(0, -3000));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('+ ADD EXERCISE'));
+    await tester.pumpAndSettle();
+    expect(find.text('Bench Press (BB)'), findsNothing, reason: 'kollapsat');
+    await tester.tap(find.text('CHEST'));
+    await tester.pumpAndSettle();
+    expect(find.text('Bench Press (BB)'), findsOneWidget);
+    FocusManager.instance.primaryFocus?.unfocus();
+    await tester.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/picker.png'));
+  });
+
   testWidgets('dev home efter import', (tester) async {
     await _loadSaira();
     final b = FakeBackend(mk1: mk1());
