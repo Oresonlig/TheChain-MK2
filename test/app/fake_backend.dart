@@ -46,4 +46,20 @@ class FakeBackend implements Backend {
   Future<String> deviceId() async => device;
   @override
   Future<Map<String, Object?>?> fetchMk1State() async => mk1;
+
+  /// mk2_migration på "servern" (delas inte mellan FakeBackend-instanser).
+  DateTime? movedAt;
+  bool migrationOffline = false;
+
+  @override
+  Future<DateTime?> movedToAppAt() async {
+    if (migrationOffline) throw Exception('offline');
+    return movedAt;
+  }
+
+  @override
+  Future<void> markMovedToApp(String sourceVersion) async {
+    if (migrationOffline) throw Exception('offline');
+    movedAt ??= DateTime(2026, 10, 3, 15);
+  }
 }

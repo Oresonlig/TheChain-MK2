@@ -110,7 +110,9 @@ class DevHomeScreen extends StatelessWidget {
               Row(children: [
                 button('SYNC NOW', app.busy ? null : app.syncNow, primary: true),
                 const SizedBox(width: 8),
-                button('IMPORT', app.busy ? null : () => _confirmImport(context)),
+                // Avstängd efter flytten (och tills kontot kunnat kollas): en import
+                // skulle ersätta appens data med hemsidans gamla.
+                button('IMPORT', app.busy || app.moved != false ? null : () => _confirmImport(context)),
               ]),
               const SizedBox(height: 8),
               Row(children: [

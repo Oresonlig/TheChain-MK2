@@ -1,13 +1,19 @@
 /// Settings-fliken: enheter, rörlig bakgrund, datavy, utloggning, version.
 library;
 
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../app/app_controller.dart';
+import '../../data/backup.dart';
 import '../../domain/domain.dart';
 import '../../theme/chain_theme.dart';
 import '../../theme/surfaces.dart';
 import '../dev_home_screen.dart';
+import '../format.dart';
 import '../nanosuit_scaffold.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -106,6 +112,30 @@ class SettingsScreen extends StatelessWidget {
                 ),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
+                  title: Text('Export backup', style: text.titleMedium),
+                  subtitle: Text('Everything in the app as one file — save it to Drive or mail it to yourself.', style: text.bodySmall),
+                  trailing: Icon(Icons.ios_share, color: c.textMuted),
+                  onTap: () => _exportBackup(context),
+                ),
+                if (app.moved == false)
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text('Move my account to the app', style: text.titleMedium),
+                    subtitle: Text('The website stops working for this account.', style: text.bodySmall),
+                    trailing: Icon(Icons.phone_android, color: c.textMuted),
+                    onTap: () => _confirmMove(context),
+                  )
+                else if (app.moved == true)
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text('Account lives in the app', style: text.titleMedium),
+                    subtitle: Text(
+                        'Moved ${app.movedAt == null ? '' : fmtDate(app.movedAt!)} · the website is closed for this account and import is off.',
+                        style: text.bodySmall),
+                    trailing: Icon(Icons.check_circle_outline, color: c.success),
+                  ),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
                   title: Text('Sign out', style: text.titleMedium),
                   trailing: Icon(Icons.logout, color: c.textMuted),
                   onTap: app.signOut,
@@ -118,5 +148,40 @@ class SettingsScreen extends StatelessWidget {
         );
       },
     );
+  }
+
+  Future<void> _exportBackup(BuildContext context) async {
+    final json = app.exportBackup(versionLabel);
+    final name = backupFileName(DateTime.now());
+    await SharePlus.instance.share(ShareParams(
+      files: [XFile.fromData(Uint8List.fromList(utf8.encode(json)), mimeType: 'application/json', name: name)],
+      fileNameOverrides: [name],
+      subject: 'The Chain backup',
+    ));
+  }
+
+  Future<void> _confirmMove(BuildContext context) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Move your account to the app?'),
+        content: const Text(
+          'The website will show that this account has moved and stop saving anything. '
+          'Import is turned off, so the app\'s data can never be overwritten by the website\'s older data.\n\n'
+          'Export a backup first if you want an extra copy.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Move')),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    final moved = await app.moveToApp(versionLabel);
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(moved ? 'Your account now lives in the app' : (app.error ?? 'Could not move the account')),
+      ));
+    }
   }
 }

@@ -71,4 +71,17 @@ class SupabaseBackend implements Backend {
     final data = row?['data'];
     return data is Map ? data.cast<String, Object?>() : null;
   }
+
+  @override
+  Future<DateTime?> movedToAppAt() async {
+    final uid = userId;
+    if (uid == null) return null;
+    final row = await _client.from('mk2_migration').select('migrated_at').eq('user_id', uid).maybeSingle();
+    final at = row?['migrated_at'];
+    return at is String ? DateTime.parse(at) : null;
+  }
+
+  @override
+  Future<void> markMovedToApp(String sourceVersion) =>
+      _client.from('mk2_migration').insert({'source_app_version': sourceVersion});
 }

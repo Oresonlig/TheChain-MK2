@@ -7,6 +7,7 @@ import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 
+import '../data/backup.dart';
 import '../data/repository.dart';
 import '../data/sync_engine.dart';
 import '../domain/domain.dart';
@@ -27,6 +28,13 @@ abstract class Backend {
 
   /// MK1:s rad (app_state.data) för engångsimporten. Bara läsning.
   Future<Map<String, Object?>?> fetchMk1State();
+
+  /// Killswitch-markeringen (mk2_migration): när kontot flyttades till appen,
+  /// eller null. Kastar vid nätfel — "vet inte" är inte samma sak som "nej".
+  Future<DateTime?> movedToAppAt();
+
+  /// Sätter markeringen. Hemsidan visar sedan "moved to the app" och slutar skriva.
+  Future<void> markMovedToApp(String sourceVersion);
 }
 
 enum Phase { signedOut, loading, ready }
@@ -55,6 +63,12 @@ class AppController extends ChangeNotifier {
 
   Phase phase = Phase.signedOut;
   Repository? repo;
+
+  /// Killswitch: kontot är flyttat till appen. null = okänt (inte kollat eller
+  /// nätfel) — import kräver ett säkert "nej", annars kan den skriva över appens
+  /// data med hemsidans gamla.
+  bool? moved;
+  DateTime? movedAt;
   String? error;
   String? status;
   DateTime? lastSync;
@@ -86,8 +100,38 @@ class AppController extends ChangeNotifier {
     phase = Phase.ready;
     notifyListeners();
     await syncNow();
+    await checkMoved();
     await checkForUpdate();
   }
+
+  Future<void> checkMoved() async {
+    try {
+      movedAt = await backend.movedToAppAt();
+      moved = movedAt != null;
+    } catch (_) {
+      // Nätfel: behåll senast kända värde (null om aldrig kollat).
+    }
+    notifyListeners();
+  }
+
+  /// Flyttar kontot till appen: hemsidan slutar fungera för det och import
+  /// stängs av. Ångra = radera raden i mk2_migration (Supabase).
+  Future<bool> moveToApp(String sourceVersion) async {
+    error = null;
+    try {
+      await backend.markMovedToApp(sourceVersion);
+    } catch (e) {
+      error = 'Could not move the account: $e';
+      notifyListeners();
+      return false;
+    }
+    await checkMoved();
+    return moved == true;
+  }
+
+  /// Hela appens data som en JSON-sträng (Settings → Export backup).
+  String exportBackup(String appVersion) =>
+      encodeBackup(buildBackup(repo!.engine, email: backend.userEmail, now: _now(), appVersion: appVersion));
 
   Future<void> checkForUpdate() async {
     final u = updater;
@@ -124,6 +168,8 @@ class AppController extends ChangeNotifier {
     await backend.signOut();
     _syncTimer?.cancel();
     _openWorkout = null;
+    moved = null;
+    movedAt = null;
     repo = null;
     phase = Phase.signedOut;
     notifyListeners();
@@ -169,6 +215,14 @@ class AppController extends ChangeNotifier {
   Future<void> importFromWebsite() async {
     final r = repo;
     if (r == null || busy) return;
+    if (moved != false) {
+      // Efter flytten skulle en import ersätta appens data med hemsidans gamla.
+      error = moved == true
+          ? 'Import is off — this account has moved to the app'
+          : 'Could not check the account. Connect to the internet and try again';
+      notifyListeners();
+      return;
+    }
     busy = true;
     error = null;
     status = 'Importing from the website…';
