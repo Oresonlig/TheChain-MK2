@@ -1,5 +1,5 @@
-// Versionskollen åker med synken (2026-10-03): ny version hittas utan omstart,
-// men högst var tionde minut — under ett pass synkar appen efter varje set.
+// Versionskollen åker med synken (2026-10-03): ny version hittas utan omstart.
+// Användarens synkar kollar alltid; passets automatiska högst var tionde minut.
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -35,27 +35,36 @@ void main() {
     return a;
   }
 
-  test('start kollar en gång; synkar inom tio minuter kollar inte igen', () async {
+  test('start kollar; passets automatiska synkar inom tio minuter kollar inte igen', () async {
     final a = await app();
     expect(calls, 1);
     expect(a.update, isNull);
     for (var i = 0; i < 5; i++) {
       now = now.add(const Duration(minutes: 1));
-      await a.syncNow();
+      await a.syncNow(auto: true);
       await pumpEventQueue();
     }
     expect(calls, 1);
+    now = now.add(const Duration(minutes: 6));
+    await a.syncNow(auto: true);
+    await pumpEventQueue();
+    expect(calls, 2);
     a.dispose();
   });
 
-  test('ny version efter tio minuter hittas av en vanlig synk, utan omstart', () async {
+  test('SYNC NOW och återkomst kollar alltid — även strax efter förra kollen', () async {
+    // Bygge 37: en koll strax innan nya bygget släpptes spärrade alla SYNC NOW
+    // i tio minuter.
     final a = await app();
     latest = 36;
-    now = now.add(const Duration(minutes: 11));
-    await a.onResume();
+    now = now.add(const Duration(minutes: 1));
+    await a.syncNow();
     await pumpEventQueue();
     expect(calls, 2);
     expect(a.update?.build, 36);
+    await a.onResume();
+    await pumpEventQueue();
+    expect(calls, 3);
     a.dispose();
   });
 

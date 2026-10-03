@@ -133,16 +133,16 @@ class AppController extends ChangeNotifier {
       encodeBackup(buildBackup(repo!.engine, email: backend.userEmail, now: _now(), appVersion: appVersion));
 
   /// Versionskollen åker med synken (Niklas 2026-10-03: bannern ska dyka upp
-  /// utan omstart), men högst var [updateInterval] — under ett pass synkar
-  /// appen efter nästan varje set.
+  /// utan omstart). Start, återkomst och SYNC NOW kollar alltid; de automatiska
+  /// synkarna under ett pass (efter nästan varje set) högst var [updateInterval].
   static const updateInterval = Duration(minutes: 10);
   DateTime? _lastUpdateCheck;
 
-  Future<void> checkForUpdate() async {
+  Future<void> checkForUpdate({bool force = true}) async {
     final u = updater;
     if (u == null) return;
     final now = _now(), last = _lastUpdateCheck;
-    if (last != null && now.difference(last) < updateInterval) return;
+    if (!force && last != null && now.difference(last) < updateInterval) return;
     _lastUpdateCheck = now;
     // null = ingen nyare ELLER nätfel: en redan hittad version försvinner inte
     // ur bannern för att en koll misslyckas.
@@ -189,7 +189,8 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> syncNow() async {
+  /// [auto] = utlöst av en ändring under passet (inte av användaren).
+  Future<void> syncNow({bool auto = false}) async {
     final r = repo;
     if (r == null) return;
     if (busy) {
@@ -209,10 +210,10 @@ class AppController extends ChangeNotifier {
     if (reports.values.any((x) => x.localChanged)) _openWorkout?.reloadFromRepo();
     notifyListeners();
     // Efter synken och utan att vänta in den — kan aldrig fälla synken.
-    unawaited(checkForUpdate());
+    unawaited(checkForUpdate(force: !auto));
     if (_syncAgain && repo != null) {
       _syncAgain = false;
-      await syncNow();
+      await syncNow(auto: true);
     }
   }
 
@@ -221,7 +222,7 @@ class AppController extends ChangeNotifier {
   void scheduleSync() {
     if (repo == null) return;
     _syncTimer?.cancel();
-    _syncTimer = Timer(syncDelay, syncNow);
+    _syncTimer = Timer(syncDelay, () => syncNow(auto: true));
   }
 
   /// Appen kommer tillbaka från bakgrunden: hämta det andra enheter ändrat.

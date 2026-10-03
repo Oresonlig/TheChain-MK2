@@ -72,17 +72,16 @@ class _WeightScreenState extends State<WeightScreen> with ChartRangeState {
     ));
   }
 
-  Widget _stat(String value, String label, TextTheme text, ChainTheme c, {VoidCallback? onTap, Color? color}) => Expanded(
-        child: InkWell(
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 6),
-            child: Column(children: [
-              Text(value, style: text.titleMedium!.copyWith(color: color ?? c.textStrong)),
-              const SizedBox(height: 2),
-              Text(label, style: text.labelSmall),
-            ]),
-          ),
+  /// En siffra under TREND. Bara läsning — målet ändras i TODAY-kortet
+  /// (Niklas 2026-10-03: tryckbar TO GOAL gick inte att upptäcka).
+  Widget _stat(String value, String label, TextTheme text, ChainTheme c, {Color? color}) => Expanded(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          child: Column(children: [
+            Text(value, style: text.titleMedium!.copyWith(color: color ?? c.textStrong)),
+            const SizedBox(height: 2),
+            Text(label, style: text.labelSmall),
+          ]),
         ),
       );
 
@@ -149,9 +148,7 @@ class _WeightScreenState extends State<WeightScreen> with ChartRangeState {
                         child: Row(children: [
                           _stat(stats.now, 'NOW', text, c),
                           _stat(stats.week ?? '—', '7 DAYS', text, c),
-                          // Tryck = sätt/ändra målvikt.
-                          _stat(stats.toGoal ?? 'SET', 'TO GOAL', text, c,
-                              onTap: () => _editGoal(s), color: stats.toGoal == null ? c.accent : c.success),
+                          _stat(stats.toGoal ?? '—', 'TO GOAL', text, c, color: stats.toGoal == null ? null : c.success),
                         ]),
                       ),
                     const SizedBox(height: 6),
@@ -202,6 +199,33 @@ class _WeightScreenState extends State<WeightScreen> with ChartRangeState {
                       ),
                     ),
                   ]),
+                  // Målvikten: egen rad, egen knapp, egen dialog — skrivs aldrig
+                  // i dagens viktfält.
+                  const SizedBox(height: 14),
+                  Container(
+                    padding: const EdgeInsets.only(top: 10),
+                    decoration: BoxDecoration(border: Border(top: BorderSide(color: c.border))),
+                    child: Row(children: [
+                      Expanded(
+                        child: Text.rich(TextSpan(children: [
+                          TextSpan(text: 'GOAL  ', style: text.labelSmall),
+                          TextSpan(
+                            text: s.weightGoalKg == null ? 'not set' : _fmt(s.weightGoalKg!, s.weightUnit),
+                            style: text.titleMedium!.copyWith(color: s.weightGoalKg == null ? c.textFaint : c.success),
+                          ),
+                        ])),
+                      ),
+                      SizedBox(
+                        width: 96,
+                        child: GhostButton(
+                          label: s.weightGoalKg == null ? 'SET' : 'EDIT',
+                          semanticLabel: 'Goal weight',
+                          onTap: () => _editGoal(s),
+                          height: 40,
+                        ),
+                      ),
+                    ]),
+                  ),
                 ]),
               ),
               const SizedBox(height: 16),
