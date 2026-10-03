@@ -11,7 +11,6 @@ import '../theme/chain_theme.dart';
 import '../theme/surfaces.dart';
 import 'format.dart';
 import 'nanosuit_scaffold.dart';
-import 'theme_preview.dart';
 
 class DevHomeScreen extends StatelessWidget {
   const DevHomeScreen({super.key, required this.app, this.email = '', this.buildLabel = ''});
@@ -49,22 +48,45 @@ class DevHomeScreen extends StatelessWidget {
                   Text(v, style: text.bodyMedium!.copyWith(color: c.textStrong)),
                 ]),
               );
+          // Avstängd (onTap null) = dämpad, så att den inte ser tryckbar ut.
           Widget button(String label, VoidCallback? onTap, {bool primary = false}) => Expanded(
-                child: GestureDetector(
-                  onTap: onTap,
-                  child: Raised(
-                    material: primary ? c.raisedActive : c.raisedIdle,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    child: Center(child: Text(label, style: text.labelLarge!.copyWith(fontSize: 12))),
+                child: Semantics(
+                  button: true,
+                  enabled: onTap != null,
+                  child: GestureDetector(
+                    onTap: onTap,
+                    child: Opacity(
+                      opacity: onTap == null ? .38 : 1,
+                      child: Raised(
+                        material: primary ? c.raisedActive : c.raisedIdle,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        child: Center(child: Text(label, style: text.labelLarge!.copyWith(fontSize: 12))),
+                      ),
+                    ),
                   ),
                 ),
               );
 
-          return ListView(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+          // Vyn öppnas ovanpå navigeringen (bottenraden syns inte) — tillbaka-pil
+          // som i övningsvyn, så man inte behöver telefonens bakåtknapp.
+          return Column(children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(4, 4, 16, 0),
+              child: Row(children: [
+                if (Navigator.of(context).canPop())
+                  IconButton(
+                    tooltip: 'Back',
+                    onPressed: () => Navigator.pop(context),
+                    icon: Icon(Icons.arrow_back, color: c.textMuted),
+                  )
+                else
+                  const SizedBox(width: 12),
+                Expanded(child: Text('DATA CHECK', style: text.titleLarge)),
+              ]),
+            ),
+            Expanded(child: ListView(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
             children: [
-              Text('MK2 · F2 DATA CHECK', style: text.labelSmall!.copyWith(color: c.accent)),
-              const SizedBox(height: 4),
               Text(email, style: text.titleMedium),
               Text(buildLabel, style: text.labelSmall),
               const SizedBox(height: 16),
@@ -115,15 +137,10 @@ class DevHomeScreen extends StatelessWidget {
                 button('IMPORT', app.busy || app.moved != false ? null : () => _confirmImport(context)),
               ]),
               const SizedBox(height: 8),
-              Row(children: [
-                button('THEME PREVIEW', () => Navigator.of(context).push(MaterialPageRoute<void>(
-                      builder: (_) => ThemePreviewScreen(channelLabel: buildLabel),
-                    ))),
-                const SizedBox(width: 8),
-                button('SIGN OUT', app.busy ? null : app.signOut),
-              ]),
+              Row(children: [button('SIGN OUT', app.busy ? null : app.signOut)]),
             ],
-          );
+          )),
+          ]);
         },
       ),
     );

@@ -24,10 +24,18 @@ void main() {
       expect(bestSoFarSteps(pts, ChartWindow.of(ChartRange.all, now)).map((p) => p.y), [100, 130]);
     });
 
-    test('PR före fönstret syns ändå — som första steget vid fönstrets början', () {
+    test('PR före fönstret syns ändå — som första steget vid fönstrets första pass', () {
       final steps = bestSoFarSteps(pts, ChartWindow.of(ChartRange.m1, now));
       expect(steps.single.y, 130);
-      expect(steps.single.x, DateTime(2026, 9, 3));
+      expect(steps.single.x, DateTime(2026, 9, 20));
+    });
+
+    test('x-axeln följer datan, inte fönstret', () {
+      final m1 = ChartWindow.of(ChartRange.m1, now);
+      final dots = inWindow(pts, (p) => p.x, m1);
+      expect(dataSpan(dots, m1), (DateTime(2026, 9, 20), DateTime(2026, 9, 20)));
+      expect(dataSpan(pts, ChartWindow.of(ChartRange.all, now)), (DateTime(2026, 1, 1), DateTime(2026, 9, 20)));
+      expect(dataSpan(const [], m1), (m1.to, m1.to));
     });
 
     test('egen period: bara den, slutdagen inräknad; PR efter perioden räknas inte', () {

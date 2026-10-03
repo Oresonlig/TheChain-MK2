@@ -11,7 +11,6 @@ const _lbsPerKg = 2.20462;
 const _minus = '−';
 
 String _num(double v) => v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toStringAsFixed(1);
-DateTime _day(DateTime d) => DateTime(d.year, d.month, d.day);
 String _short(DateTime d) => fmtDate(d);
 
 // ── kroppsvikt ──
@@ -32,13 +31,14 @@ ChartSeries weightSeries(List<BodyweightEntry> entries, ChartWindow w, UserSetti
     dots.add(ChartPoint(p.x, p.y, label: '${_short(p.x)} · ${_num(p.y)} ${_unit(s)} · trend ${_num(t.y)}'));
     line.add(t);
   }
+  final (from, to) = dataSpan(dots, w);
   return ChartSeries(
     dots: dots,
     line: line,
     goal: s.weightGoalKg == null ? null : _w(s.weightGoalKg!, s),
     gapDays: 30,
-    from: w.from ?? (dots.isEmpty ? w.to : dots.first.x),
-    to: w.to,
+    from: from,
+    to: to,
     formatY: _num,
   );
 }
@@ -117,13 +117,14 @@ ChartSeries prSeries(
       ),
   ];
   final dots = inWindow(all, (p) => p.x, w);
+  final (from, to) = dataSpan(dots, w);
   return ChartSeries(
     dots: dots,
     line: dots,
     steps: bestSoFarSteps(all, w),
     gapDays: 42,
-    from: w.from ?? (dots.isEmpty ? w.to : _day(dots.first.x)),
-    to: w.to,
+    from: from,
+    to: to,
     formatY: axisFormat(current),
   );
 }

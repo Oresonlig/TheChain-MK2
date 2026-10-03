@@ -44,7 +44,9 @@ class _ChainChartState extends State<ChainChart> with SingleTickerProviderStateM
   void didUpdateWidget(ChainChart old) {
     super.didUpdateWidget(old);
     // Nytt intervall → rita fram igen.
-    if (old.series.from != widget.series.from || old.series.dots.length != widget.series.dots.length) {
+    if (old.series.from != widget.series.from ||
+        old.series.to != widget.series.to ||
+        old.series.dots.length != widget.series.dots.length) {
       _scrub = null;
       _start();
     }
@@ -92,6 +94,20 @@ class _ChainChartState extends State<ChainChart> with SingleTickerProviderStateM
       child: LayoutBuilder(builder: (context, box) {
         final g = _Geometry(s, Size(box.maxWidth, widget.height));
         final sel = _scrub == null ? null : s.dots[_scrub!];
+        final labelStyle = text.labelSmall!.copyWith(color: sel != null && sel.highlight ? c.accentBright : c.textStrong);
+        // Etiketten på EN rad: kortet lika brett som texten (aldrig bredare än grafen).
+        final labelW = sel == null
+            ? 0.0
+            : math.min(
+                box.maxWidth,
+                (TextPainter(
+                          text: TextSpan(text: sel.label, style: labelStyle),
+                          textDirection: TextDirection.ltr,
+                          textScaler: MediaQuery.textScalerOf(context),
+                          maxLines: 1,
+                        )..layout())
+                        .width +
+                    22);
         return GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTapDown: (d) => _scrubAt(d.localPosition.dx, g),
@@ -116,16 +132,17 @@ class _ChainChartState extends State<ChainChart> with SingleTickerProviderStateM
             if (sel != null)
               Positioned(
                 top: 0,
-                left: (g.x(sel.x) - 90).clamp(0, math.max(0, box.maxWidth - 180)).toDouble(),
-                width: 180,
+                left: (g.x(sel.x) - labelW / 2).clamp(0, math.max(0, box.maxWidth - labelW)).toDouble(),
+                width: labelW,
                 child: IgnorePointer(
-                  child: Center(
-                    child: Glass(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      child: Text(sel.label,
-                          textAlign: TextAlign.center,
-                          style: text.labelSmall!.copyWith(color: sel.highlight ? c.accentBright : c.textStrong)),
-                    ),
+                  child: Glass(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    child: Text(sel.label,
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        softWrap: false,
+                        overflow: TextOverflow.ellipsis,
+                        style: labelStyle),
                   ),
                 ),
               ),
@@ -143,9 +160,10 @@ class _Geometry {
     yLo = lo;
     yHi = hi;
     var a = s.from.millisecondsSinceEpoch.toDouble(), b = s.to.millisecondsSinceEpoch.toDouble();
+    // En enda dag: punkten centrerad med några dagar åt båda håll.
     if (b - a < 1) {
-      a -= 86400000;
-      b += 86400000;
+      a -= 3 * 86400000;
+      b += 3 * 86400000;
     }
     t0 = a;
     t1 = b;
@@ -157,7 +175,11 @@ class _Geometry {
   late final double yLo, yHi, t0, t1;
   late final Rect plot;
 
-  double x(DateTime d) => plot.left + (d.millisecondsSinceEpoch - t0) / (t1 - t0) * plot.width;
+  /// Luft i kanterna så att första/sista punkten inte klistras mot ramen.
+  static const _inset = 8.0;
+
+  double x(DateTime d) =>
+      plot.left + _inset + (d.millisecondsSinceEpoch - t0) / (t1 - t0) * (plot.width - 2 * _inset);
   double y(double v) => plot.bottom - (v - yLo) / (yHi - yLo) * plot.height;
   Offset at(ChartPoint p) => Offset(x(p.x), y(p.y));
 }
@@ -186,8 +208,12 @@ class _ChartPainter extends CustomPainter {
       _text(canvas, s.formatY(t), Offset(plot.right + 8, y), alignY: .5);
     }
     // Datum bara i ändarna.
-    _text(canvas, _date(s.from), Offset(plot.left, plot.bottom + 6));
-    _text(canvas, _date(s.to), Offset(plot.right, plot.bottom + 6), alignX: 1);
+    if (s.from == s.to) {
+      _text(canvas, _date(s.from), Offset(g.x(s.from), plot.bottom + 6), alignX: .5);
+    } else {
+      _text(canvas, _date(s.from), Offset(plot.left, plot.bottom + 6));
+      _text(canvas, _date(s.to), Offset(plot.right, plot.bottom + 6), alignX: 1);
+    }
 
     canvas.save();
     canvas.clipRect(Rect.fromLTRB(0, 0, plot.left + plot.width * progress + 12, size.height));

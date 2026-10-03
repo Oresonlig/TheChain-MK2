@@ -111,16 +111,26 @@ List<T> inWindow<T>(List<T> items, DateTime Function(T) dateOf, ChartWindow w) =
     items.where((e) => w.contains(dateOf(e))).toList();
 
 /// "Bästa hittills": ett steg per PR i fönstret. Ett PR satt före fönstret syns
-/// ändå — det blir första steget, vid fönstrets början (Niklas: se hur långt
-/// ifrån det bästa man ligger, även i månadsvyn).
+/// ändå — det blir första steget, vid fönstrets första pass (Niklas: se hur
+/// långt ifrån det bästa man ligger, även i månadsvyn).
 List<ChartPoint> bestSoFarSteps(List<ChartPoint> all, ChartWindow w) {
   final prs = all.where((p) => p.highlight).toList();
   final from = w.from;
   final before = from == null ? null : prs.where((p) => p.x.isBefore(from)).lastOrNull;
+  final first = all.where((p) => w.contains(p.x)).firstOrNull;
   return [
-    if (before != null) ChartPoint(from!, before.y),
+    if (before != null && first != null) ChartPoint(first.x, before.y),
     ...prs.where((p) => w.contains(p.x)),
   ];
+}
+
+/// X-axelns spann: första till sista punkten (Niklas 2026-10-03: grafen ska
+/// sträckas ut över datan, inte lämna halva fönstret tomt). Intervallet väljer
+/// VILKEN data som visas; axeln följer den. Tomt → fönstrets slut.
+(DateTime, DateTime) dataSpan(List<ChartPoint> dots, ChartWindow w) {
+  if (dots.isEmpty) return (w.to, w.to);
+  DateTime day(DateTime d) => DateTime(d.year, d.month, d.day);
+  return (day(dots.first.x), day(dots.last.x));
 }
 
 /// Tidsviktad exponentiell trend: varje vägning drar trenden mot sig med en
