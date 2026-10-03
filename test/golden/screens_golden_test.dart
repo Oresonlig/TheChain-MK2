@@ -11,6 +11,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:the_chain/app/app_controller.dart';
 import 'package:the_chain/domain/domain.dart';
 import 'package:the_chain/main.dart';
+import 'package:the_chain/ui/workout/workout_screen.dart';
 
 import '../app/app_flow_test.dart' show mk1;
 import '../app/fake_backend.dart';
@@ -41,11 +42,15 @@ Future<void> _phone(WidgetTester tester, Widget app) async {
   ));
 }
 
+/// Ingen synk-fördröjning: timern töms av pumpAndSettle i stället för att
+/// ligga kvar när testet slutar.
+AppController _app(FakeBackend b) => AppController(b, syncDelay: Duration.zero);
+
 void main() {
   testWidgets('login', (tester) async {
     await _loadSaira();
     final b = FakeBackend();
-    final app = AppController(b);
+    final app = _app(b);
     await _phone(tester, TheChainApp(app: app, emailOf: () => ''));
     await tester.runAsync(app.start);
     await tester.pumpAndSettle();
@@ -55,7 +60,7 @@ void main() {
   testWidgets('kedjevyn', (tester) async {
     await _loadSaira();
     final b = FakeBackend(mk1: {...mk1(), 'restSlots': [2], 'sessionOrder': ['A', 'B', 'C', 'D']});
-    final app = AppController(b);
+    final app = _app(b);
     await _phone(tester, TheChainApp(app: app, emailOf: () => ''));
     await tester.runAsync(() async {
       await app.start();
@@ -70,7 +75,7 @@ void main() {
   testWidgets('avslutat pass: låst, COPY + UNDO', (tester) async {
     await _loadSaira();
     final b = FakeBackend(mk1: {...mk1(), 'sessionOrder': ['A', 'B']});
-    final app = AppController(b);
+    final app = _app(b);
     await _phone(tester, TheChainApp(app: app, emailOf: () => ''));
     await tester.runAsync(() async {
       await app.start();
@@ -88,7 +93,7 @@ void main() {
     testWidgets('flik $tab', (tester) async {
       await _loadSaira();
       final b = FakeBackend(mk1: {...mk1(), 'sessionOrder': ['A', 'B']});
-      final app = AppController(b);
+      final app = _app(b);
       await _phone(tester, TheChainApp(app: app, emailOf: () => 'niklas@example.com'));
       await tester.runAsync(() async {
         await app.start();
@@ -106,7 +111,7 @@ void main() {
   testWidgets('fortsätt-listen när pass pågår', (tester) async {
     await _loadSaira();
     final b = FakeBackend(mk1: {...mk1(), 'sessionOrder': ['A', 'B']});
-    final app = AppController(b);
+    final app = _app(b);
     await _phone(tester, TheChainApp(app: app, emailOf: () => ''));
     await tester.runAsync(() async {
       await app.start();
@@ -128,7 +133,7 @@ void main() {
   testWidgets('passvyn', (tester) async {
     await _loadSaira();
     final b = FakeBackend(mk1: {...mk1(), 'sessionOrder': ['A', 'B']});
-    final app = AppController(b);
+    final app = _app(b);
     await _phone(tester, TheChainApp(app: app, emailOf: () => ''));
     await tester.runAsync(() async {
       await app.start();
@@ -145,7 +150,7 @@ void main() {
   testWidgets('passvyn: FAIL + GOAL, minus-par, släckt DONE; botten med glas', (tester) async {
     await _loadSaira();
     final b = FakeBackend(mk1: {...mk1(), 'sessionOrder': ['A', 'B']});
-    final app = AppController(b);
+    final app = _app(b);
     await _phone(tester, TheChainApp(app: app, emailOf: () => ''));
     await tester.runAsync(() async {
       await app.start();
@@ -171,10 +176,46 @@ void main() {
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/workout_bottom.png'));
   });
 
+  testWidgets('passvyn: Last med WARM-UP/WORK + förra gångens goal', (tester) async {
+    await _loadSaira();
+    final b = FakeBackend(mk1: {...mk1(), 'sessionOrder': ['A', 'B']});
+    final app = _app(b);
+    await _phone(tester, TheChainApp(app: app, emailOf: () => ''));
+    await tester.runAsync(() async {
+      await app.start();
+      await app.signIn('x', 'secret');
+      await pumpEventQueue();
+      await app.importFromWebsite();
+      // Förra passet: uppvärmning + arbetsset där sista failade mot mål 5.
+      final wc = app.openWorkout(const SessionId('A'));
+      wc.addSet(wc.workout.exercises.first.id, SetKind.warmup);
+      wc.addSet(wc.workout.exercises.first.id, SetKind.warmup);
+      final row = wc.workout.exercises.first;
+      final work = row.sets.where((s) => s.kind == SetKind.work).toList();
+      for (final s in row.sets) {
+        final warm = s.kind == SetKind.warmup;
+        wc.setValues(row.id, s.id, SetValues(weight: warm ? 60 : 100, reps: warm ? 8 : (s == work.last ? 3 : 5)));
+        wc.toggleLog(row.id, s.id);
+      }
+      wc.toggleFailed(row.id, work.last.id);
+      wc.setTarget(row.id, work.last.id, const SetValues(reps: 5));
+      wc.markDone(row.id);
+      for (final r in wc.workout.exercises.skip(1)) {
+        wc.skip(r.id);
+      }
+      await wc.finish();
+    });
+    await tester.pumpAndSettle();
+    final wc2 = app.openWorkout(const SessionId('A'));
+    tester.state<NavigatorState>(find.byType(Navigator).first).push(MaterialPageRoute<void>(builder: (_) => WorkoutScreen(controller: wc2)));
+    await tester.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/workout_last.png'));
+  });
+
   testWidgets('dev home efter import', (tester) async {
     await _loadSaira();
     final b = FakeBackend(mk1: mk1());
-    final app = AppController(b);
+    final app = _app(b);
     await _phone(tester, TheChainApp(app: app, emailOf: () => b.userEmail ?? ''));
     await tester.runAsync(() async {
       await app.start();

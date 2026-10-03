@@ -254,12 +254,15 @@ class ExerciseCard extends StatelessWidget {
             Text(measureDescription(row.measure), style: text.bodyMedium),
             if (ex.tip != null) Text(ex.tip!, style: text.bodySmall!.copyWith(fontStyle: FontStyle.italic)),
             const SizedBox(height: 6),
-            Text(
-              last == null
-                  ? 'No history yet'
-                  : 'Last (${daysAgo(last.date, now)}): ${last.workSets.map((s) => fmtSet(s, last.exercise.measure, settings)).join('  ·  ')}',
-              style: text.bodySmall,
-            ),
+            if (last == null)
+              Text('No history yet', style: text.bodySmall)
+            else ...[
+              // Uppvärmning och arbete på var sin rad, med samma etiketter som
+              // sektionerna nedanför (Niklas 2026-10-03: "oklart vad som är vad").
+              Text('Last · ${daysAgo(last.date, now)}', style: text.bodySmall),
+              if (last.warmupSets.isNotEmpty) _lastLine('WARM-UP', c.textMuted, last.warmupSets, last.exercise.measure, settings, text),
+              _lastLine('WORK', c.accent, last.workSets, last.exercise.measure, settings, text),
+            ],
             for (final n in notes)
               Padding(
                 padding: const EdgeInsets.only(top: 6),
@@ -286,12 +289,26 @@ class ExerciseCard extends StatelessWidget {
           const SizedBox(height: 8),
           Text('WARM-UP', style: text.labelSmall!.copyWith(color: c.textMuted)),
           for (final (i, s) in warm.indexed)
-            SetRow(key: ValueKey(s.id.value), controller: controller, row: row, set: s, label: 'W${i + 1}', editable: editable),
+            SetRow(
+                key: ValueKey(s.id.value),
+                controller: controller,
+                row: row,
+                set: s,
+                label: 'W${i + 1}',
+                editable: editable,
+                lastGoal: _lastGoal(last, row.measure, SetKind.warmup, i)),
         ],
         const SizedBox(height: 12),
         Text('WORK', style: text.labelSmall!.copyWith(color: c.accent)),
         for (final (i, s) in work.indexed)
-          SetRow(key: ValueKey(s.id.value), controller: controller, row: row, set: s, label: 'S${i + 1}', editable: editable),
+          SetRow(
+              key: ValueKey(s.id.value),
+              controller: controller,
+              row: row,
+              set: s,
+              label: 'S${i + 1}',
+              editable: editable,
+              lastGoal: _lastGoal(last, row.measure, SetKind.work, i)),
         if (editable) ...[
           const SizedBox(height: 16),
           Row(children: [
@@ -338,6 +355,34 @@ class ExerciseCard extends StatelessWidget {
         ],
       ]),
     );
+  }
+
+  Widget _lastLine(String label, Color color, List<SetEntry> sets, Measure m, UserSettings s, TextTheme text) => Padding(
+        padding: const EdgeInsets.only(top: 2),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          SizedBox(
+            width: 80,
+            child: Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text(label, softWrap: false, style: text.labelSmall!.copyWith(color: color)),
+            ),
+          ),
+          Expanded(child: Text(sets.map((x) => fmtSet(x, m, s)).join('  ·  '), style: text.bodySmall)),
+        ]),
+      );
+
+  /// Målet förra gången för samma set (W2 ↔ förra W2), om det inte nåddes.
+  /// Bara när mätsättet är detsamma — annars betyder siffran något annat.
+  String? _lastGoal(LastPerformance? last, Measure m, SetKind kind, int index) {
+    if (last == null || last.exercise.measure != m) return null;
+    final sets = kind == SetKind.warmup ? last.warmupSets : last.workSets;
+    if (index >= sets.length) return null;
+    final prev = sets[index], t = prev.target;
+    if (t == null || !prev.missed(m)) return null;
+    final f = m.fields.contains(SetField.reps) ? InputField.reps : (m.fields.contains(SetField.secs) ? InputField.secs : null);
+    if (f == null) return null;
+    final v = displayValue(f, t, m, controller.repo.settings());
+    return v.isEmpty ? null : v;
   }
 
   Future<void> _addNote(BuildContext context) async {
@@ -400,7 +445,18 @@ class ExerciseCard extends StatelessWidget {
 }
 
 class SetRow extends StatefulWidget {
-  const SetRow({super.key, required this.controller, required this.row, required this.set, required this.label, required this.editable});
+  const SetRow({
+    super.key,
+    required this.controller,
+    required this.row,
+    required this.set,
+    required this.label,
+    required this.editable,
+    this.lastGoal,
+  });
+
+  /// Förra passets ej nådda mål för samma set, i fältets enhet ("4").
+  final String? lastGoal;
 
   final WorkoutController controller;
   final WorkoutExercise row;
@@ -515,6 +571,9 @@ class _SetRowState extends State<SetRow> {
             ),
             const SizedBox(height: 4),
             Text(fieldLabel(f, widget.row.measure, _settings), style: text.labelSmall),
+            // Förra gångens mål under rätt fält, tills setet är loggat.
+            if (!s.isLogged && f == _goalField && widget.lastGoal != null)
+              Text('goal ${widget.lastGoal}', style: text.labelSmall!.copyWith(color: c.restGold)),
           ]),
         ),
         const SizedBox(width: 6),
