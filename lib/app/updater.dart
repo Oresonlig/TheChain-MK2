@@ -11,6 +11,10 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:ota_update/ota_update.dart';
 
+/// Samsungs Auto Blocker släpper bara Play/Galaxy Store-installationer.
+const _autoBlocker =
+    'Turn off Samsung Auto Blocker (Settings › Security and privacy › Auto Blocker) and tap Update again.';
+
 class UpdateInfo {
   const UpdateInfo({required this.build, required this.apkUrl, this.sha256});
   final int build;
@@ -69,7 +73,10 @@ class Updater {
         case OtaStatus.DOWNLOADING:
           yield 'Downloading… ${e.value ?? ''}%';
         case OtaStatus.INSTALLING:
-          yield 'Confirm the install in the dialog';
+          // Auto Blocker stoppar installationen TYST — pluginet får inget fel
+          // tillbaka. Tipset måste därför stå här, innan, tills appen finns på
+          // Google Play (Niklas 2026-10-03).
+          yield 'Confirm the install in the dialog. Nothing happens? $_autoBlocker';
         case OtaStatus.INSTALLATION_DONE:
           yield 'Installed';
         case OtaStatus.PERMISSION_NOT_GRANTED_ERROR:
@@ -81,7 +88,7 @@ class Updater {
         case OtaStatus.CANCELED:
           yield 'Update canceled';
         case OtaStatus.INSTALLATION_ERROR:
-          yield 'Install blocked — if you use Samsung Auto Blocker, turn it off and tap Update again';
+          yield 'Install blocked. $_autoBlocker';
         case OtaStatus.DOWNLOAD_ERROR || OtaStatus.INTERNAL_ERROR:
           yield 'Update failed: ${e.value ?? 'unknown error'}';
       }
