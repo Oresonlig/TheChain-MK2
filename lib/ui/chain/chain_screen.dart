@@ -300,17 +300,13 @@ class _SessionPanel extends StatelessWidget {
           const SizedBox(height: 16),
           Row(children: [
             Expanded(
-              child: OutlinedButton.icon(
-                onPressed: () => onUndo(lastOfSession),
-                icon: const Icon(Icons.undo, size: 18),
-                label: const Text('UNDO'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: c.textMuted,
-                  side: BorderSide(color: c.borderStrong),
-                  minimumSize: const Size(0, 52),
-                  shape: const RoundedRectangleBorder(),
-                  textStyle: text.labelSmall,
-                ),
+              child: GhostButton(
+                label: 'UNDO',
+                leadingIcon: Icons.undo,
+                onTap: () => onUndo(lastOfSession),
+                color: c.textMuted,
+                borderColor: c.borderStrong,
+                height: 52,
               ),
             ),
             const SizedBox(width: 12),
@@ -449,17 +445,13 @@ class _RestPanelState extends State<_RestPanel> {
             style: text.labelSmall!.copyWith(color: widget.done ? c.textFaint : c.restGold)),
         if (widget.done) ...[
           const SizedBox(height: 16),
-          OutlinedButton.icon(
-            onPressed: widget.onUndo,
-            icon: const Icon(Icons.undo, size: 18),
-            label: const Text('UNDO'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: c.textMuted,
-              side: BorderSide(color: c.borderStrong),
-              minimumSize: const Size(0, 52),
-              shape: const RoundedRectangleBorder(),
-              textStyle: text.labelSmall,
-            ),
+          GhostButton(
+            label: 'UNDO',
+            leadingIcon: Icons.undo,
+            onTap: widget.onUndo,
+            color: c.textMuted,
+            borderColor: c.borderStrong,
+            height: 52,
           ),
         ],
         if (!widget.done) ...[

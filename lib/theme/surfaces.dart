@@ -42,6 +42,61 @@ class Glass extends StatelessWidget {
   }
 }
 
+/// Sekundärknapp: kontur på eget glas. Standard för knappar utan eget material
+/// (DONE/FINISH har [Raised]) — ingen knapp får drunkna i bakgrunden
+/// (Niklas 2026-10-03).
+class GhostButton extends StatelessWidget {
+  const GhostButton({
+    super.key,
+    required this.label,
+    required this.onTap,
+    this.color,
+    this.semanticLabel,
+    this.icon,
+    this.leadingIcon,
+    this.borderColor,
+    this.height = 48,
+  });
+
+  final String label;
+  final VoidCallback? onTap;
+  final Color? color;
+  final String? semanticLabel;
+
+  /// Ersätter texten (minus-tecknet är för litet i Saira).
+  final IconData? icon;
+
+  /// Ikon före texten (t.ex. UNDO).
+  final IconData? leadingIcon;
+  final Color? borderColor;
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.chain;
+    final col = color ?? c.secondaryAction;
+    final style = OutlinedButton.styleFrom(
+      foregroundColor: col,
+      disabledForegroundColor: c.textFaint,
+      side: BorderSide(color: onTap == null ? c.border : borderColor ?? col.withValues(alpha: .5)),
+      minimumSize: Size(0, height), // stora träffytor
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      shape: const RoundedRectangleBorder(),
+      textStyle: Theme.of(context).textTheme.labelSmall,
+    );
+    final Widget button = icon != null
+        ? OutlinedButton(onPressed: onTap, style: style, child: Icon(icon, size: 22))
+        : leadingIcon != null
+            ? OutlinedButton.icon(onPressed: onTap, style: style, icon: Icon(leadingIcon, size: 18), label: Text(label))
+            : OutlinedButton(onPressed: onTap, style: style, child: Text(label));
+    return Semantics(
+      label: semanticLabel,
+      // Konturen är kanten — glaset ritar ingen egen.
+      child: Glass(padding: EdgeInsets.zero, radius: 0, border: false, child: button),
+    );
+  }
+}
+
 /// Nanosuits chevron: avfasade spetsar i vänster/höger kant (MK1 clip-path).
 class ChevronBorder extends OutlinedBorder {
   const ChevronBorder({this.inset = 8, super.side});

@@ -90,18 +90,15 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                     ),
                     const SizedBox(height: 10),
                   ],
-                  // Samma glas som korten: knapparna får aldrig drunkna i
+                  // GhostButton bär eget glas: knappen drunknar aldrig i
                   // hex-vågen (Niklas 2026-10-03).
-                  Glass(
-                    padding: const EdgeInsets.all(10),
-                    child: _SecondaryButton(
-                      label: '+ ADD EXERCISE',
-                      onTap: () async {
-                        final id = await pickExercise(context,
-                            title: 'Add exercise (today only)', custom: controller.repo.customExercises().values.toList());
-                        if (id != null) controller.addExtra(id);
-                      },
-                    ),
+                  GhostButton(
+                    label: '+ ADD EXERCISE',
+                    onTap: () async {
+                      final id = await pickExercise(context,
+                          title: 'Add exercise (today only)', custom: controller.repo.customExercises().values.toList());
+                      if (id != null) controller.addExtra(id);
+                    },
                   ),
                   const SizedBox(height: 16),
                   Glass(
@@ -166,39 +163,6 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
   }
 }
 
-class _SecondaryButton extends StatelessWidget {
-  const _SecondaryButton({required this.label, required this.onTap, this.color, this.semanticLabel, this.icon});
-  final String label;
-  final VoidCallback? onTap;
-  final Color? color;
-  final String? semanticLabel;
-
-  /// Ersätter texten (minus-tecknet är för litet i Saira).
-  final IconData? icon;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.chain;
-    final col = color ?? c.secondaryAction;
-    return Semantics(
-      label: semanticLabel,
-      child: OutlinedButton(
-        onPressed: onTap,
-        style: OutlinedButton.styleFrom(
-          foregroundColor: col,
-          disabledForegroundColor: c.textFaint,
-          side: BorderSide(color: onTap == null ? c.border : col.withValues(alpha: .5)),
-          minimumSize: const Size(0, 48), // stora träffytor
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          shape: const RoundedRectangleBorder(),
-          textStyle: Theme.of(context).textTheme.labelSmall,
-        ),
-        child: icon == null ? Text(label) : Icon(icon, size: 22),
-      ),
-    );
-  }
-}
-
 class ExerciseCard extends StatelessWidget {
   const ExerciseCard({super.key, required this.controller, required this.row, required this.expanded, required this.now});
 
@@ -259,7 +223,7 @@ class ExerciseCard extends StatelessWidget {
           child: Row(children: [
             SizedBox(
               width: 48,
-              child: _SecondaryButton(
+              child: GhostButton(
                 label: '−',
                 icon: Icons.remove,
                 semanticLabel: 'Remove last unlogged ${kind == SetKind.warmup ? 'warm-up' : 'work set'}',
@@ -267,7 +231,7 @@ class ExerciseCard extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 6),
-            Expanded(child: _SecondaryButton(label: label, onTap: () => controller.addSet(row.id, kind))),
+            Expanded(child: GhostButton(label: label, onTap: () => controller.addSet(row.id, kind))),
           ]),
         );
 
@@ -336,7 +300,7 @@ class ExerciseCard extends StatelessWidget {
           const SizedBox(height: 16),
           Row(children: [
             Expanded(
-              child: _SecondaryButton(label: 'SKIP', onTap: () => controller.skip(row.id), color: c.textMuted),
+              child: GhostButton(label: 'SKIP', onTap: () => controller.skip(row.id), color: c.textMuted),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -368,7 +332,7 @@ class ExerciseCard extends StatelessWidget {
             ),
         ] else ...[
           const SizedBox(height: 12),
-          _SecondaryButton(label: 'REOPEN', onTap: () => controller.reopen(row.id)),
+          GhostButton(label: 'REOPEN', onTap: () => controller.reopen(row.id)),
         ],
       ]),
     );
