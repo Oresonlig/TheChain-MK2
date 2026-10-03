@@ -260,7 +260,7 @@ class ExerciseCard extends StatelessWidget {
               // Uppvärmning och arbete på var sin rad, med samma etiketter som
               // sektionerna nedanför (Niklas 2026-10-03: "oklart vad som är vad").
               Text('Last · ${daysAgo(last.date, now)}', style: text.bodySmall),
-              if (last.warmupSets.isNotEmpty) _lastLine('WARM-UP', c.textMuted, last.warmupSets, last.exercise.measure, settings, text),
+              if (last.warmupSets.isNotEmpty) _lastLine('WARM', c.textMuted, last.warmupSets, last.exercise.measure, settings, text),
               _lastLine('WORK', c.accent, last.workSets, last.exercise.measure, settings, text),
             ],
             for (final n in notes)
@@ -361,7 +361,7 @@ class ExerciseCard extends StatelessWidget {
         padding: const EdgeInsets.only(top: 2),
         child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           SizedBox(
-            width: 80,
+            width: 56,
             child: Padding(
               padding: const EdgeInsets.only(top: 2),
               child: Text(label, softWrap: false, style: text.labelSmall!.copyWith(color: color)),
