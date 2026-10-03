@@ -104,8 +104,14 @@ String measureDescription(Measure m) => switch (m) {
 String _w(double kg, UserSettings s) =>
     s.weightUnit == WeightUnit.lbs ? '${_num(kg * _lbsPerKg)} lbs' : '${_num(kg)} kg';
 
-/// Ett set på en rad ("100 kg × 5 +1", "BW + 10 kg · 60 s", "3/4" vid missat mål).
+/// Ett set på en rad ("100 kg × 5 +1", "BW + 10 kg · 60 s", "100 kg × 3/4 ✗").
+/// ✗ = FAIL (eller MK1:s gamla fail) — samma markering överallt.
 String fmtSet(SetEntry set, Measure m, UserSettings s) {
+  final line = _fmtValues(set, m, s);
+  return set.missed(m) || set.excludeFromRecords ? '$line ✗' : line;
+}
+
+String _fmtValues(SetEntry set, Measure m, UserSettings s) {
   final v = set.values;
   String reps() {
     if (v.reps == null) return '';

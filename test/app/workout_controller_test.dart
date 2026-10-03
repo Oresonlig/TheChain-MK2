@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:the_chain/app/app_controller.dart';
+import 'package:the_chain/app/workout_controller.dart';
 import 'package:the_chain/domain/domain.dart';
 
 import 'fake_backend.dart';
@@ -35,6 +36,14 @@ Map<String, Object?> mk1() => {
       ],
     };
 
+/// Loggar varje set på raden (DONE kräver det sedan 2026-10-03).
+void logAll(WorkoutController wc, WorkoutExercise r) {
+  for (final s in r.sets) {
+    wc.setValues(r.id, s.id, const SetValues(weight: 50, reps: 8, secs: 60));
+    wc.toggleLog(r.id, s.id);
+  }
+}
+
 Future<AppController> ready() async {
   var t = DateTime(2026, 10, 2, 18);
   final app = AppController(FakeBackend(mk1: mk1()), clock: () => t = t.add(const Duration(seconds: 1)));
@@ -53,10 +62,12 @@ void main() {
     expect(wc.workout.exercises.length, 4);
     expect(wc.expandedRowId, wc.workout.exercises.first.id);
     for (final r in wc.workout.exercises) {
-      final s = r.sets.lastWhere((x) => x.kind == SetKind.work);
-      wc.setValues(r.id, s.id, const SetValues(weight: 50, reps: 8));
-      wc.toggleLog(r.id, s.id);
       wc.markDone(r.id);
+      expect(wc.error, isNotNull); // inget loggat → DONE nekas
+      wc.takeError();
+      logAll(wc, r);
+      wc.markDone(r.id);
+      expect(wc.error, isNull);
     }
     expect(wc.canFinish, isTrue);
     expect(await wc.finish(), isTrue);
@@ -108,6 +119,7 @@ void main() {
     final wc = app.openWorkout(const SessionId('A'));
     await wc.addNote(bench, 'seat 4', pinned: true);
     for (final r in wc.workout.exercises) {
+      logAll(wc, r);
       wc.markDone(r.id);
     }
     await wc.finish();
@@ -122,7 +134,14 @@ void main() {
     wc.setValues(r.id, r.sets.last.id, const SetValues(weight: 100, reps: 5));
     wc.toggleLog(r.id, r.sets.last.id);
     for (final x in wc.workout.exercises) {
-      wc.markDone(x.id);
+      if (x.id == r.id) {
+        for (final s in x.sets.where((s) => !s.isLogged && s.id != r.sets.last.id)) {
+          wc.removeSet(r.id, s.id);
+        }
+        wc.markDone(x.id);
+      } else {
+        wc.skip(x.id);
+      }
     }
     await wc.finish();
     final repo = app.repo!;

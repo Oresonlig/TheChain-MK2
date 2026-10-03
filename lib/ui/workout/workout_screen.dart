@@ -13,15 +13,44 @@ import '../nanosuit_scaffold.dart';
 import '../units.dart';
 import 'exercise_picker.dart';
 
-class WorkoutScreen extends StatelessWidget {
+class WorkoutScreen extends StatefulWidget {
   const WorkoutScreen({super.key, required this.controller, this.now});
 
   final WorkoutController controller;
   final DateTime Function()? now;
 
   @override
+  State<WorkoutScreen> createState() => _WorkoutScreenState();
+}
+
+class _WorkoutScreenState extends State<WorkoutScreen> {
+  WorkoutController get controller => widget.controller;
+
+  @override
+  void initState() {
+    super.initState();
+    controller.addListener(_showError);
+  }
+
+  @override
+  void dispose() {
+    controller.removeListener(_showError);
+    super.dispose();
+  }
+
+  /// Fel visas i nederkant så de syns oavsett var man har scrollat.
+  void _showError() {
+    final e = controller.takeError();
+    if (e == null || !mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(e)));
+  }
+
+  @override
   Widget build(BuildContext context) {
     return ChainScaffold(
+      ambient: controller.repo.settings().ambientEffects,
       child: ListenableBuilder(
         listenable: controller,
         builder: (context, _) {
@@ -30,6 +59,7 @@ class WorkoutScreen extends StatelessWidget {
           final w = controller.workout;
           final session = controller.repo.program().sessionById(w.sessionId);
           final doneCount = w.exercises.where((e) => e.status != ExerciseStatus.open).length;
+          final canFinish = controller.canFinish;
           return Column(children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(4, 4, 16, 0),
@@ -46,11 +76,6 @@ class WorkoutScreen extends StatelessWidget {
                 Text('$doneCount/${w.exercises.length}', style: text.labelSmall),
               ]),
             ),
-            if (controller.error != null)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                child: Text(controller.error!, style: text.bodySmall!.copyWith(color: const Color(0xFFFF6B6B))),
-              ),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
@@ -61,46 +86,57 @@ class WorkoutScreen extends StatelessWidget {
                       controller: controller,
                       row: r,
                       expanded: controller.expandedRowId == r.id,
-                      now: (now ?? DateTime.now)(),
+                      now: (widget.now ?? DateTime.now)(),
                     ),
                     const SizedBox(height: 10),
                   ],
-                  _SecondaryButton(
-                    label: '+ ADD EXERCISE',
-                    onTap: () async {
-                      final id = await pickExercise(context,
-                          title: 'Add exercise (today only)', custom: controller.repo.customExercises().values.toList());
-                      if (id != null) controller.addExtra(id);
-                    },
-                  ),
-                  const SizedBox(height: 24),
-                  Opacity(
-                    opacity: controller.canFinish ? 1 : .45,
-                    child: GestureDetector(
-                      onTap: controller.canFinish
-                          ? () async {
-                              final ok = await controller.finish();
-                              if (ok && context.mounted) Navigator.pop(context);
-                            }
-                          : null,
-                      child: Raised(
-                        material: c.raisedActive,
-                        padding: const EdgeInsets.symmetric(vertical: 18),
-                        child: Center(child: Text('FINISH SESSION', style: text.labelLarge)),
-                      ),
+                  // Samma glas som korten: knapparna får aldrig drunkna i
+                  // hex-vågen (Niklas 2026-10-03).
+                  Glass(
+                    padding: const EdgeInsets.all(10),
+                    child: _SecondaryButton(
+                      label: '+ ADD EXERCISE',
+                      onTap: () async {
+                        final id = await pickExercise(context,
+                            title: 'Add exercise (today only)', custom: controller.repo.customExercises().values.toList());
+                        if (id != null) controller.addExtra(id);
+                      },
                     ),
                   ),
-                  if (!controller.canFinish)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8),
-                      child: Text('Mark every exercise done or skip it first', style: text.labelSmall, textAlign: TextAlign.center),
-                    ),
                   const SizedBox(height: 16),
-                  Center(
-                    child: TextButton(
-                      onPressed: () => _confirmDiscard(context),
-                      child: Text('Discard session', style: text.bodySmall),
-                    ),
+                  Glass(
+                    padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                      GestureDetector(
+                        onTap: canFinish
+                            ? () async {
+                                final ok = await controller.finish();
+                                if (ok && context.mounted) Navigator.pop(context);
+                              }
+                            : null,
+                        // Släckt = dämpat material, inte genomskinligt (alpha är ett fönster).
+                        child: Raised(
+                          material: canFinish ? c.raisedActive : c.raisedIdle,
+                          padding: const EdgeInsets.symmetric(vertical: 18),
+                          child: Center(
+                            child: Text('FINISH SESSION',
+                                style: text.labelLarge!.copyWith(color: canFinish ? c.textStrong : c.textFaint)),
+                          ),
+                        ),
+                      ),
+                      if (!canFinish)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Text('Mark every exercise done or skip it first', style: text.labelSmall, textAlign: TextAlign.center),
+                        ),
+                      const SizedBox(height: 4),
+                      Center(
+                        child: TextButton(
+                          onPressed: () => _confirmDiscard(context),
+                          child: Text('Discard session', style: text.bodySmall),
+                        ),
+                      ),
+                    ]),
                   ),
                 ],
               ),
@@ -131,25 +167,34 @@ class WorkoutScreen extends StatelessWidget {
 }
 
 class _SecondaryButton extends StatelessWidget {
-  const _SecondaryButton({required this.label, required this.onTap, this.color});
+  const _SecondaryButton({required this.label, required this.onTap, this.color, this.semanticLabel, this.icon});
   final String label;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
   final Color? color;
+  final String? semanticLabel;
+
+  /// Ersätter texten (minus-tecknet är för litet i Saira).
+  final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
     final c = context.chain;
     final col = color ?? c.secondaryAction;
-    return OutlinedButton(
-      onPressed: onTap,
-      style: OutlinedButton.styleFrom(
-        foregroundColor: col,
-        side: BorderSide(color: col.withValues(alpha: .5)),
-        minimumSize: const Size(0, 48), // stora träffytor
-        shape: const RoundedRectangleBorder(),
-        textStyle: Theme.of(context).textTheme.labelSmall,
+    return Semantics(
+      label: semanticLabel,
+      child: OutlinedButton(
+        onPressed: onTap,
+        style: OutlinedButton.styleFrom(
+          foregroundColor: col,
+          disabledForegroundColor: c.textFaint,
+          side: BorderSide(color: onTap == null ? c.border : col.withValues(alpha: .5)),
+          minimumSize: const Size(0, 48), // stora träffytor
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          shape: const RoundedRectangleBorder(),
+          textStyle: Theme.of(context).textTheme.labelSmall,
+        ),
+        child: icon == null ? Text(label) : Icon(icon, size: 22),
       ),
-      child: Text(label),
     );
   }
 }
@@ -207,6 +252,24 @@ class ExerciseCard extends StatelessWidget {
     final warm = row.sets.where((s) => s.kind == SetKind.warmup).toList();
     final work = row.sets.where((s) => s.kind == SetKind.work).toList();
     final editable = row.status == ExerciseStatus.open;
+    final canDone = row.canMarkDone;
+    bool hasUnlogged(SetKind k) => row.sets.any((s) => s.kind == k && !s.isLogged);
+
+    Widget pair(SetKind kind, String label) => Expanded(
+          child: Row(children: [
+            SizedBox(
+              width: 48,
+              child: _SecondaryButton(
+                label: '−',
+                icon: Icons.remove,
+                semanticLabel: 'Remove last unlogged ${kind == SetKind.warmup ? 'warm-up' : 'work set'}',
+                onTap: hasUnlogged(kind) ? () => controller.removeLastSet(row.id, kind) : null,
+              ),
+            ),
+            const SizedBox(width: 6),
+            Expanded(child: _SecondaryButton(label: label, onTap: () => controller.addSet(row.id, kind))),
+          ]),
+        );
 
     return Glass(
       padding: const EdgeInsets.fromLTRB(10, 8, 12, 16),
@@ -266,9 +329,9 @@ class ExerciseCard extends StatelessWidget {
         if (editable) ...[
           const SizedBox(height: 16),
           Row(children: [
-            Expanded(child: _SecondaryButton(label: '+ WARM-UP', onTap: () => controller.addSet(row.id, SetKind.warmup))),
+            pair(SetKind.warmup, '+ WARM-UP'),
             const SizedBox(width: 12),
-            Expanded(child: _SecondaryButton(label: '+ WORK SET', onTap: () => controller.addSet(row.id, SetKind.work))),
+            pair(SetKind.work, '+ WORK SET'),
           ]),
           const SizedBox(height: 16),
           Row(children: [
@@ -278,20 +341,31 @@ class ExerciseCard extends StatelessWidget {
             const SizedBox(width: 12),
             Expanded(
               flex: 2,
-              child: GestureDetector(
-                onTap: () => controller.markDone(row.id),
-                child: Raised(
-                  material: c.raisedActive,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                    Icon(Icons.check, size: 18, color: c.textStrong),
-                    const SizedBox(width: 8),
-                    Text('DONE', style: text.labelLarge),
-                  ]),
+              child: Semantics(
+                button: true,
+                enabled: canDone,
+                label: 'Exercise done',
+                child: GestureDetector(
+                  onTap: canDone ? () => controller.markDone(row.id) : null,
+                  // Släckt tills varje set är loggat (Niklas 2026-10-03).
+                  child: Raised(
+                    material: canDone ? c.raisedActive : c.raisedIdle,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                      Icon(Icons.check, size: 18, color: canDone ? c.textStrong : c.textFaint),
+                      const SizedBox(width: 8),
+                      Text('DONE', style: text.labelLarge!.copyWith(color: canDone ? c.textStrong : c.textFaint)),
+                    ]),
+                  ),
                 ),
               ),
             ),
           ]),
+          if (!canDone)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text('Log every set — or remove the ones you skip', style: text.labelSmall, textAlign: TextAlign.center),
+            ),
         ] else ...[
           const SizedBox(height: 12),
           _SecondaryButton(label: 'REOPEN', onTap: () => controller.reopen(row.id)),
@@ -376,12 +450,31 @@ class _SetRowState extends State<SetRow> {
   late final Map<InputField, TextEditingController> _ctl;
   late final List<InputField> _fields = inputFields(widget.row.measure);
 
+  /// Målet anges i reps om mätsättet har reps, annars i tid; annars inget mål.
+  late final InputField? _goalField = widget.row.measure.fields.contains(SetField.reps)
+      ? InputField.reps
+      : (widget.row.measure.fields.contains(SetField.secs) ? InputField.secs : null);
+  late final TextEditingController _goal;
+
   UserSettings get _settings => widget.controller.repo.settings();
 
   @override
   void initState() {
     super.initState();
     _ctl = {for (final f in _fields) f: TextEditingController(text: displayValue(f, widget.set.values, widget.row.measure, _settings))};
+    _goal = TextEditingController(text: _goalText(widget.set));
+  }
+
+  String _goalText(SetEntry s) {
+    final f = _goalField, t = s.target;
+    return (f == null || t == null) ? '' : displayValue(f, t, widget.row.measure, _settings);
+  }
+
+  @override
+  void didUpdateWidget(SetRow old) {
+    super.didUpdateWidget(old);
+    // FAIL av → målet är borta; nästa FAIL börjar med tomt fält.
+    if (old.set.target != null && widget.set.target == null) _goal.text = '';
   }
 
   @override
@@ -389,6 +482,7 @@ class _SetRowState extends State<SetRow> {
     for (final c in _ctl.values) {
       c.dispose();
     }
+    _goal.dispose();
     super.dispose();
   }
 
@@ -397,67 +491,77 @@ class _SetRowState extends State<SetRow> {
     widget.controller.setValues(widget.row.id, widget.set.id, applyInput(f, text, s.values, widget.row.measure, _settings));
   }
 
+  /// Tomt fält = FAIL utan mål (målet tas bort, markeringen ligger kvar).
+  void _goalChanged(String text) {
+    final f = _goalField;
+    if (f == null) return;
+    final t = applyInput(f, text, SetValues.empty, widget.row.measure, _settings);
+    widget.controller.setTarget(widget.row.id, widget.set.id, t);
+  }
+
+  InputDecoration _box(ChainTheme c, TextTheme text, {String? hint}) => InputDecoration(
+        hintText: hint,
+        hintStyle: text.titleMedium!.copyWith(color: c.textFaint),
+        filled: true,
+        fillColor: c.background,
+        contentPadding: EdgeInsets.zero,
+        enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: c.borderStrong), borderRadius: BorderRadius.zero),
+        disabledBorder: OutlineInputBorder(borderSide: BorderSide(color: c.border), borderRadius: BorderRadius.zero),
+        focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: c.accent), borderRadius: BorderRadius.zero),
+      );
+
   @override
   Widget build(BuildContext context) {
     final c = context.chain;
     final text = Theme.of(context).textTheme;
     final s = widget.set;
     final locked = s.isLogged || !widget.editable;
+    final failed = s.isLogged && s.target != null;
     final missed = s.isLogged && s.missed(widget.row.measure);
     final ex = widget.controller.exerciseOf(widget.row);
 
-    return Padding(
-      padding: const EdgeInsets.only(top: 10),
-      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        SizedBox(
-          width: 44,
-          child: InkWell(
-            onTap: widget.editable ? () => _setMenu(context) : null,
-            child: Padding(
-              padding: const EdgeInsets.only(top: 12),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(widget.label, style: text.titleMedium!.copyWith(color: s.kind == SetKind.warmup ? c.textMuted : c.textStrong)),
-                if (s.target != null) Text('GOAL', style: text.labelSmall!.copyWith(fontSize: 9, color: c.accent)),
-              ]),
-            ),
+    final main = Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      SizedBox(
+        width: 44,
+        child: InkWell(
+          onTap: widget.editable ? () => _removeSet(context) : null,
+          child: Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: Text(widget.label, style: text.titleMedium!.copyWith(color: s.kind == SetKind.warmup ? c.textMuted : c.textStrong)),
           ),
         ),
-        for (final f in _fields) ...[
-          Expanded(
-            child: Column(children: [
-              SizedBox(
-                height: 48,
-                child: TextField(
-                  controller: _ctl[f],
-                  enabled: !locked,
-                  textAlign: TextAlign.center,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))],
-                  style: text.titleMedium!.copyWith(color: locked ? c.textMuted : c.textStrong),
-                  onChanged: (v) => _changed(f, v),
-                  decoration: InputDecoration(
-                    hintText: _hint(f),
-                    hintStyle: text.titleMedium!.copyWith(color: c.textFaint),
-                    filled: true,
-                    fillColor: c.background,
-                    contentPadding: EdgeInsets.zero,
-                    enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: c.borderStrong), borderRadius: BorderRadius.zero),
-                    disabledBorder: OutlineInputBorder(borderSide: BorderSide(color: c.border), borderRadius: BorderRadius.zero),
-                    focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: c.accent), borderRadius: BorderRadius.zero),
-                  ),
-                ),
+      ),
+      for (final f in _fields) ...[
+        Expanded(
+          child: Column(children: [
+            SizedBox(
+              height: 48,
+              child: TextField(
+                controller: _ctl[f],
+                enabled: !locked,
+                textAlign: TextAlign.center,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))],
+                style: text.titleMedium!.copyWith(color: locked ? c.textMuted : c.textStrong),
+                onChanged: (v) => _changed(f, v),
+                decoration: _box(c, text, hint: _hint(f)),
               ),
-              const SizedBox(height: 4),
-              Text(fieldLabel(f, widget.row.measure, _settings), style: text.labelSmall),
-            ]),
-          ),
-          const SizedBox(width: 6),
-        ],
-        if (ex.unilateral)
-          Padding(
-            padding: const EdgeInsets.only(right: 6),
+            ),
+            const SizedBox(height: 4),
+            Text(fieldLabel(f, widget.row.measure, _settings), style: text.labelSmall),
+          ]),
+        ),
+        const SizedBox(width: 6),
+      ],
+      if (ex.unilateral)
+        Padding(
+          padding: const EdgeInsets.only(right: 6),
+          child: Semantics(
+            button: true,
+            label: 'Side',
             child: GestureDetector(
-              onTap: locked ? null : () => widget.controller.setSide(widget.row.id, s.id, s.side == Side.left ? Side.right : Side.left),
+              // Ingen sida → L → R → ingen sida (Niklas 2026-10-03).
+              onTap: locked ? null : () => widget.controller.cycleSide(widget.row.id, s.id),
               child: Container(
                 width: 36,
                 height: 48,
@@ -467,6 +571,8 @@ class _SetRowState extends State<SetRow> {
               ),
             ),
           ),
+        ),
+      Column(children: [
         GestureDetector(
           onTap: widget.editable ? () => widget.controller.toggleLog(widget.row.id, s.id) : null,
           child: SizedBox(
@@ -481,7 +587,11 @@ class _SetRowState extends State<SetRow> {
                         Icon(Icons.check, size: 20, color: missed ? c.restGold : c.success),
                         if (missed) ...[
                           const SizedBox(width: 4),
-                          Text(_missedText(s), style: text.labelLarge!.copyWith(color: c.restGold, fontSize: 13)),
+                          // Saira saknar ✗ (som ✓) — ikon när inget mål finns.
+                          if (_missedText(s) case final t?)
+                            Text(t, style: text.labelLarge!.copyWith(color: c.restGold, fontSize: 13))
+                          else
+                            Icon(Icons.close, size: 18, color: c.restGold),
                         ],
                       ])
                     : Text('LOG', style: text.labelLarge!.copyWith(fontSize: 13)),
@@ -489,6 +599,63 @@ class _SetRowState extends State<SetRow> {
             ),
           ),
         ),
+        // FAIL finns bara på loggade set: man vet först efteråt att det gick fel.
+        if (s.isLogged) ...[
+          const SizedBox(height: 6),
+          Semantics(
+            button: true,
+            selected: failed,
+            label: 'Fail',
+            child: GestureDetector(
+              onTap: widget.editable ? () => widget.controller.toggleFailed(widget.row.id, s.id) : null,
+              child: Container(
+                width: 72,
+                height: 36,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: c.background,
+                  border: Border.all(color: failed ? c.restGold : c.border),
+                ),
+                child: Text('FAIL', style: text.labelSmall!.copyWith(color: failed ? c.restGold : c.textMuted, letterSpacing: 1.5)),
+              ),
+            ),
+          ),
+        ],
+      ]),
+    ]);
+
+    final goalField = _goalField;
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        main,
+        // GOAL visas när FAIL är tryckt — valfritt: "siktade på 4" ger 3/4.
+        if (failed && goalField != null)
+          Padding(
+            padding: const EdgeInsets.only(left: 44, top: 6),
+            child: Row(children: [
+              Text('GOAL', style: text.labelSmall!.copyWith(color: c.restGold)),
+              const SizedBox(width: 10),
+              SizedBox(
+                width: 72,
+                height: 44,
+                child: TextField(
+                  controller: _goal,
+                  enabled: widget.editable,
+                  textAlign: TextAlign.center,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))],
+                  style: text.titleMedium!.copyWith(color: c.textStrong),
+                  onChanged: _goalChanged,
+                  decoration: _box(c, text, hint: '—'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(fieldLabel(goalField, widget.row.measure, _settings), style: text.labelSmall),
+              const SizedBox(width: 10),
+              Expanded(child: Text('optional', style: text.labelSmall!.copyWith(color: c.textFaint))),
+            ]),
+          ),
       ]),
     );
   }
@@ -498,50 +665,31 @@ class _SetRowState extends State<SetRow> {
         _ => '—',
       };
 
-  String _missedText(SetEntry s) {
-    final goal = s.target?.reps;
-    if (goal != null) return '${s.values.reps ?? 0}/$goal';
-    return '!';
+  /// "3/4" när ett mål finns (reps eller tid i fältets enhet), annars null.
+  String? _missedText(SetEntry s) {
+    final f = _goalField, t = s.target;
+    if (f == null || t == null) return null;
+    final goal = displayValue(f, t, widget.row.measure, _settings);
+    if (goal.isEmpty) return null;
+    final got = displayValue(f, s.values, widget.row.measure, _settings);
+    return '${got.isEmpty ? '0' : got}/$goal';
   }
 
-  Future<void> _setMenu(BuildContext context) async {
-    final m = widget.row.measure;
-    final goalField = m.fields.contains(SetField.reps) ? SetField.reps : (m.fields.contains(SetField.secs) ? SetField.secs : null);
-    final goalCtl = TextEditingController(
-      text: switch (goalField) {
-        SetField.reps => widget.set.target?.reps?.toString() ?? '',
-        SetField.secs => widget.set.target?.secs?.toString() ?? '',
-        _ => '',
-      },
-    );
-    final choice = await showDialog<String>(
+  Future<void> _removeSet(BuildContext context) async {
+    if (widget.set.isLogged) {
+      widget.controller.removeSet(widget.row.id, widget.set.id); // ger felet "Unlog the set before removing it"
+      return;
+    }
+    final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Set ${widget.label}'),
-        content: Column(mainAxisSize: MainAxisSize.min, children: [
-          if (goalField != null)
-            TextField(
-              controller: goalCtl,
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(labelText: goalField == SetField.reps ? 'Goal (reps)' : 'Goal (seconds)'),
-            ),
-        ]),
+        title: Text('Remove set ${widget.label}?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, 'remove'), child: const Text('Remove set')),
-          TextButton(onPressed: () => Navigator.pop(ctx, 'goal'), child: const Text('Save goal')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Remove')),
         ],
       ),
     );
-    final goal = int.tryParse(goalCtl.text.trim());
-    goalCtl.dispose();
-    if (choice == 'remove') {
-      widget.controller.removeSet(widget.row.id, widget.set.id);
-    } else if (choice == 'goal') {
-      widget.controller.setTarget(
-        widget.row.id,
-        widget.set.id,
-        goal == null ? null : (goalField == SetField.reps ? SetValues(reps: goal) : SetValues(secs: goal)),
-      );
-    }
+    if (ok == true) widget.controller.removeSet(widget.row.id, widget.set.id);
   }
 }

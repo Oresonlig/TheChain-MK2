@@ -70,7 +70,7 @@ String buildCopyText({
       if (set.kind == SetKind.warmup) {
         lines.add('  W${++w}: $line$side');
       } else {
-        lines.add('  S${++s}: $line$side${set.excludeFromRecords ? ' ✗' : ''}');
+        lines.add('  S${++s}: $line$side');
       }
     }
     lines.add('');

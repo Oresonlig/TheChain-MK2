@@ -81,9 +81,26 @@ Workout _mapSet(Workout w, String rowId, SetId setId, SetEntry Function(SetEntry
 Workout setValues(Workout w, String rowId, SetId setId, SetValues values) =>
     _mapSet(w, rowId, setId, (s) => s.copyWith(values: values));
 
-/// Sätter mål för ett set ("4 reps").
-Workout setTarget(Workout w, String rowId, SetId setId, SetValues target) =>
-    _mapSet(w, rowId, setId, (s) => s.copyWith(target: target));
+/// Sätter mål för ett set ("4 reps"). null tar bort målet OCH fail-markeringen.
+Workout setTarget(Workout w, String rowId, SetId setId, SetValues? target) =>
+    _mapSet(w, rowId, setId, (s) => s.withTarget(target));
+
+/// FAIL på ett loggat set: på = missat (tomt mål tills användaren anger ett),
+/// av = varken fail eller mål. Påverkar aldrig PR — den räknas på det utförda.
+Workout setFailed(Workout w, String rowId, SetId setId, bool failed) => _mapSet(w, rowId, setId, (s) {
+      if (failed && !s.isLogged) throw const WorkoutError('Log the set before marking it failed');
+      return s.withTarget(failed ? (s.target ?? SetValues.empty) : null);
+    });
+
+/// L/R för unilaterala övningar: ingen sida → L → R → ingen sida.
+Workout cycleSide(Workout w, String rowId, SetId setId) => _mapSet(w, rowId, setId, (s) {
+      if (s.isLogged) throw const WorkoutError('Unlog the set before changing side');
+      return s.withSide(switch (s.side) {
+        null => Side.left,
+        Side.left => Side.right,
+        Side.right => null,
+      });
+    });
 
 /// Loggar settet. [bodyweightKg] fångas för mätsätt med kroppsvikt.
 Workout logSet(Workout w, String rowId, SetId setId, {double? bodyweightKg}) =>
@@ -117,8 +134,21 @@ Workout removeSet(Workout w, String rowId, SetId setId) => _mapRow(w, rowId, (r)
       return r.copyWith(sets: r.sets.where((x) => x.id != setId).toList());
     });
 
-Workout setStatus(Workout w, String rowId, ExerciseStatus status) =>
-    _mapRow(w, rowId, (r) => r.copyWith(status: status));
+/// Tar bort sista ologgade set av sorten ("− WORK SET"). Loggade set rörs aldrig.
+Workout removeLastUnlogged(Workout w, String rowId, SetKind kind) => _mapRow(w, rowId, (r) {
+      final i = r.sets.lastIndexWhere((s) => s.kind == kind && !s.isLogged);
+      if (i < 0) throw const WorkoutError('No unlogged set to remove');
+      return r.copyWith(sets: [...r.sets.take(i), ...r.sets.skip(i + 1)]);
+    });
+
+/// Klar kräver att varje set är loggat och att det finns minst ett (Niklas
+/// 2026-10-03). Vill man inte göra resten: ta bort seten eller SKIP.
+Workout setStatus(Workout w, String rowId, ExerciseStatus status) => _mapRow(w, rowId, (r) {
+      if (status == ExerciseStatus.done && !r.canMarkDone) {
+        throw const WorkoutError('Log every set first — or remove the ones you skip');
+      }
+      return r.copyWith(status: status);
+    });
 
 /// Tillfälligt byte: bara det här passet. Programmet ändras inte. Nya set
 /// skapas för den nya övningen; loggade set på raden blockerar bytet så att

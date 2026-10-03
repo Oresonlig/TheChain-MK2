@@ -60,6 +60,16 @@ void main() {
       expect(prs[bench]!.set.missed(Measure.weight), isTrue);
     });
 
+    test('FAIL utan mål: utförda reps kan bli PR; 0 reps (försöket gick inte) blir aldrig PR', () {
+      final prs = personalRecords([
+        entry(d1, [ex(bench, [work(const SetValues(weight: 100, reps: 1))])]),
+        entry(d2, [ex(bench, [work(const SetValues(weight: 140, reps: 0), target: SetValues.empty)])]),
+        entry(d2.add(const Duration(days: 1)), [ex(bench, [work(const SetValues(weight: 100, reps: 3), target: SetValues.empty)])]),
+      ]);
+      expect(prs[bench]!.value, 100);
+      expect(prs[bench]!.set.values.reps, 3); // 3 × 100 slår 1 × 100 trots FAIL
+    });
+
     test('uppvärmning, exkluderade och överhoppade räknas aldrig', () {
       final prs = personalRecords([
         entry(d1, [

@@ -68,13 +68,15 @@ class _ChainScreenState extends State<ChainScreen> {
             return Center(
               child: Padding(
                 padding: const EdgeInsets.all(24),
-                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                child: Glass(
+                  child: Column(mainAxisSize: MainAxisSize.min, children: [
                   Text('No program yet', style: text.titleLarge),
                   const SizedBox(height: 8),
                   Text('Import your data from the website to get started.', style: text.bodySmall, textAlign: TextAlign.center),
                   const SizedBox(height: 16),
                   TextButton(onPressed: () => _openDev(context), child: const Text('OPEN DATA CHECK')),
-                ]),
+                  ]),
+                ),
               ),
             );
           }

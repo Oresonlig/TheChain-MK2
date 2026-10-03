@@ -70,7 +70,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
   List<Widget> _records(Exercise? Function(ExerciseId) exerciseOf, List<HistoryEntry> history, Set<ExerciseId> hidden,
       UserSettings s, ChainTheme c, TextTheme text) {
     final prs = personalRecords(history, hidden: hidden).values.toList();
-    if (prs.isEmpty) return [Text('No records yet', style: text.bodySmall)];
+    if (prs.isEmpty) return [Glass(child: Text('No records yet', style: text.bodySmall))];
     final byGroup = <MuscleGroup, List<PersonalRecord>>{};
     for (final pr in prs) {
       byGroup.putIfAbsent(exerciseOf(pr.exerciseId)?.group ?? MuscleGroup.other, () => []).add(pr);
@@ -104,7 +104,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
 
   List<Widget> _historyList(List<HistoryEntry> history, UserSettings s, ChainTheme c, TextTheme text) {
     final entries = [...history]..sort((a, b) => b.date.compareTo(a.date));
-    if (entries.isEmpty) return [Text('No history yet', style: text.bodySmall)];
+    if (entries.isEmpty) return [Glass(child: Text('No history yet', style: text.bodySmall))];
     final program = widget.app.repo!.program();
     String name(SessionId id) => program.sessionById(id)?.name ?? id.value;
     return [

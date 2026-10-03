@@ -69,9 +69,10 @@ class SetEntry {
   /// Det som faktiskt utfördes. PR räknas alltid på detta.
   final SetValues values;
 
-  /// Valfritt mål ("4 reps", "90 s"). Ersätter MK1:s fail-flagga: ett set är
-  /// missat när det utförda inte når målet (beslut 2026-10-02). 100 kg × 3 av
-  /// målet 4 räknas som 100 kg × 3 och visas "3/4".
+  /// Satt = användaren har tryckt FAIL. Målet är valfritt ("4 reps", "90 s"):
+  /// tomt mål = missat utan angivet mål (✗), mål 4 med 3 utförda = "3/4 ✗".
+  /// PR räknas ändå alltid på det utförda — 100 kg × 3 är 100 kg × 3
+  /// (beslut 2026-10-02, bekräftat 2026-10-03).
   final SetValues? target;
 
   /// Användaren har tryckt Log. Bara loggade set hamnar i historik och PR.
@@ -87,18 +88,43 @@ class SetEntry {
   /// Kroppsvikt när settet loggades (för mätsätt med kroppsvikt + extra).
   final double? bodyweightKg;
 
-  /// Missat = något mätt fält med mål nådde inte målet.
+  /// Missat = FAIL tryckt utan mål, eller något mätt fält nådde inte sitt mål.
   bool missed(Measure m) {
     final t = target;
     if (t == null) return false;
+    var hasGoal = false;
     for (final f in m.fields) {
       final goal = t.field(f);
       if (goal == null) continue;
+      hasGoal = true;
       final got = values.field(f);
       if (got == null || got < goal) return true;
     }
-    return false;
+    return !hasGoal;
   }
+
+  /// copyWith kan inte nollställa fält — de två som kan bli null igen har egna.
+  SetEntry withTarget(SetValues? t) => SetEntry(
+        id: id,
+        kind: kind,
+        values: values,
+        target: t,
+        isLogged: isLogged,
+        excludeFromRecords: excludeFromRecords,
+        side: side,
+        bodyweightKg: bodyweightKg,
+      );
+
+  SetEntry withSide(Side? s) => SetEntry(
+        id: id,
+        kind: kind,
+        values: values,
+        target: target,
+        isLogged: isLogged,
+        excludeFromRecords: excludeFromRecords,
+        side: s,
+        bodyweightKg: bodyweightKg,
+      );
 
   SetEntry copyWith({
     SetValues? values,

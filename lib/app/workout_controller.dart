@@ -66,31 +66,12 @@ class WorkoutController extends ChangeNotifier {
   // ── set ──
   void setValues(String rowId, SetId setId, SetValues v) => _apply(() => setValuesOp(workout, rowId, setId, v));
 
-  void setTarget(String rowId, SetId setId, SetValues? target) => _apply(() {
-        final w = workout;
-        return w.copyWith(exercises: [
-          for (final r in w.exercises)
-            if (r.id != rowId)
-              r
-            else
-              r.copyWith(sets: [
-                for (final s in r.sets)
-                  if (s.id != setId)
-                    s
-                  else
-                    SetEntry(
-                      id: s.id,
-                      kind: s.kind,
-                      values: s.values,
-                      target: target,
-                      isLogged: s.isLogged,
-                      excludeFromRecords: s.excludeFromRecords,
-                      side: s.side,
-                      bodyweightKg: s.bodyweightKg,
-                    ),
-              ]),
-        ]);
-      });
+  void setTarget(String rowId, SetId setId, SetValues? target) => _apply(() => setTargetOp(workout, rowId, setId, target));
+
+  void toggleFailed(String rowId, SetId setId) {
+    final s = workout.exercises.firstWhere((x) => x.id == rowId).sets.firstWhere((x) => x.id == setId);
+    _apply(() => setFailed(workout, rowId, setId, s.target == null));
+  }
 
   /// Loggar eller låser upp ett set. Kroppsvikt fångas för kroppsviktsmätsätt.
   void toggleLog(String rowId, SetId setId) {
@@ -104,16 +85,18 @@ class WorkoutController extends ChangeNotifier {
     _apply(() => logSet(workout, rowId, setId, bodyweightKg: bw));
   }
 
-  void setSide(String rowId, SetId setId, Side side) => _apply(() {
-        final w = workout;
-        return w.copyWith(exercises: [
-          for (final r in w.exercises)
-            r.id != rowId ? r : r.copyWith(sets: [for (final s in r.sets) s.id == setId ? s.copyWith(side: side) : s]),
-        ]);
-      });
+  void cycleSide(String rowId, SetId setId) => _apply(() => cycleSideOp(workout, rowId, setId));
 
   void addSet(String rowId, SetKind kind) => _apply(() => addSetOp(workout, rowId, kind, newId));
   void removeSet(String rowId, SetId setId) => _apply(() => removeSetOp(workout, rowId, setId));
+  void removeLastSet(String rowId, SetKind kind) => _apply(() => removeLastUnlogged(workout, rowId, kind));
+
+  /// UI:t visar felet (snackbar) och kvitterar det här.
+  String? takeError() {
+    final e = error;
+    error = null;
+    return e;
+  }
 
   // ── övningar ──
   void markDone(String rowId) {
@@ -211,6 +194,8 @@ class WorkoutController extends ChangeNotifier {
 
 // Namnen på domänens operationer krockar med metoderna ovan — alias här.
 Workout setValuesOp(Workout w, String r, SetId s, SetValues v) => setValues(w, r, s, v);
+Workout setTargetOp(Workout w, String r, SetId s, SetValues? t) => setTarget(w, r, s, t);
+Workout cycleSideOp(Workout w, String r, SetId s) => cycleSide(w, r, s);
 Workout addSetOp(Workout w, String r, SetKind k, IdGen g) => addSet(w, r, k, g);
 Workout removeSetOp(Workout w, String r, SetId s) => removeSet(w, r, s);
 Workout swapTemporarilyOp(Workout w, String r, Exercise to, Iterable<HistoryEntry> h, IdGen g) =>

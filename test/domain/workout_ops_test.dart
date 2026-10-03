@@ -139,20 +139,88 @@ void main() {
   });
 
   group('avsluta', () {
-    test('kräver att alla rader är gjorda eller överhoppade; tomma set följer inte med', () {
+    test('kräver att alla rader är gjorda eller överhoppade; ologgade set följer inte med', () {
       var w = startWorkout(sessionB, cat, const [], now, gen);
       expect(() => finishWorkout(w, now, const []), throwsA(isA<WorkoutError>()));
       final r0 = w.exercises[0];
       w = logSet(setValues(w, r0.id, r0.sets.first.id, const SetValues(secs: 75)), r0.id, r0.sets.first.id);
       w = setStatus(w, r0.id, ExerciseStatus.done);
       w = setStatus(w, w.exercises[1].id, ExerciseStatus.skipped);
-      w = setStatus(w, w.exercises[2].id, ExerciseStatus.done);
+      w = setStatus(w, w.exercises[2].id, ExerciseStatus.skipped);
       final res = finishWorkout(w, now.add(const Duration(hours: 1)), const []);
       final done = res.entry.workout;
       expect(done.isFinished, isTrue);
       expect(done.exercises[0].sets.length, 1);
-      expect(done.exercises[2].sets, isEmpty);
+      expect(done.exercises[1].sets, isEmpty); // överhoppad: ologgade set släpps
       expect(() => setStatus(done, done.exercises[0].id, ExerciseStatus.open), throwsA(isA<WorkoutError>()));
+    });
+  });
+
+  group('DONE, minus-knapparna, FAIL och L/R (Niklas 2026-10-03)', () {
+    late Workout w;
+    late WorkoutExercise r;
+    setUp(() {
+      w = startWorkout(sessionB, cat, const [], now, gen);
+      r = w.exercises[2]; // row: 2 uppvärmning + 1 arbete, unilateral
+    });
+    WorkoutExercise row() => w.exercises[2];
+    Workout logIt(Workout w, SetId id) => logSet(setValues(w, r.id, id, const SetValues(weight: 40, reps: 8)), r.id, id);
+
+    test('DONE kräver att varje set är loggat och minst ett set', () {
+      expect(() => setStatus(w, r.id, ExerciseStatus.done), throwsA(isA<WorkoutError>()));
+      w = logIt(w, r.sets.last.id);
+      expect(row().canMarkDone, isFalse); // uppvärmningarna ologgade
+      expect(() => setStatus(w, r.id, ExerciseStatus.done), throwsA(isA<WorkoutError>()));
+      w = removeLastUnlogged(w, r.id, SetKind.warmup);
+      w = removeLastUnlogged(w, r.id, SetKind.warmup);
+      expect(row().canMarkDone, isTrue);
+      w = setStatus(w, r.id, ExerciseStatus.done);
+      expect(row().status, ExerciseStatus.done);
+      // Inga set alls: aldrig DONE — då är det SKIP.
+      w = removeLastUnlogged(w, w.exercises[0].id, SetKind.work);
+      expect(w.exercises[0].canMarkDone, isFalse);
+    });
+
+    test('minus tar bort SISTA OLOGGADE setet av sorten; loggade rörs aldrig', () {
+      for (var i = 0; i < 11; i++) {
+        w = addSet(w, r.id, SetKind.work, gen); // "råkade klicka i 13 set"
+      }
+      final firstWork = row().sets.firstWhere((s) => s.kind == SetKind.work).id;
+      w = logIt(w, firstWork);
+      while (row().sets.any((s) => s.kind == SetKind.work && !s.isLogged)) {
+        w = removeLastUnlogged(w, r.id, SetKind.work);
+      }
+      expect(row().sets.where((s) => s.kind == SetKind.work).map((s) => s.id), [firstWork]);
+      expect(() => removeLastUnlogged(w, r.id, SetKind.work), throwsA(isA<WorkoutError>()));
+      expect(row().sets.where((s) => s.kind == SetKind.warmup).length, 2);
+    });
+
+    test('FAIL: bara på loggat set; tomt mål = ✗; mål 4 av 3 = missat; av = inget mål', () {
+      final sid = r.sets.last.id;
+      expect(() => setFailed(w, r.id, sid, true), throwsA(isA<WorkoutError>()));
+      w = logSet(setValues(w, r.id, sid, const SetValues(weight: 100, reps: 3)), r.id, sid);
+      w = setFailed(w, r.id, sid, true);
+      expect(row().sets.last.target, isNotNull);
+      expect(row().sets.last.missed(Measure.weight), isTrue);
+      w = setTarget(w, r.id, sid, const SetValues(reps: 4));
+      expect(row().sets.last.missed(Measure.weight), isTrue);
+      w = setTarget(w, r.id, sid, const SetValues(reps: 3));
+      expect(row().sets.last.missed(Measure.weight), isFalse); // målet nått
+      w = setFailed(w, r.id, sid, false);
+      expect(row().sets.last.target, isNull);
+      expect(row().sets.last.missed(Measure.weight), isFalse);
+    });
+
+    test('L/R cyklar: ingen → L → R → ingen; låst när settet är loggat', () {
+      final sid = r.sets.first.id;
+      w = cycleSide(w, r.id, sid);
+      expect(row().sets.first.side, Side.left);
+      w = cycleSide(w, r.id, sid);
+      expect(row().sets.first.side, Side.right);
+      w = cycleSide(w, r.id, sid);
+      expect(row().sets.first.side, isNull);
+      w = logIt(w, sid);
+      expect(() => cycleSide(w, r.id, sid), throwsA(isA<WorkoutError>()));
     });
 
     test('vilodag med och utan anteckning', () {

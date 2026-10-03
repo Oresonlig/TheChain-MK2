@@ -141,9 +141,22 @@ void main() {
     await tester.pump();
     expect(find.byIcon(Icons.check), findsWidgets);
 
-    // Klarmarkera alla fyra övningarna.
-    for (var i = 0; i < 4; i++) {
-      await tester.tap(find.text('DONE').last);
+    // DONE är släckt så länge uppvärmningarna är ologgade: ta bort dem med "−".
+    await tester.tap(find.text('DONE').last);
+    await tester.pump();
+    expect(app.repo!.activeWorkouts().single.exercises.first.status, ExerciseStatus.open);
+    WorkoutExercise first() => app.repo!.activeWorkouts().single.exercises.first;
+    for (var i = 0; i < 10 && !first().canMarkDone; i++) {
+      final hasWarm = first().sets.any((s) => s.kind == SetKind.warmup && !s.isLogged);
+      await tester.tap(hasWarm ? find.byIcon(Icons.remove).first : find.byIcon(Icons.remove).last);
+      await tester.pump();
+    }
+    expect(first().sets.map((s) => s.isLogged), [true]); // bara det loggade setet kvar
+    await tester.tap(find.text('DONE').last);
+    await tester.pump();
+    // Resten hoppas över.
+    for (var i = 0; i < 3; i++) {
+      await tester.tap(find.text('SKIP').last);
       await tester.pump();
     }
     await tester.tap(find.text('FINISH SESSION'));

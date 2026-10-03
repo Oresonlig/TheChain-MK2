@@ -28,7 +28,10 @@ void main() {
 
   test('set på en rad, med missat mål och +F', () {
     expect(fmtSet(s(const SetValues(weight: 100, reps: 3, forcedReps: 1), target: const SetValues(reps: 4)), Measure.weight, kg),
-        '100 kg × 3/4 +1');
+        '100 kg × 3/4 +1 ✗');
+    // FAIL utan mål = bara ✗; målet nått = ingen markering.
+    expect(fmtSet(s(const SetValues(weight: 140, reps: 0), target: SetValues.empty), Measure.weight, kg), '140 kg × 0 ✗');
+    expect(fmtSet(s(const SetValues(weight: 100, reps: 4), target: const SetValues(reps: 4)), Measure.weight, kg), '100 kg × 4');
     expect(fmtSet(s(const SetValues(extra: 10, secs: 60)), Measure.bodyweightTimed, kg), 'BW + 10 kg · 60 s');
     expect(fmtSet(s(const SetValues(secs: 1950, dist: 5.2)), Measure.cardio, kg), '32.5 min · 5.2 km');
     expect(fmtSet(s(const SetValues(temp: 90, secs: 900)), Measure.sauna, kg), '90 °C · 15 min');

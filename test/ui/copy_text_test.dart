@@ -55,7 +55,7 @@ void main() {
     expect(lines[0], '💪 The Chain — Back Heavy + Biceps');
     expect(lines[1], '📅 Fri, 2 Oct');
     expect(lines[2], startsWith('🕒 20:15 — '));
-    expect(text, contains('Deadlift\n  W1: 100 kg × 5\n  S1: 180 kg × 3/4\n'));
+    expect(text, contains('Deadlift\n  W1: 100 kg × 5\n  S1: 180 kg × 3/4 ✗\n'));
     expect(text, contains('Dead Hang\n  S1: BW + 10 kg · 60 s\n'));
     expect(text, contains('Unilateral Row (Cable) +\n  S1: 40 kg × 10 (L)'));
     expect(text, isNot(contains('ex_skip')));

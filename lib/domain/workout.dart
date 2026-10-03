@@ -44,6 +44,9 @@ class WorkoutExercise {
 
   bool get isExtra => slotId == null;
 
+  /// DONE får tryckas när alla set är loggade och det finns minst ett.
+  bool get canMarkDone => sets.isNotEmpty && sets.every((s) => s.isLogged);
+
   WorkoutExercise copyWith({
     ExerciseId? exerciseId,
     Measure? measure,

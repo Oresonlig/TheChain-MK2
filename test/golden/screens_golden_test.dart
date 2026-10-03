@@ -142,6 +142,35 @@ void main() {
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/workout.png'));
   });
 
+  testWidgets('passvyn: FAIL + GOAL, minus-par, släckt DONE; botten med glas', (tester) async {
+    await _loadSaira();
+    final b = FakeBackend(mk1: {...mk1(), 'sessionOrder': ['A', 'B']});
+    final app = AppController(b);
+    await _phone(tester, TheChainApp(app: app, emailOf: () => ''));
+    await tester.runAsync(() async {
+      await app.start();
+      await app.signIn('x', 'secret');
+      await pumpEventQueue();
+      await app.importFromWebsite();
+    });
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('START SESSION'));
+    await tester.pumpAndSettle();
+    final fields = find.byType(TextField);
+    await tester.enterText(fields.at(0), '100');
+    await tester.enterText(fields.at(1), '3');
+    await tester.tap(find.text('LOG').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('FAIL').first);
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).at(3), '4'); // GOAL-fältet efter setets tre fält
+    await tester.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/workout_fail.png'));
+    await tester.drag(find.byType(ListView).last, const Offset(0, -3000));
+    await tester.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/workout_bottom.png'));
+  });
+
   testWidgets('dev home efter import', (tester) async {
     await _loadSaira();
     final b = FakeBackend(mk1: mk1());
