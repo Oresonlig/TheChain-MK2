@@ -152,7 +152,12 @@ class TableSync {
               RemoteRow(id: id, stamp: s.stamp, deleted: s.isDeleted, data: s.value),
         ];
         final res = await remote.push(table, rows);
-        _state.dirty.removeAll(res.accepted);
+        // Bara det som skickades är kvitterat: en lokal ändring som kom under
+        // pushen har nyare stämpel och ligger kvar som väntande.
+        final sent = {for (final r in rows) r.id: r.stamp};
+        for (final id in res.accepted) {
+          if (_state.items[id]?.stamp == sent[id]) _state.dirty.remove(id);
+        }
         pushed += res.accepted.length;
         if (res.stale.isEmpty) break;
       }

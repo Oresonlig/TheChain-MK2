@@ -6,10 +6,13 @@ import 'package:the_chain/data/sync_engine.dart';
 import '../data/fake_remote.dart';
 
 class FakeBackend implements Backend {
-  FakeBackend({this.mk1});
+  FakeBackend({this.mk1, FakeRemote? server, this.device = 'phone'}) : server = server ?? FakeRemote();
 
   final Map<String, Object?>? mk1;
-  final server = FakeRemote();
+  final FakeRemote server;
+
+  /// Enhets-id — två FakeBackend med samma server = två telefoner.
+  final String device;
   final _users = StreamController<String?>.broadcast();
   final _stores = <String, InMemoryLocalStore>{};
   String? _uid;
@@ -40,7 +43,7 @@ class FakeBackend implements Backend {
   @override
   Future<LocalStore> localStoreFor(String userId) async => _stores.putIfAbsent(userId, InMemoryLocalStore.new);
   @override
-  Future<String> deviceId() async => 'phone';
+  Future<String> deviceId() async => device;
   @override
   Future<Map<String, Object?>?> fetchMk1State() async => mk1;
 }

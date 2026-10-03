@@ -45,6 +45,8 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(content: Text(e)));
+    // Avslutat/kastat på en annan enhet: tillbaka till kedjan.
+    if (controller.closedElsewhere) Navigator.maybePop(context);
   }
 
   @override

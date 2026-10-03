@@ -28,6 +28,19 @@ void main() {
     expect(server.table(bw)['2026-10-02']!.data, {'kg': 100.3});
   });
 
+  test('ändring MEDAN push pågår ligger kvar som väntande och skickas sen', () async {
+    final server = FakeRemote();
+    final phone = await device(server, 'phone');
+    await phone[bw].put('d', {'kg': 100}, at(1));
+    server.duringPush = () => phone[bw].put('d', {'kg': 101}, at(2));
+    await phone[bw].sync();
+    expect(server.table(bw)['d']!.data, {'kg': 100}); // pushen skickade den äldre
+    expect(phone[bw].pendingCount, 1, reason: 'den nyare får inte kvitteras som skickad');
+    await phone[bw].sync();
+    expect(server.table(bw)['d']!.data, {'kg': 101});
+    expect(phone[bw].pendingCount, 0);
+  });
+
   test('LÄS FÖRE SKRIV: ingen push innan en lyckad pull denna session', () async {
     final server = FakeRemote()..offline = true;
     final phone = await device(server, 'phone');

@@ -32,9 +32,19 @@ abstract class Backend {
 enum Phase { signedOut, loading, ready }
 
 class AppController extends ChangeNotifier {
-  AppController(this.backend, {DateTime Function()? clock, this.updater}) : _now = clock ?? DateTime.now;
+  AppController(this.backend, {DateTime Function()? clock, this.updater, this.syncDelay = const Duration(seconds: 3)})
+      : _now = clock ?? DateTime.now;
 
   final Backend backend;
+
+  /// Väntetid efter senaste ändringen i ett pass innan synk — en serie snabba
+  /// tryck blir ett anrop, inte tio.
+  final Duration syncDelay;
+  Timer? _syncTimer;
+  bool _syncAgain = false;
+
+  /// Passvyn som är öppen just nu (läses om när synken hämtat något nytt).
+  WorkoutController? _openWorkout;
 
   /// Självuppdatering (null i tester och lokala byggen).
   final Updater? updater;
@@ -112,6 +122,8 @@ class AppController extends ChangeNotifier {
 
   Future<void> signOut() async {
     await backend.signOut();
+    _syncTimer?.cancel();
+    _openWorkout = null;
     repo = null;
     phase = Phase.signedOut;
     notifyListeners();
@@ -119,7 +131,13 @@ class AppController extends ChangeNotifier {
 
   Future<void> syncNow() async {
     final r = repo;
-    if (r == null || busy) return;
+    if (r == null) return;
+    if (busy) {
+      _syncAgain = true; // en ändring kom under pågående synk — kör igen efteråt
+      return;
+    }
+    _syncTimer?.cancel();
+    _syncTimer = null;
     busy = true;
     status = 'Syncing…';
     notifyListeners();
@@ -128,8 +146,24 @@ class AppController extends ChangeNotifier {
     status = bad == 0 ? 'Synced' : 'Offline — changes are saved on this device';
     if (bad == 0) lastSync = _now();
     busy = false;
+    if (reports.values.any((x) => x.localChanged)) _openWorkout?.reloadFromRepo();
     notifyListeners();
+    if (_syncAgain && repo != null) {
+      _syncAgain = false;
+      await syncNow();
+    }
   }
+
+  /// Synk strax efter senaste ändringen (pågående pass når molnet medan man
+  /// tränar, inte först vid FINISH — beslut 2026-10-02).
+  void scheduleSync() {
+    if (repo == null) return;
+    _syncTimer?.cancel();
+    _syncTimer = Timer(syncDelay, syncNow);
+  }
+
+  /// Appen kommer tillbaka från bakgrunden: hämta det andra enheter ändrat.
+  Future<void> onResume() => syncNow();
 
   /// Engångsimport från hemsidan (MK1). Kan köras om under testfasen.
   Future<void> importFromWebsite() async {
@@ -181,17 +215,22 @@ class AppController extends ChangeNotifier {
         newId,
       );
       r.saveActiveWorkout(w, _now());
+      scheduleSync(); // andra enheter ska se att passet pågår
     }
-    return WorkoutController(
+    late final WorkoutController wc;
+    wc = WorkoutController(
       repo: r,
       workout: w,
       newId: newId,
       clock: _now,
+      onChanged: scheduleSync,
       onFinished: () async {
+        if (identical(_openWorkout, wc)) _openWorkout = null;
         notifyListeners();
         await syncNow();
       },
     );
+    return _openWorkout = wc;
   }
 
   /// Undo av ett avslutat pass: blir pågående igen med allt loggat kvar. Kedjan
@@ -246,6 +285,7 @@ class AppController extends ChangeNotifier {
 
   @override
   void dispose() {
+    _syncTimer?.cancel();
     _sub?.cancel();
     super.dispose();
   }

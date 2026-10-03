@@ -14,6 +14,7 @@ class WorkoutController extends ChangeNotifier {
     required this.workout,
     required this.newId,
     required this.onFinished,
+    this.onChanged,
     DateTime Function()? clock,
   }) : _now = clock ?? DateTime.now {
     expandedRowId = _firstOpen();
@@ -25,6 +26,14 @@ class WorkoutController extends ChangeNotifier {
 
   /// Anropas efter avslut (t.ex. synk + tillbaka till kedjan).
   final Future<void> Function() onFinished;
+
+  /// Anropas efter varje sparad ändring (appen schemalägger en synk).
+  final void Function()? onChanged;
+
+  /// Passet avslutades eller kastades på en annan enhet — inga fler ändringar,
+  /// annars skulle en sparning väcka det till liv igen.
+  bool closedElsewhere = false;
+  bool _disposed = false;
 
   /// Aktuellt läge. Ändras bara via metoderna nedan (som sparar direkt).
   Workout workout;
@@ -48,14 +57,42 @@ class WorkoutController extends ChangeNotifier {
   }
 
   void _apply(Workout Function() op) {
+    if (closedElsewhere) {
+      error = _closedMessage;
+      notifyListeners();
+      return;
+    }
     try {
       workout = op();
       error = null;
       repo.saveActiveWorkout(workout, _now());
+      onChanged?.call();
     } on WorkoutError catch (e) {
       error = e.message;
     }
     notifyListeners();
+  }
+
+  static const _closedMessage = 'This session was finished or discarded on another device';
+
+  /// Läser om passet efter en synk som ändrade lokal data (annan enhet).
+  void reloadFromRepo() {
+    if (_disposed || closedElsewhere || workout.isFinished) return;
+    final fresh = repo.activeWorkouts().where((w) => w.id == workout.id).firstOrNull;
+    if (fresh == null) {
+      closedElsewhere = true;
+      error = _closedMessage;
+    } else {
+      workout = fresh;
+      if (!workout.exercises.any((r) => r.id == expandedRowId)) expandedRowId = _firstOpen();
+    }
+    notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
   }
 
   void expand(String rowId) {
@@ -157,11 +194,13 @@ class WorkoutController extends ChangeNotifier {
     final t = text.trim();
     if (t.isEmpty) return;
     await repo.saveNote(ExerciseNote(id: newId(), exerciseId: id, text: t, createdAt: _now(), pinned: pinned), _now());
+    onChanged?.call();
     notifyListeners();
   }
 
   Future<void> deleteNote(ExerciseNote n) async {
     await repo.deleteNote(n.id, _now());
+    onChanged?.call();
     notifyListeners();
   }
 
@@ -169,6 +208,11 @@ class WorkoutController extends ChangeNotifier {
   bool get canFinish => workout.canFinish;
 
   Future<bool> finish() async {
+    if (closedElsewhere) {
+      error = _closedMessage;
+      notifyListeners();
+      return false;
+    }
     try {
       final res = finishWorkout(workout, _now(), repo.notes());
       await repo.saveHistory(res.entry, _now());
@@ -187,7 +231,7 @@ class WorkoutController extends ChangeNotifier {
   }
 
   Future<void> discard() async {
-    await repo.discardActiveWorkout(workout, _now());
+    if (!closedElsewhere) await repo.discardActiveWorkout(workout, _now());
     await onFinished();
   }
 }

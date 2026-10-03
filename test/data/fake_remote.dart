@@ -11,12 +11,18 @@ class FakeRemote implements Remote {
   bool offline = false;
   int pushCalls = 0;
 
+  /// Körs medan en push är "på väg" (för att simulera en ändring under nätanropet).
+  Future<void> Function()? duringPush;
+
   Map<String, RemoteRow> table(String t) => _tables.putIfAbsent(t, () => {});
 
   @override
   Future<PushResult> push(String t, List<RemoteRow> rows) async {
     if (offline) throw Exception('offline');
     pushCalls++;
+    final hook = duringPush;
+    duringPush = null;
+    if (hook != null) await hook();
     final accepted = <String>[], stale = <String>[];
     for (final r in rows) {
       final cur = table(t)[r.id];
