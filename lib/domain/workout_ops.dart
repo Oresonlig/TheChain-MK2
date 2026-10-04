@@ -218,3 +218,15 @@ RestEntry completeRest(Session session, DateTime now, {String? note}) {
   final text = note?.trim();
   return RestEntry(date: now, sessionId: session.id, note: (text == null || text.isEmpty) ? null : text);
 }
+
+/// Kortaste godtagbara anledning för att hoppa över ett pass ("x" duger inte).
+const kMinSkipReason = 3;
+
+/// Hoppar över ett pass. Vilodagen kan inte hoppas över — den är redan bara
+/// en markering. Anledningen är obligatorisk.
+SkippedEntry skippedEntry(Session session, DateTime now, String reason) {
+  if (session.isRest) throw const WorkoutError('A forced rest day cannot be skipped');
+  final text = reason.trim();
+  if (text.length < kMinSkipReason) throw const WorkoutError('Write a reason for skipping');
+  return SkippedEntry(date: now, sessionId: session.id, reason: text);
+}

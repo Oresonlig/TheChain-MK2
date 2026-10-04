@@ -346,6 +346,23 @@ class AppController extends ChangeNotifier {
     await syncNow();
   }
 
+  /// Hoppar över ett pass med obligatorisk anledning. Ett påbörjat pass måste
+  /// kasseras först — aldrig två utvägar samtidigt.
+  Future<void> skipSession(SessionId sessionId, String reason) async {
+    final r = repo!;
+    if (r.activeWorkoutFor(sessionId) != null) throw const WorkoutError('Discard the started session first');
+    final session = r.program().sessionById(sessionId)!;
+    await r.saveHistory(skippedEntry(session, _now(), reason), _now());
+    notifyListeners();
+    await syncNow();
+  }
+
+  Future<void> undoSkip(SkippedEntry entry) async {
+    await repo!.deleteHistory(entry, _now());
+    notifyListeners();
+    await syncNow();
+  }
+
   Future<void> markRestDone(SessionId sessionId, {String? note}) async {
     final r = repo!;
     final session = r.program().sessionById(sessionId)!;

@@ -168,6 +168,19 @@ void main() {
     expect(app.repo!.chain().isDone(const SessionId('V')), isFalse);
   });
 
+  test('hoppa över pass med anledning + UNDO (synkas som egen post)', () async {
+    final app = await ready();
+    await app.skipSession(const SessionId('A'), 'New tattoo');
+    final st = app.repo!.chain();
+    expect(st.isSkipped(const SessionId('A')), isTrue);
+    expect(st.isDone(const SessionId('A')), isFalse);
+    final entry = app.repo!.history().whereType<SkippedEntry>().single;
+    expect(entry.reason, 'New tattoo');
+    await app.undoSkip(entry);
+    expect(app.repo!.chain().isSkipped(const SessionId('A')), isFalse);
+    expect(app.repo!.history().whereType<SkippedEntry>(), isEmpty);
+  });
+
   test('vikt: en per dag (samma dag skrivs över), radering; inställningar sparas', () async {
     final app = await ready();
     await app.logBodyweight(99.5);

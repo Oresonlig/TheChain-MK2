@@ -1,6 +1,7 @@
 /// Kedjans slider. TVÅ KANALER (MK1-lärdom 3.81.1 — blanda dem aldrig):
 ///   * STATUS bor på BOKSTAVEN: kvar = temats accent, avklarad = dämpad men
-///     ALDRIG osynlig, vilodag = guld (dämpat guld när avklarad).
+///     ALDRIG osynlig, vilodag = guld (dämpat guld när avklarad), överhoppad =
+///     dämpad som avklarad + temats [SkippedMark] (Nanosuit: X över bokstaven).
 ///   * NÄRHET bor på BEHÅLLAREN: vald = upphöjd aktiv yta + fullt namn,
 ///     granne ("på glänt") = kortnamn, övriga = bara bokstav.
 library;
@@ -85,13 +86,16 @@ class _ChainStripState extends State<ChainStrip> {
         child: Row(children: [
           for (final (i, s) in sessions.indexed)
             () {
-              final done = widget.chain.isDone(s.id);
+              final skipped = widget.chain.isSkipped(s.id);
+              // Överhoppat = hanterat: dämpas som avklarat, plus temats markering.
+              final done = widget.chain.isDone(s.id) || skipped;
               final distance = (i - selIndex).abs();
               final selected = distance == 0;
               // STATUS → bokstavens färg.
               final letterColor = s.isRest
                   ? (done ? c.restGold.withValues(alpha: .45) : c.restGold)
                   : (done ? c.textFaint : c.accent);
+              final letterText = Text(letter[s.id]!, style: base.copyWith(fontSize: 20, color: selected && !done ? c.textStrong : letterColor));
               // NÄRHET → behållarens yta och hur mycket namn som visas.
               final material = selected ? c.raisedActive : (done ? c.raisedDone : c.raisedIdle);
               final name = s.isRest
@@ -107,7 +111,7 @@ class _ChainStripState extends State<ChainStrip> {
                 child: Semantics(
                   button: true,
                   selected: selected,
-                  label: '${s.isRest ? 'Rest day' : s.name}${done ? ', done' : ''}',
+                  label: '${s.isRest ? 'Forced rest day' : s.name}${skipped ? ', skipped' : done ? ', done' : ''}',
                   child: GestureDetector(
                     onTap: () => widget.onSelect(s.id),
                     // Pågående pass: temats markering runt fliken (Nanosuit: puls).
@@ -118,7 +122,7 @@ class _ChainStripState extends State<ChainStrip> {
                       material: material,
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                       child: Row(mainAxisSize: MainAxisSize.min, children: [
-                        Text(letter[s.id]!, style: base.copyWith(fontSize: 20, color: selected && !done ? c.textStrong : letterColor)),
+                        if (skipped) SkippedLetter(mark: c.skippedMark, color: c.textMuted, child: letterText) else letterText,
                         if (name != null) ...[
                           const SizedBox(width: 10),
                           Text(name, style: base.copyWith(color: selected ? c.textStrong : letterColor)),
@@ -138,4 +142,40 @@ class _ChainStripState extends State<ChainStrip> {
       ),
     );
   }
+}
+
+/// Status-kanalen för ett överhoppat pass: temats [SkippedMark] ritad ÖVER
+/// bokstaven (aldrig på behållaren — där bor närheten).
+class SkippedLetter extends StatelessWidget {
+  const SkippedLetter({super.key, required this.mark, required this.color, required this.child});
+
+  final SkippedMark mark;
+  final Color color;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => switch (mark) {
+        SkippedMark.cross => CustomPaint(foregroundPainter: _CrossPainter(color), child: child),
+      };
+}
+
+class _CrossPainter extends CustomPainter {
+  const _CrossPainter(this.color);
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // Lite utanför bokstaven så att X:et läses som en markering, inte som glyf.
+    final r = Rect.fromCenter(center: size.center(Offset.zero), width: size.width + 6, height: size.height * .72);
+    final p = Paint()
+      ..color = color
+      ..strokeWidth = 2
+      ..strokeCap = StrokeCap.round;
+    canvas
+      ..drawLine(r.topLeft, r.bottomRight, p)
+      ..drawLine(r.topRight, r.bottomLeft, p);
+  }
+
+  @override
+  bool shouldRepaint(_CrossPainter old) => old.color != color;
 }

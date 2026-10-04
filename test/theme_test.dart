@@ -29,6 +29,7 @@ ChainTheme _withFail(Color? fail) => ChainTheme(
       hexEnergy: nanosuit.hexEnergy,
       hasAmbient: true,
       activeMark: ActiveMark.none,
+      skippedMark: SkippedMark.cross,
       fail: fail,
     );
 

@@ -126,6 +126,14 @@ Json historyToJson(HistoryEntry h) => switch (h) {
           'session': sessionId.value,
           'note': ?note,
         },
+      SkippedEntry(:final date, :final sessionId, :final reason, :final source) => {
+          'v': kFormatVersion,
+          'type': 'skip',
+          'source': source.name,
+          'date': date.millisecondsSinceEpoch,
+          'session': sessionId.value,
+          'reason': reason,
+        },
     };
 
 HistoryEntry historyFromJson(Json j) {
@@ -133,8 +141,17 @@ HistoryEntry historyFromJson(Json j) {
   if (j['type'] == 'rest') {
     return RestEntry(date: _t(j['date'])!, sessionId: SessionId(j['session'] as String), note: j['note'] as String?);
   }
+  if (j['type'] == 'skip') {
+    return SkippedEntry(date: _t(j['date'])!, sessionId: SessionId(j['session'] as String), reason: j['reason'] as String? ?? '');
+  }
   return WorkoutEntry(workout: workoutFromJson(_m(j['workout'])), source: source);
 }
+
+/// Historikposter som det här bygget känner till. En posttyp från ett NYARE
+/// bygge (synkad från en annan enhet) hoppas över i stället för att krascha.
+const _knownHistoryTypes = {null, 'workout', 'rest', 'skip'};
+
+HistoryEntry? tryHistoryFromJson(Json j) => _knownHistoryTypes.contains(j['type']) ? historyFromJson(j) : null;
 
 // ── program ──
 Json programToJson(Program p) => {

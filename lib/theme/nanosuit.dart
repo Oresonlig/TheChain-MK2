@@ -55,6 +55,7 @@ const nanosuit = ChainTheme(
   hexEnergy: _cyanBright,
   hasAmbient: true,
   activeMark: ActiveMark.tracePulse,
+  skippedMark: SkippedMark.cross,
 );
 
 const _font = 'Saira';

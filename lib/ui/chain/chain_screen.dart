@@ -123,7 +123,11 @@ class _ChainScreenState extends State<ChainScreen> {
                 _UpdateBanner(app: widget.app),
               ],
               const SizedBox(height: 8),
-              Text('${chain.done.length}/$trainingCount sessions done · Round ${chain.round}', style: text.bodySmall),
+              Text(
+                '${chain.done.length}/$trainingCount sessions done'
+                '${chain.skipped.isEmpty ? '' : ' · ${chain.skipped.length} skipped'} · Round ${chain.round}',
+                style: text.bodySmall,
+              ),
               const SizedBox(height: 10),
               ChainStrip(
                 program: program,
@@ -152,6 +156,11 @@ class _ChainScreenState extends State<ChainScreen> {
                   letter: ChainStrip.letters(program)[session.id]!,
                   isNext: chain.next == session.id,
                   done: chain.isDone(session.id),
+                  skipped: chain.isSkipped(session.id)
+                      ? (history.whereType<SkippedEntry>().where((e) => e.sessionId == session.id).toList()
+                            ..sort((a, b) => b.date.compareTo(a.date)))
+                          .firstOrNull
+                      : null,
                   inProgress: inProgress.contains(session.id),
                   history: history,
                   now: _now,
@@ -174,6 +183,13 @@ class _ChainScreenState extends State<ChainScreen> {
                   onUndo: (entry) async {
                     if (await _confirmUndo(context)) await widget.app.undoWorkout(entry);
                   },
+                  onSkip: () async {
+                    final reason = await _askSkipReason(context, session.name);
+                    if (reason != null) await widget.app.skipSession(session.id, reason);
+                  },
+                  onUndoSkip: (entry) async {
+                    if (await _confirmUndo(context, skip: true)) await widget.app.undoSkip(entry);
+                  },
                 ),
             ],
           );
@@ -182,15 +198,21 @@ class _ChainScreenState extends State<ChainScreen> {
     );
   }
 
-  Future<bool> _confirmUndo(BuildContext context, {bool rest = false}) async =>
+  Future<bool> _confirmUndo(BuildContext context, {bool rest = false, bool skip = false}) async =>
       await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: Text(rest ? 'Undo rest day?' : 'Undo this session?'),
+          title: Text(rest
+              ? 'Undo forced rest day?'
+              : skip
+                  ? 'Undo skip?'
+                  : 'Undo this session?'),
           content: Text(rest
-              ? 'The rest day is marked as not done again.'
-              : 'The session opens again with everything you logged, so you can fix it. '
-                  'It counts as done again when you finish it.'),
+              ? 'The forced rest day is marked as not done again.'
+              : skip
+                  ? 'The session is back in the chain, waiting to be trained.'
+                  : 'The session opens again with everything you logged, so you can fix it. '
+                      'It counts as done again when you finish it.'),
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
             TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Undo')),
@@ -198,6 +220,39 @@ class _ChainScreenState extends State<ChainScreen> {
         ),
       ) ==
       true;
+
+  /// Anledningen är obligatorisk (Niklas 2026-10-04) — SKIP är släckt tills
+  /// något vettigt står i fältet. Inga snabbval: det ska kosta en tanke.
+  Future<String?> _askSkipReason(BuildContext context, String sessionName) async {
+    // Ingen dispose: dialogens stängningsanimation läser fältet efter pop.
+    final field = TextEditingController();
+    return showDialog<String>(
+        context: context,
+        builder: (ctx) => StatefulBuilder(
+          builder: (ctx, setLocal) {
+            final ok = field.text.trim().length >= kMinSkipReason;
+            return AlertDialog(
+              title: Text('Skip ${sessionName.toUpperCase()}?'),
+              content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Text('It counts as handled in this round, but not as trained.'),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: field,
+                  autofocus: true,
+                  textCapitalization: TextCapitalization.sentences,
+                  onChanged: (_) => setLocal(() {}),
+                  decoration: const InputDecoration(hintText: 'Why are you skipping this session?'),
+                ),
+              ]),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                TextButton(onPressed: ok ? () => Navigator.pop(ctx, field.text.trim()) : null, child: const Text('Skip')),
+              ],
+            );
+          },
+        ),
+      );
+  }
 
   void _openDev(BuildContext context) => Navigator.of(context).push(MaterialPageRoute<void>(
         builder: (_) => DevHomeScreen(app: widget.app, email: widget.email, buildLabel: widget.buildLabel),
@@ -243,6 +298,7 @@ class _SessionPanel extends StatelessWidget {
     required this.letter,
     required this.isNext,
     required this.done,
+    required this.skipped,
     required this.inProgress,
     required this.history,
     required this.now,
@@ -251,11 +307,18 @@ class _SessionPanel extends StatelessWidget {
     required this.onStart,
     required this.onCopy,
     required this.onUndo,
+    required this.onSkip,
+    required this.onUndoSkip,
   });
 
   final Session session;
   final String letter;
   final bool isNext, done, inProgress;
+
+  /// Överhoppat i den här rundan (null = inte överhoppat).
+  final SkippedEntry? skipped;
+  final VoidCallback onSkip;
+  final ValueChanged<SkippedEntry> onUndoSkip;
   final List<HistoryEntry> history;
   final DateTime now;
   final Exercise? Function(ExerciseId) exerciseOf;
@@ -271,28 +334,49 @@ class _SessionPanel extends StatelessWidget {
     final lastOfSession = (history.whereType<WorkoutEntry>().where((e) => e.workout.sessionId == session.id).toList()
           ..sort((a, b) => b.date.compareTo(a.date)))
         .firstOrNull;
+    final skip = inProgress ? null : skipped;
     final statusText = inProgress
         ? 'IN PROGRESS'
-        : done
-            ? 'DONE · ${daysAgo(lastOfSession?.date ?? now, now).toUpperCase()}'
-            : isNext
-                ? 'NEXT UP'
-                : 'LATER IN THE CHAIN';
-    final statusColor = inProgress ? c.success : (done ? c.textFaint : c.accent);
+        : skip != null
+            ? 'SKIPPED · ${daysAgo(skip.date, now).toUpperCase()}'
+            : done
+                ? 'DONE · ${daysAgo(lastOfSession?.date ?? now, now).toUpperCase()}'
+                : isNext
+                    ? 'NEXT UP'
+                    : 'LATER IN THE CHAIN';
+    final statusColor = inProgress ? c.success : (done || skip != null ? c.textFaint : c.accent);
+    final letterText = Text(letter, style: text.titleLarge!.copyWith(color: skip != null ? c.textFaint : c.accent));
 
     return Glass(
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(children: [
-          Text(letter, style: text.titleLarge!.copyWith(color: c.accent)),
+          if (skip != null) SkippedLetter(mark: c.skippedMark, color: c.textMuted, child: letterText) else letterText,
           const SizedBox(width: 12),
           Expanded(child: Text(session.name.toUpperCase(), style: text.titleMedium!.copyWith(letterSpacing: 2))),
         ]),
         const SizedBox(height: 4),
         Text(statusText, style: text.labelSmall!.copyWith(color: statusColor)),
         const SizedBox(height: 12),
+        // Överhoppat: anledningen + UNDO. Ingen COPY — inget att dela.
+        if (skip != null) ...[
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            decoration: BoxDecoration(border: Border(top: BorderSide(color: c.border))),
+            child: Text(skip.reason, style: text.bodyMedium!.copyWith(color: c.textBody)),
+          ),
+          const SizedBox(height: 16),
+          GhostButton(
+            label: 'UNDO',
+            leadingIcon: Icons.undo,
+            onTap: () => onUndoSkip(skip),
+            color: c.textMuted,
+            borderColor: c.borderStrong,
+            height: 52,
+          ),
+        ]
         // Avslutat pass är LÅST (Niklas 2026-10-02): visa vad som gjordes +
         // COPY och UNDO. Ingen "train again".
-        if (done && !inProgress && lastOfSession != null) ...[
+        else if (done && !inProgress && lastOfSession != null) ...[
           for (final ex in lastOfSession.workout.exercises) _DoneExercise(
             name: exerciseOf(ex.exerciseId)?.name ?? ex.exerciseId.value,
             row: ex,
@@ -344,6 +428,17 @@ class _SessionPanel extends StatelessWidget {
               child: Center(child: Text(inProgress ? 'CONTINUE SESSION' : 'START SESSION', style: text.labelLarge)),
             ),
           ),
+          // Diskret, som "Discard session" inne i passet. Bara före start —
+          // ett påbörjat pass kasseras först (aldrig två utvägar samtidigt).
+          if (!inProgress && !done) ...[
+            const SizedBox(height: 8),
+            Center(
+              child: TextButton(
+                onPressed: onSkip,
+                child: Text('Skip session', style: text.bodySmall),
+              ),
+            ),
+          ],
         ],
       ]),
     );
@@ -439,7 +534,7 @@ class _RestPanelState extends State<_RestPanel> {
         Row(children: [
           Text('V', style: text.titleLarge!.copyWith(color: c.restGold)),
           const SizedBox(width: 12),
-          Text('REST DAY', style: text.titleMedium!.copyWith(letterSpacing: 2)),
+          Text('FORCED REST DAY', style: text.titleMedium!.copyWith(letterSpacing: 2)),
         ]),
         const SizedBox(height: 4),
         Text(widget.done ? 'DONE' : 'Active rest — a light walk or stretching.',
@@ -473,7 +568,7 @@ class _RestPanelState extends State<_RestPanel> {
             child: Raised(
               material: c.raisedActive,
               padding: const EdgeInsets.symmetric(vertical: 16),
-              child: Center(child: Text('MARK REST DAY DONE', style: text.labelLarge)),
+              child: Center(child: Text('MARK FORCED REST DAY DONE', style: text.labelLarge)),
             ),
           ),
         ],

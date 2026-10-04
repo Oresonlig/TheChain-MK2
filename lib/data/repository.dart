@@ -28,13 +28,13 @@ class Repository {
   /// Avslutade pass och vilodagar. Pågående pass räknas inte (PR, kedja, "förra gången").
   List<HistoryEntry> history() => [
         for (final j in _w.liveValues)
-          if (historyFromJson(j) case final h when h is! WorkoutEntry || h.workout.isFinished) h,
+          if (tryHistoryFromJson(j) case final h? when h is! WorkoutEntry || h.workout.isFinished) h,
       ];
 
   /// Pågående pass (synkas mellan enheter, beslut 2026-10-02). Normalt högst ett.
   List<Workout> activeWorkouts() => [
         for (final j in _w.liveValues)
-          if (historyFromJson(j) case WorkoutEntry(:final workout) when !workout.isFinished) workout,
+          if (tryHistoryFromJson(j) case WorkoutEntry(:final workout) when !workout.isFinished) workout,
       ];
 
   Workout? activeWorkoutFor(SessionId id) {
@@ -97,6 +97,7 @@ class Repository {
   static String historyId(HistoryEntry h) => switch (h) {
         WorkoutEntry(:final workout) => workout.id.value,
         RestEntry(:final sessionId, :final date) => 'rest.${sessionId.value}.${date.millisecondsSinceEpoch}',
+        SkippedEntry(:final sessionId, :final date) => 'skip.${sessionId.value}.${date.millisecondsSinceEpoch}',
       };
 
   Future<void> saveHistory(HistoryEntry h, DateTime now) => _w.put(historyId(h), historyToJson(h), now);

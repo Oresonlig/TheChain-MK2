@@ -63,6 +63,16 @@ void main() {
     expect(h.source, EntrySource.imported);
   });
 
+  test('historik: överhoppat pass med anledning; okänd posttyp hoppas över', () {
+    final s = tryHistoryFromJson(
+        viaText(historyToJson(SkippedEntry(date: end, sessionId: const SessionId('C'), reason: 'New tattoo'))));
+    expect(s, isA<SkippedEntry>());
+    expect((s as SkippedEntry).reason, 'New tattoo');
+    expect(s.sessionId, const SessionId('C'));
+    // En posttyp från ett framtida bygge får inte krascha det här.
+    expect(tryHistoryFromJson({'type': 'something-new', 'date': 1}), isNull);
+  });
+
   test('program, vikt, anteckning, egen övning, justering, inställningar', () {
     const p = Program(sessions: [
       Session(id: SessionId('A'), name: 'Chest', slots: [

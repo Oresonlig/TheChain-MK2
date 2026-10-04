@@ -56,6 +56,14 @@ enum ActiveMark {
   tracePulse,
 }
 
+/// Hur temat markerar ett ÖVERHOPPAT pass på bokstaven (status-kanalen).
+/// Ska gå att läsa utan färg och aldrig vara svagare än "avklarad" (Niklas
+/// 2026-10-04: hanterat, men medvetet hoppat över).
+enum SkippedMark {
+  /// Bokstaven dämpad som avklarad + ett X över.
+  cross,
+}
+
 @immutable
 class ChainTheme extends ThemeExtension<ChainTheme> {
   const ChainTheme({
@@ -84,11 +92,15 @@ class ChainTheme extends ThemeExtension<ChainTheme> {
     required this.hexEnergy,
     required this.hasAmbient,
     required this.activeMark,
+    required this.skippedMark,
     Color? fail,
   }) : fail = fail ?? restGold;
 
   /// Pågående pass i kedjan — obligatoriskt: varje tema tar ställning.
   final ActiveMark activeMark;
+
+  /// Överhoppat pass i kedjan — obligatoriskt.
+  final SkippedMark skippedMark;
 
   final String name;
 
@@ -174,6 +186,7 @@ class ChainTheme extends ThemeExtension<ChainTheme> {
       hexEnergy: c(hexEnergy, other.hexEnergy),
       hasAmbient: t < 0.5 ? hasAmbient : other.hasAmbient,
       activeMark: t < 0.5 ? activeMark : other.activeMark,
+      skippedMark: t < 0.5 ? skippedMark : other.skippedMark,
       fail: c(fail, other.fail),
     );
   }

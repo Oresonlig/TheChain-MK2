@@ -139,11 +139,19 @@ class _ProgressScreenState extends State<ProgressScreen> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text('Rest day', style: text.titleMedium),
+                      Text('Forced rest day', style: text.titleMedium),
                       Text('${fmtDate(e.date)}${note == null ? '' : ' · $note'}', style: text.bodySmall),
                     ]),
                   ),
                   Text(sessionId.value, style: text.labelSmall),
+                ]),
+              SkippedEntry(:final sessionId, :final reason) => Row(children: [
+                  Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text('${name(sessionId)} — skipped', style: text.titleMedium!.copyWith(color: c.textMuted)),
+                      Text('${fmtDate(e.date)} · $reason', style: text.bodySmall),
+                    ]),
+                  ),
                 ]),
               WorkoutEntry(:final workout) => Row(children: [
                   Expanded(

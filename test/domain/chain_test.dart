@@ -17,8 +17,47 @@ HistoryEntry trained(SessionId s, int d, {EntrySource source = EntrySource.app})
       workout: Workout(id: WorkoutId('w${_n++}'), sessionId: s, startedAt: day(d), finishedAt: day(d)),
     );
 HistoryEntry rested(SessionId s, int d) => RestEntry(date: day(d), sessionId: s);
+HistoryEntry skippedOn(SessionId s, int d) => SkippedEntry(date: day(d), sessionId: s, reason: 'tattoo');
 
 void main() {
+  group('överhoppat pass (2026-10-04)', () {
+    test('räknas som hanterat men inte gjort; nästa hoppar förbi', () {
+      final st = chainState(program, [trained(a, 1), skippedOn(b, 2)]);
+      expect(st.done, {a});
+      expect(st.skipped, {b});
+      expect(st.isHandled(b), isTrue);
+      expect(st.isDone(b), isFalse);
+      expect(st.next, v);
+    });
+
+    test('cykeln stängs när alla är gjorda eller överhoppade', () {
+      final st = chainState(program, [trained(a, 1), skippedOn(b, 2), rested(v, 3), skippedOn(c, 4)]);
+      expect(st.round, 2);
+      expect(st.done, isEmpty);
+      expect(st.skipped, isEmpty);
+      expect(st.next, a);
+    });
+
+    test('tränas passet ändå vinner gjort; skip efter gjort ändrar inget', () {
+      expect(chainState(program, [skippedOn(b, 1), trained(b, 2)]).done, {b});
+      expect(chainState(program, [skippedOn(b, 1), trained(b, 2)]).skipped, isEmpty);
+      final st = chainState(program, [trained(b, 1), skippedOn(b, 2)]);
+      expect(st.done, {b});
+      expect(st.skipped, isEmpty);
+    });
+
+    test('anledning krävs; vilodagen kan inte hoppas över', () {
+      const legs = Session(id: c, name: 'Legs');
+      expect(() => skippedEntry(legs, day(1), '  x '), throwsA(isA<WorkoutError>()));
+      expect(skippedEntry(legs, day(1), '  New tattoo ').reason, 'New tattoo');
+      expect(() => skippedEntry(program.sessions[2], day(1), 'tired'), throwsA(isA<WorkoutError>()));
+    });
+
+    test('överhoppat ger ingen PR och ingen "förra gången"', () {
+      expect(personalRecords([skippedOn(b, 1)]), isEmpty);
+    });
+  });
+
   test('tom historik: runda 1, nästa = första passet', () {
     final st = chainState(program, const []);
     expect(st.round, 1);

@@ -38,3 +38,13 @@ class RestEntry extends HistoryEntry {
   /// Valfri anteckning (beslut 5).
   final String? note;
 }
+
+/// Ett överhoppat pass (Niklas 2026-10-04): räknas som HANTERAT i kedjan men
+/// aldrig som gjort — inget i PR, "förra gången" eller passantal. Anledningen
+/// är obligatorisk: det ska kosta en tanke att hoppa över.
+class SkippedEntry extends HistoryEntry {
+  const SkippedEntry({required super.date, required this.sessionId, required this.reason});
+
+  final SessionId sessionId;
+  final String reason;
+}
