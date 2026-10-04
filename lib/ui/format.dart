@@ -38,3 +38,7 @@ String fmtDate(DateTime d) {
   const m = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   return '${d.day} ${m[d.month - 1]} ${d.year}';
 }
+
+/// "4 Oct 2026 · 13:05"
+String fmtDateTime(DateTime d) =>
+    '${fmtDate(d)} · ${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';

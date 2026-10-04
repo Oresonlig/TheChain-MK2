@@ -339,4 +339,29 @@ void main() {
     await tester.pumpAndSettle();
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/dev_home.png'));
   });
+
+  testWidgets('settings: hubb + Data & Sync', (tester) async {
+    await _loadSaira();
+    final b = FakeBackend(mk1: mk1());
+    final app = _app(b);
+    await _phone(tester, TheChainApp(app: app, emailOf: () => b.userEmail ?? ''));
+    await tester.runAsync(() async {
+      await app.start();
+      await app.signIn('niklas@example.com', 'secret');
+      await pumpEventQueue();
+      await app.importFromWebsite();
+    });
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('SETTINGS'));
+    await tester.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/settings_hub.png'));
+    await tester.tap(find.text('Data & Sync'));
+    await tester.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/settings_data.png'));
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Training'));
+    await tester.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/settings_training.png'));
+  });
 }

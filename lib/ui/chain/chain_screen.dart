@@ -10,7 +10,7 @@ import '../../domain/domain.dart';
 import '../../theme/chain_theme.dart';
 import '../../theme/surfaces.dart';
 import '../copy_text.dart';
-import '../dev_home_screen.dart';
+import '../settings/data_sync_screen.dart';
 import '../nanosuit_scaffold.dart';
 import '../units.dart';
 import '../workout/workout_screen.dart';
@@ -93,7 +93,7 @@ class _ChainScreenState extends State<ChainScreen> {
                   const SizedBox(height: 8),
                   Text('Import your data from the website to get started.', style: text.bodySmall, textAlign: TextAlign.center),
                   const SizedBox(height: 16),
-                  TextButton(onPressed: () => _openDev(context), child: const Text('OPEN DATA CHECK')),
+                  TextButton(onPressed: () => _openDev(context), child: const Text('OPEN DATA & SYNC')),
                   ]),
                 ),
               ),
@@ -274,7 +274,7 @@ class _ChainScreenState extends State<ChainScreen> {
   }
 
   void _openDev(BuildContext context) => Navigator.of(context).push(MaterialPageRoute<void>(
-        builder: (_) => DevHomeScreen(app: widget.app, email: widget.email, buildLabel: widget.buildLabel),
+        builder: (_) => DataSyncScreen(app: widget.app, email: widget.email, versionLabel: widget.buildLabel),
       ));
 }
 
