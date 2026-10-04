@@ -179,7 +179,12 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> signOut() async {
-    await backend.signOut();
+    try {
+      await backend.signOut();
+    } catch (e) {
+      // Servern nåddes inte: logga ut lokalt ändå — aldrig fast i ett halvläge.
+      debugPrint('signOut: $e');
+    }
     _syncTimer?.cancel();
     _openWorkout = null;
     moved = null;

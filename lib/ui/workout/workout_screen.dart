@@ -422,8 +422,14 @@ class ExerciseCard extends StatelessWidget {
       builder: (ctx) => SafeArea(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           ListTile(leading: const Icon(Icons.swap_horiz), title: const Text('Swap — this session only'), onTap: () => Navigator.pop(ctx, 'temp')),
-          if (!row.isExtra)
+          if (!row.isExtra) ...[
             ListTile(leading: const Icon(Icons.swap_calls), title: const Text('Swap — permanently'), onTap: () => Navigator.pop(ctx, 'perm')),
+            ListTile(
+              leading: const Icon(Icons.delete_outline),
+              title: const Text('Remove from session — permanently'),
+              onTap: () => Navigator.pop(ctx, 'removePerm'),
+            ),
+          ],
           if (row.isExtra)
             ListTile(leading: const Icon(Icons.delete_outline), title: const Text('Remove extra'), onTap: () => Navigator.pop(ctx, 'remove')),
         ]),
@@ -434,6 +440,10 @@ class ExerciseCard extends StatelessWidget {
       controller.removeExtra(row.id);
       return;
     }
+    if (choice == 'removePerm') {
+      await _confirmRemoveFromProgram(context);
+      return;
+    }
     final id = await pickExercise(context, title: choice == 'perm' ? 'Swap permanently' : 'Swap for today', custom: custom);
     if (id == null) return;
     if (choice == 'perm') {
@@ -441,6 +451,27 @@ class ExerciseCard extends StatelessWidget {
     } else {
       controller.swapTemporarily(row.id, id);
     }
+  }
+
+  Future<void> _confirmRemoveFromProgram(BuildContext context) async {
+    final name = controller.exerciseOf(row).name;
+    final session = controller.repo.program().sessionById(controller.workout.sessionId)?.name ?? '';
+    final logged = row.sets.any((s) => s.isLogged);
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Remove $name from $session?'),
+        content: Text(
+          'It is removed from the program for every future session. History and records are kept.'
+          '${logged ? '\n\nYou have logged sets today, so it stays in this session as an extra.' : ''}',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Remove')),
+        ],
+      ),
+    );
+    if (ok == true) await controller.removeFromProgram(row.id);
   }
 }
 

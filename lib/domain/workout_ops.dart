@@ -192,6 +192,32 @@ Workout removeExtra(Workout w, String rowId) {
   return w.copyWith(exercises: w.exercises.where((x) => x.id != rowId).toList());
 }
 
+/// Övningen har tagits bort ur programmet (permanent) mitt i ett pass. Utan
+/// loggade set försvinner raden ur passet; med loggade set ligger den kvar som
+/// extra så att inget loggat försvinner.
+Workout detachFromProgram(Workout w, String rowId) {
+  if (w.isFinished) throw const WorkoutError('Workout is finished');
+  final r = w.exercises.where((x) => x.id == rowId).firstOrNull;
+  if (r == null) throw WorkoutError('No exercise row $rowId');
+  if (r.isExtra) throw const WorkoutError('Extras are not part of the program');
+  if (!r.sets.any((s) => s.isLogged)) {
+    return w.copyWith(exercises: w.exercises.where((x) => x.id != rowId).toList());
+  }
+  return w.copyWith(exercises: [
+    for (final x in w.exercises)
+      x.id != rowId
+          ? x
+          : WorkoutExercise(
+              id: x.id,
+              exerciseId: x.exerciseId,
+              measure: x.measure,
+              temporarySwapFrom: x.temporarySwapFrom,
+              status: x.status,
+              sets: x.sets,
+            ),
+  ]);
+}
+
 class FinishResult {
   const FinishResult(this.entry, this.notes);
   final WorkoutEntry entry;

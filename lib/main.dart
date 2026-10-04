@@ -25,15 +25,50 @@ Future<void> main() async {
   await app.start();
 }
 
-class TheChainApp extends StatelessWidget {
+class TheChainApp extends StatefulWidget {
   const TheChainApp({super.key, required this.app, required this.emailOf});
 
   final AppController app;
   final String Function() emailOf;
 
   @override
+  State<TheChainApp> createState() => _TheChainAppState();
+}
+
+class _TheChainAppState extends State<TheChainApp> {
+  final _navigator = GlobalKey<NavigatorState>();
+  Phase? _lastPhase;
+
+  AppController get app => widget.app;
+  String Function() get emailOf => widget.emailOf;
+
+  @override
+  void initState() {
+    super.initState();
+    app.addListener(_onPhase);
+  }
+
+  @override
+  void dispose() {
+    app.removeListener(_onPhase);
+    super.dispose();
+  }
+
+  /// Utloggad (själv eller sessionen gick ut): stäng allt som ligger ovanpå
+  /// hemvyn. Annars blir t.ex. Data check eller passvyn kvar överst utan konto
+  /// och visar en snurra för evigt, med inloggningen dold under (2026-10-04).
+  void _onPhase() {
+    final p = app.phase;
+    if (p == Phase.signedOut && _lastPhase != Phase.signedOut) {
+      _navigator.currentState?.popUntil((r) => r.isFirst);
+    }
+    _lastPhase = p;
+  }
+
+  @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: _navigator,
       title: 'The Chain',
       debugShowCheckedModeBanner: false,
       theme: nanosuitThemeData(),

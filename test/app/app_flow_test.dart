@@ -105,6 +105,34 @@ void main() {
     expect(find.text('START SESSION'), findsOneWidget);
   });
 
+  testWidgets('UI: utloggning med en vy ovanpå (passvyn) → inloggningen syns, inte en evig snurra', (tester) async {
+    tester.view.physicalSize = const Size(1080, 4000);
+    tester.view.devicePixelRatio = 2.625;
+    addTearDown(tester.view.reset);
+    final b = FakeBackend(mk1: mk1());
+    final app = AppController(b);
+    await tester.pumpWidget(MediaQuery(
+      data: const MediaQueryData(disableAnimations: true),
+      child: TheChainApp(app: app, emailOf: () => ''),
+    ));
+    await tester.runAsync(() async {
+      await app.start();
+      await app.signIn('x', 'secret');
+      await pumpEventQueue();
+      await app.importFromWebsite();
+    });
+    await tester.pump();
+    await tester.tap(find.text('START SESSION'));
+    await tester.pumpAndSettle();
+    expect(find.text('FINISH SESSION'), findsOneWidget);
+
+    await tester.runAsync(app.signOut);
+    await tester.pumpAndSettle();
+    expect(find.text('SIGN IN'), findsOneWidget);
+    expect(find.text('FINISH SESSION'), findsNothing);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+  });
+
   testWidgets('UI: helt pass — starta, logga, klar, avsluta, tillbaka till kedjan', (tester) async {
     tester.view.physicalSize = const Size(1080, 4000);
     tester.view.devicePixelRatio = 2.625;

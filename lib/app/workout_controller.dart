@@ -189,6 +189,35 @@ class WorkoutController extends ChangeNotifier {
 
   void removeExtra(String rowId) => _apply(() => removeExtraOp(workout, rowId));
 
+  /// Tar bort övningen ur passet i programmet (permanent). Historik och PR
+  /// följer övningens id och ligger kvar. I pågående pass: se [detachFromProgram].
+  Future<void> removeFromProgram(String rowId) async {
+    if (closedElsewhere) {
+      error = _closedMessage;
+      notifyListeners();
+      return;
+    }
+    final r = workout.exercises.firstWhere((x) => x.id == rowId);
+    final slot = r.slotId;
+    if (slot == null) {
+      error = 'Extras are not part of the program';
+      notifyListeners();
+      return;
+    }
+    final Program p;
+    try {
+      p = removeSlot(repo.program(), workout.sessionId, slot);
+    } on WorkoutError catch (e) {
+      error = e.message;
+      notifyListeners();
+      return;
+    }
+    await repo.saveProgram(p, _now());
+    _apply(() => detachFromProgram(workout, rowId));
+    if (expandedRowId == rowId && !workout.exercises.any((x) => x.id == rowId)) expandedRowId = _firstOpen();
+    notifyListeners();
+  }
+
   // ── anteckningar ──
   List<ExerciseNote> notesFor(ExerciseId id) => activeNotes(repo.notes(), id).toList();
 

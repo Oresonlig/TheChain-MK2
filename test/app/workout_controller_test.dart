@@ -168,6 +168,29 @@ void main() {
     expect(app.repo!.chain().isDone(const SessionId('V')), isFalse);
   });
 
+  test('ta bort övning ur programmet permanent: utan loggat försvinner raden, med loggat blir den extra', () async {
+    final app = await ready();
+    final wc = app.openWorkout(const SessionId('A'));
+    final first = wc.workout.exercises[0], second = wc.workout.exercises[1];
+
+    await wc.removeFromProgram(first.id);
+    expect(wc.error, isNull);
+    expect(wc.workout.exercises.any((r) => r.id == first.id), isFalse);
+    expect(app.repo!.program().sessionById(const SessionId('A'))!.slots.any((s) => s.id == first.slotId), isFalse);
+    expect(wc.expandedRowId, second.id); // nästa öppna expanderas
+
+    wc.setValues(second.id, second.sets.first.id, const SetValues(weight: 50, reps: 8));
+    wc.toggleLog(second.id, second.sets.first.id);
+    await wc.removeFromProgram(second.id);
+    final kept = wc.workout.exercises.firstWhere((r) => r.id == second.id);
+    expect(kept.isExtra, isTrue);
+    expect(kept.sets.first.isLogged, isTrue); // inget loggat försvinner
+    expect(app.repo!.program().sessionById(const SessionId('A'))!.slots.length, 2);
+
+    // Nästa gång passet startas finns övningarna inte med.
+    expect(app.repo!.activeWorkoutFor(const SessionId('A'))!.exercises.length, 3);
+  });
+
   test('hoppa över pass med anledning + UNDO (synkas som egen post)', () async {
     final app = await ready();
     await app.skipSession(const SessionId('A'), 'New tattoo');
