@@ -96,6 +96,30 @@ void main() {
     await pumpEventQueue();
     expect(calls, 3);
     expect(a.update?.build, 36);
+    expect(a.updateCheckFailed, isTrue);
+    a.dispose();
+  });
+
+  test('Data & Sync får svaret: senaste med tid, eller kunde inte kolla', () async {
+    final a = await app();
+    expect(a.updateChecking, isFalse);
+    expect(a.updateCheckFailed, isFalse);
+    expect(a.updateCheckedAt, now);
+    expect(a.update, isNull);
+
+    offline = true;
+    now = now.add(const Duration(minutes: 1));
+    await a.syncNow();
+    await pumpEventQueue();
+    expect(a.updateCheckFailed, isTrue);
+    expect(a.updateCheckedAt, DateTime(2026, 10, 3, 12)); // senaste lyckade kollen
+
+    offline = false;
+    now = now.add(const Duration(minutes: 1));
+    await a.syncNow();
+    await pumpEventQueue();
+    expect(a.updateCheckFailed, isFalse);
+    expect(a.updateCheckedAt, now);
     a.dispose();
   });
 }

@@ -40,5 +40,6 @@ String fmtDate(DateTime d) {
 }
 
 /// "4 Oct 2026 · 13:05"
-String fmtDateTime(DateTime d) =>
-    '${fmtDate(d)} · ${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+String fmtDateTime(DateTime d) => '${fmtDate(d)} · ${fmtTime(d)}';
+
+String fmtTime(DateTime d) => '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';

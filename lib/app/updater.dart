@@ -23,6 +23,13 @@ class UpdateInfo {
   final String? sha256;
 }
 
+class UpdateCheckFailed implements Exception {
+  const UpdateCheckFailed(this.reason);
+  final String reason;
+  @override
+  String toString() => 'UpdateCheckFailed: $reason';
+}
+
 /// Kanalens release i MK2-repot. DEV = `dev-latest`.
 String releaseBase(String channel) =>
     'https://github.com/Oresonlig/TheChain-MK2/releases/download/${channel == 'dev' ? 'dev-latest' : 'stable-latest'}';
@@ -46,20 +53,24 @@ class Updater {
   final int currentBuild;
   final http.Client _client;
 
-  /// Nyare bygge finns, eller null. Tyst vid nätfel (appen fungerar ändå).
+  /// Nyare bygge finns, eller null = senaste. Kastar [UpdateCheckFailed] vid
+  /// nätfel eller trasig fil — "kunde inte kolla" får aldrig se ut som
+  /// "senaste" (Data & Sync visar skillnaden, 2026-10-04).
   Future<UpdateInfo?> check() async {
     if (currentBuild <= 0) return null; // lokala byggen uppdaterar inte sig själva
     final base = releaseBase(channel);
+    final http.Response res;
     try {
-      final res = await _client
+      res = await _client
           .get(Uri.parse('$base/version.json?t=${DateTime.now().millisecondsSinceEpoch}'))
           .timeout(const Duration(seconds: 15));
-      if (res.statusCode != 200) return null;
-      final info = parseVersionJson(res.body, base);
-      return info != null && info.build > currentBuild ? info : null;
-    } catch (_) {
-      return null;
+    } catch (e) {
+      throw UpdateCheckFailed('$e');
     }
+    if (res.statusCode != 200) throw UpdateCheckFailed('HTTP ${res.statusCode}');
+    final info = parseVersionJson(res.body, base);
+    if (info == null) throw const UpdateCheckFailed('broken version.json');
+    return info.build > currentBuild ? info : null;
   }
 
   /// Laddar ner och öppnar installationsdialogen. Strömmar läsbar status.

@@ -175,13 +175,29 @@ class AppController extends ChangeNotifier {
     final now = _now(), last = _lastUpdateCheck;
     if (!force && last != null && now.difference(last) < updateInterval) return;
     _lastUpdateCheck = now;
-    // null = ingen nyare ELLER nätfel: en redan hittad version försvinner inte
-    // ur bannern för att en koll misslyckas.
-    final found = await u.check();
+    updateChecking = true;
+    notifyListeners();
+    UpdateInfo? found;
+    var failed = false;
+    try {
+      found = await u.check();
+    } on UpdateCheckFailed {
+      failed = true;
+    }
     if (_disposed) return;
+    updateChecking = false;
+    updateCheckFailed = failed;
+    if (!failed) updateCheckedAt = _now();
+    // Ett nätfel tar inte bort en redan hittad version ur bannern.
     update = found ?? update;
     notifyListeners();
   }
+
+  /// Svaret på senaste versionskollen (Data & Sync, Niklas 2026-10-04: SYNC
+  /// NOW ska säga vad den hittade, inte bara bannern på kedjevyn).
+  bool updateChecking = false;
+  bool updateCheckFailed = false;
+  DateTime? updateCheckedAt;
 
   /// Central versionskoll medan appen syns (Niklas 2026-10-04: på alla vyer,
   /// inte bara när något synkas). Ett litet GET, aldrig i bakgrunden. DEV:

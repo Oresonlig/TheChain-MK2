@@ -77,6 +77,7 @@ class DataSyncScreen extends StatelessWidget {
                   ),
                 ),
               ),
+              if (app.updater != null) _updateRow(context),
             ]),
             settingsSection(context, 'BACKUP', [
               tile('Export backup', 'Everything in the app as one file — save it to Drive or mail it to yourself.', Icons.ios_share,
@@ -121,6 +122,54 @@ class DataSyncScreen extends StatelessWidget {
           ];
         },
       );
+
+  /// Vad versionskollen hittade — samma koll som SYNC NOW gör, svaret syns här
+  /// i stället för bara på kedjevyn (Niklas 2026-10-04).
+  Widget _updateRow(BuildContext context) {
+    final c = context.chain;
+    final text = Theme.of(context).textTheme;
+    final u = app.update;
+    final String line;
+    if (u != null) {
+      line = 'Build ${u.build} ready';
+    } else if (app.updateChecking) {
+      line = 'Checking for updates…';
+    } else if (app.updateCheckFailed) {
+      line = 'Could not check for updates';
+    } else if (app.updateCheckedAt case final t?) {
+      line = 'Up to date · build ${app.updater!.currentBuild} · checked ${fmtTime(t)}';
+    } else {
+      return const SizedBox.shrink();
+    }
+    final downloading = app.updateStatus?.startsWith('Downloading') ?? false;
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: Row(children: [
+        Icon(
+            u != null
+                ? Icons.system_update
+                : (app.updateCheckFailed ? Icons.error_outline : Icons.check_circle_outline),
+            size: 16,
+            color: u != null ? c.accent : (app.updateCheckFailed ? c.fail : c.textMuted)),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(line, style: text.bodySmall!.copyWith(color: u != null ? c.textStrong : null)),
+            if (u != null && app.updateStatus != null) Text(app.updateStatus!, style: text.bodySmall),
+          ]),
+        ),
+        if (u != null)
+          GestureDetector(
+            onTap: downloading ? null : app.installUpdate,
+            child: Raised(
+              material: c.raisedActive,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Text(downloading ? '…' : 'UPDATE', style: text.labelLarge!.copyWith(fontSize: 12)),
+            ),
+          ),
+      ]),
+    );
+  }
 
   Future<void> _exportBackup() async {
     final json = app.exportBackup(versionLabel);

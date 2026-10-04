@@ -20,11 +20,13 @@ void main() {
     expect(await Updater(channel: 'dev', currentBuild: 25, client: client).check(), isNull);
   });
 
-  test('nätfel, 404 och lokala byggen ger tyst null', () async {
+  test('nätfel, 404 och trasig fil = kunde inte kolla (aldrig "senaste"); lokala byggen ger null', () async {
     final notFound = MockClient((r) async => http.Response('', 404));
     final broken = MockClient((r) async => throw Exception('offline'));
-    expect(await Updater(channel: 'dev', currentBuild: 20, client: notFound).check(), isNull);
-    expect(await Updater(channel: 'dev', currentBuild: 20, client: broken).check(), isNull);
+    final garbage = MockClient((r) async => http.Response('<html>', 200));
+    for (final client in [notFound, broken, garbage]) {
+      await expectLater(Updater(channel: 'dev', currentBuild: 20, client: client).check(), throwsA(isA<UpdateCheckFailed>()));
+    }
     final any = MockClient((r) async => http.Response('{"build": 99}', 200));
     expect(await Updater(channel: 'dev', currentBuild: 0, client: any).check(), isNull);
   });
