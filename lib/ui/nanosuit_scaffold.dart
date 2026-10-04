@@ -44,15 +44,12 @@ class _ChainScaffoldState extends State<ChainScaffold> {
           child: DecoratedBox(decoration: BoxDecoration(gradient: backgroundGradient(c))),
         ),
         if (c.hasAmbient) Positioned.fill(child: HexFieldBackground(line: c.hexLine, enabled: widget.ambient, model: _model)),
-        // Skärmens glas delar en bakgrundsläsning (se Glass.grouped).
-        BackdropGroup(
-          child: BackgroundScope(
-            model: _model,
-            backdrop: _backdrop,
-            canvasKey: _canvas,
-            animated: c.hasAmbient && animated,
-            child: SafeArea(child: widget.child),
-          ),
+        BackgroundScope(
+          model: _model,
+          backdrop: _backdrop,
+          canvasKey: _canvas,
+          animated: c.hasAmbient && animated,
+          child: SafeArea(child: widget.child),
         ),
       ]),
     );

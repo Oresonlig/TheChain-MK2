@@ -8,7 +8,7 @@ import 'package:flutter/material.dart';
 import '../../app/app_controller.dart';
 import '../../domain/domain.dart';
 import '../../theme/chain_theme.dart';
-import '../../theme/glass_diagnostics.dart';
+import '../../theme/background_scope.dart';
 import '../../theme/surfaces.dart';
 import '../nanosuit_scaffold.dart';
 import 'data_sync_screen.dart';
@@ -280,29 +280,6 @@ class AppearanceSettingsScreen extends StatelessWidget {
                 subtitle: Text('The hex wave behind the app. Turn off to save battery.', style: text.bodySmall),
               ),
             ]),
-            // DIAGNOS, bara DEV-bygget (se glass_diagnostics.dart).
-            if (app.updater != null)
-              settingsSection(context, 'GLASS TEST (DEV)', [
-                ValueListenableBuilder<GlassMode>(
-                  valueListenable: glassMode,
-                  builder: (context, mode, _) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                    for (final (m, title, sub) in const [
-                      (GlassMode.painted, 'Painted glass', 'Default. The card shows a pre-blurred copy of the background.'),
-                      (GlassMode.engine, 'Engine blur', 'The old glass, for comparison.'),
-                    ])
-                      ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        selected: m == mode,
-                        onTap: () => glassMode.value = m,
-                        title: Text(title, style: text.titleMedium),
-                        subtitle: Text(sub, style: text.bodySmall),
-                        trailing: Icon(m == mode ? Icons.check_circle : Icons.circle_outlined,
-                            color: m == mode ? context.chain.accent : context.chain.textFaint),
-                      ),
-                    Text('Reopen a screen after switching. Resets on restart.', style: text.bodySmall),
-                  ]),
-                ),
-              ]),
           ];
         },
       );

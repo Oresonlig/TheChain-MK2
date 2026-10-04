@@ -8,7 +8,7 @@ import 'package:flutter/services.dart';
 import '../../app/app_controller.dart';
 import '../../domain/domain.dart';
 import '../../theme/chain_theme.dart';
-import '../../theme/glass_diagnostics.dart';
+import '../../theme/background_scope.dart';
 import '../../theme/surfaces.dart';
 import '../copy_text.dart';
 import '../format.dart';

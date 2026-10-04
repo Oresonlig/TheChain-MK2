@@ -2,16 +2,15 @@
 /// hexagon-chevron (LOG-formen). Färgerna kommer alltid från ChainTheme.
 library;
 
-import 'dart:ui' as ui;
-
 import 'package:flutter/material.dart';
 
 import 'background_scope.dart';
 import 'chain_theme.dart';
-import 'glass_diagnostics.dart';
 
-/// Frostat glas: låg opacitet + blur. Gradienten går från [ChainTheme.glassTop]
-/// till [ChainTheme.glassBottom].
+/// Frostat glas: kortets bit av den blurrade bakgrundsbilden (RITAT glas,
+/// background_scope.dart) + temats ton [ChainTheme.glassTop] → [glassBottom].
+/// Motorns bakgrundsblur (BackdropFilter) används INTE — den tappades under
+/// scroll på Niklas S26 Ultra (2026-10-04, build 46–49; ritat glas höll, b50).
 class Glass extends StatelessWidget {
   const Glass({
     super.key,
@@ -19,7 +18,6 @@ class Glass extends StatelessWidget {
     this.padding = const EdgeInsets.all(16),
     this.radius = 6,
     this.border = true,
-    this.grouped = true,
   });
 
   final Widget child;
@@ -27,15 +25,9 @@ class Glass extends StatelessWidget {
   final double radius;
   final bool border;
 
-  /// Delar bakgrundsläsningen med skärmens övriga glas (BackdropGroup i
-  /// ChainScaffold). Glas OVANPÅ annat glas (GhostButton i ett kort) ska inte
-  /// dela — överlappande filter med samma nyckel blurras bara en gång.
-  final bool grouped;
-
   @override
   Widget build(BuildContext context) {
     final c = context.chain;
-    final filter = ui.ImageFilter.blur(sigmaX: c.glassBlur, sigmaY: c.glassBlur);
     final surface = DecoratedBox(
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -48,26 +40,16 @@ class Glass extends StatelessWidget {
       ),
       child: Padding(padding: padding, child: child),
     );
-    // DIAGNOS (DEV): ritat glas — ingen bakgrundsläsning (glass_diagnostics).
+    // Utanför en ChainScaffold (finns inte i dag) blir det bara tonen.
     final scope = BackgroundScope.of(context);
-    if (glassMode.value == GlassMode.painted && scope != null) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(radius),
-        // passthrough: glaset får samma mått som utan Stack (annars krymper t.ex. kedjeremsan).
-        child: Stack(fit: StackFit.passthrough, children: [
-          Positioned.fill(child: PaintedBackdrop(scope: scope, theme: c)),
-          surface,
-        ]),
-      );
-    }
+    if (scope == null) return surface;
     return ClipRRect(
       borderRadius: BorderRadius.circular(radius),
-      // Niklas 2026-10-04: glaset försvann under scroll (S26 Ultra) — ett
-      // filter per kort som var och ett läser bakgrunden. Grupperat = en
-      // gemensam läsning per bildruta (Flutters väg för många glas i listor).
-      child: grouped
-          ? BackdropFilter.grouped(filter: filter, child: surface)
-          : BackdropFilter(filter: filter, child: surface),
+      // passthrough: glaset får samma mått som utan Stack (annars krymper t.ex. kedjeremsan).
+      child: Stack(fit: StackFit.passthrough, children: [
+        Positioned.fill(child: PaintedBackdrop(scope: scope, theme: c)),
+        surface,
+      ]),
     );
   }
 }
@@ -122,7 +104,7 @@ class GhostButton extends StatelessWidget {
     return Semantics(
       label: semanticLabel,
       // Konturen är kanten — glaset ritar ingen egen.
-      child: Glass(padding: EdgeInsets.zero, radius: 0, border: false, grouped: false, child: button),
+      child: Glass(padding: EdgeInsets.zero, radius: 0, border: false, child: button),
     );
   }
 }

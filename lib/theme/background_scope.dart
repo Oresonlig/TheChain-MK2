@@ -17,6 +17,11 @@ import 'package:flutter/widgets.dart';
 import 'chain_theme.dart';
 import 'hex_field.dart';
 
+/// Värdet till `ListView(addRepaintBoundaries: ...)` på skärmar med glas:
+/// AV. Ritat glas räknar ut var det står när det ritas, så korten måste ritas
+/// om när listan scrollar (inte bara flyttas som färdiga lager).
+const glassListRepaintBoundaries = false;
+
 /// Bakgrundens sken — samma gradient i ramen och i glasets bild.
 Gradient backgroundGradient(ChainTheme c) => RadialGradient(
       center: Alignment.topCenter,
