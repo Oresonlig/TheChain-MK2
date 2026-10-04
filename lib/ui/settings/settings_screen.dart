@@ -287,9 +287,8 @@ class AppearanceSettingsScreen extends StatelessWidget {
                   valueListenable: glassMode,
                   builder: (context, mode, _) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                     for (final (m, title, sub) in const [
-                      (GlassMode.engine, 'Engine blur', 'As before.'),
-                      (GlassMode.engineRepaint, 'Engine blur + repaint', 'Build 48 test — did not help.'),
-                      (GlassMode.painted, 'Painted glass', 'The card draws the soft hex itself. No engine blur.'),
+                      (GlassMode.painted, 'Painted glass', 'Default. The card shows a pre-blurred copy of the background.'),
+                      (GlassMode.engine, 'Engine blur', 'The old glass, for comparison.'),
                     ])
                       ListTile(
                         contentPadding: EdgeInsets.zero,

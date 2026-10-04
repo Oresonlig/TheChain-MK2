@@ -1,19 +1,17 @@
-/// DIAGNOS (DEV, 2026-10-04): glaset tappar sin blur medan listor scrollar
-/// (Niklas S26 Ultra, build 47–48).
-///   * engine        — som förut: motorns bakgrundsblur (BackdropFilter).
-///   * engineRepaint — samma, men listorna ritar om korten varje bildruta.
-///                     Build 48: lagade INTE felet → inte lageråteranvändning.
-///   * painted       — glaset ritar själv bakgrundens ton + en mjuk kopia av
-///                     hex-väven (ingen bakgrundsläsning alls).
-/// Bara i minnet — nollställs vid omstart. Tas bort när frågan är avgjord
-/// (dödkod rensas i samma version som ersätter den).
+/// DIAGNOS (DEV, 2026-10-04): motorns bakgrundsblur (BackdropFilter) tappas
+/// medan listor scrollar på Niklas S26 Ultra — även med stilla väv och även
+/// när korten ritas om varje bildruta (build 48). Ritat glas höll (build 49).
+///   * painted — STANDARD: kortet visar sin bit av en blurrad bakgrundsbild
+///               (background_scope.dart). Ingen bakgrundsläsning.
+///   * engine  — som förut, för jämförelse ett bygge till.
+/// Bara i minnet. Tas bort (med motorns blur) när Niklas bekräftat ritat glas.
 library;
 
 import 'package:flutter/foundation.dart';
 
-enum GlassMode { engine, engineRepaint, painted }
+enum GlassMode { painted, engine }
 
-final glassMode = ValueNotifier<GlassMode>(GlassMode.engine);
+final glassMode = ValueNotifier<GlassMode>(GlassMode.painted);
 
 /// Värdet till `ListView(addRepaintBoundaries: ...)` på skärmar med glas.
 /// Ritat glas måste ritas om när kortet flyttas (det räknar ut var det står).

@@ -129,41 +129,29 @@ Path _hex(Offset c, double r) {
   return p..close();
 }
 
-/// Ritar väven (och vågorna om [animated]) i vävens egna koordinater.
-/// [only]: rita bara hexagoner inom den ytan (glaskortens kopia).
-/// [blur]: mjuka upp varje streck/fyllning (MaskFilter — ingen lager- eller
-/// bakgrundsblur, som renderingsmotorn tappade under scroll 2026-10-04).
-void paintHexField(Canvas canvas, HexFieldModel model,
-    {required Color line, required bool animated, Rect? only, double blur = 0}) {
+/// Ritar väven (och vågorna om [animated]) i vävens egna koordinater. Delas
+/// av bakgrunden och glasets nedskalade kopia (background_scope.dart).
+void paintHexField(Canvas canvas, HexFieldModel model, {required Color line, required bool animated}) {
   const r = HexFieldModel.size - 1.2;
-  final mask = blur > 0 ? MaskFilter.blur(BlurStyle.normal, blur) : null;
-  // Uppmjukningen når ~3 sigma utanför kanten — ta med hexagoner även där.
-  final reach = only?.inflate(HexFieldModel.size + 3 * blur);
-  bool inside(Offset h) => reach == null || reach.contains(h);
   final base = Paint()
     ..style = PaintingStyle.stroke
     ..strokeWidth = 1
-    ..color = line
-    ..maskFilter = mask;
+    ..color = line;
   final weave = Path();
   for (final h in model.hexes) {
-    if (inside(h)) weave.addPath(_hex(h, r), Offset.zero);
+    weave.addPath(_hex(h, r), Offset.zero);
   }
   canvas.drawPath(weave, base);
   if (!animated) return;
 
-  final fill = Paint()
-    ..blendMode = BlendMode.plus
-    ..maskFilter = mask;
+  final fill = Paint()..blendMode = BlendMode.plus;
   final stroke = Paint()
     ..style = PaintingStyle.stroke
     ..strokeWidth = 1.2
-    ..blendMode = BlendMode.plus
-    ..maskFilter = mask;
+    ..blendMode = BlendMode.plus;
   final t = model.frame;
   for (var i = 0; i < model.hexes.length; i++) {
     final h = model.hexes[i];
-    if (!inside(h)) continue;
     final idle = HexFieldModel.idleAmp * (0.5 + 0.5 * math.sin(t * 0.018 - model.phase[i] * 6));
     var e = model.energyAt(h) * HexFieldModel.intensity + idle;
     if (e < 0.06) continue;

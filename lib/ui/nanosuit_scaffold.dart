@@ -23,10 +23,12 @@ class ChainScaffold extends StatefulWidget {
 
 class _ChainScaffoldState extends State<ChainScaffold> {
   final _model = HexFieldModel();
+  late final _backdrop = BlurredBackdrop(_model);
   final _canvas = GlobalKey();
 
   @override
   void dispose() {
+    _backdrop.dispose();
     _model.dispose();
     super.dispose();
   }
@@ -46,6 +48,7 @@ class _ChainScaffoldState extends State<ChainScaffold> {
         BackdropGroup(
           child: BackgroundScope(
             model: _model,
+            backdrop: _backdrop,
             canvasKey: _canvas,
             animated: c.hasAmbient && animated,
             child: SafeArea(child: widget.child),
