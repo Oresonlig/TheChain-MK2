@@ -11,6 +11,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:the_chain/app/app_controller.dart';
 import 'package:the_chain/domain/domain.dart';
 import 'package:the_chain/main.dart';
+import 'package:the_chain/theme/glass_diagnostics.dart';
 import 'package:the_chain/ui/charts/chain_chart.dart';
 import 'package:the_chain/ui/workout/workout_screen.dart';
 
@@ -338,6 +339,23 @@ void main() {
     });
     await tester.pumpAndSettle();
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/dev_home.png'));
+  });
+
+  testWidgets('DIAGNOS: ritat glas (jämför med dev_home.png)', (tester) async {
+    await _loadSaira();
+    glassMode.value = GlassMode.painted;
+    addTearDown(() => glassMode.value = GlassMode.engine);
+    final b = FakeBackend(mk1: mk1());
+    final app = _app(b);
+    await _phone(tester, TheChainApp(app: app, emailOf: () => b.userEmail ?? ''));
+    await tester.runAsync(() async {
+      await app.start();
+      await app.signIn('niklas@example.com', 'secret');
+      await pumpEventQueue();
+      await app.importFromWebsite();
+    });
+    await tester.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/glass_painted.png'));
   });
 
   testWidgets('settings: hubb + Data & Sync', (tester) async {

@@ -6,7 +6,9 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
+import 'background_scope.dart';
 import 'chain_theme.dart';
+import 'glass_diagnostics.dart';
 
 /// Frostat glas: låg opacitet + blur. Gradienten går från [ChainTheme.glassTop]
 /// till [ChainTheme.glassBottom].
@@ -46,6 +48,18 @@ class Glass extends StatelessWidget {
       ),
       child: Padding(padding: padding, child: child),
     );
+    // DIAGNOS (DEV): ritat glas — ingen bakgrundsläsning (glass_diagnostics).
+    final scope = BackgroundScope.of(context);
+    if (glassMode.value == GlassMode.painted && scope != null) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(radius),
+        // passthrough: glaset får samma mått som utan Stack (annars krymper t.ex. kedjeremsan).
+        child: Stack(fit: StackFit.passthrough, children: [
+          Positioned.fill(child: PaintedBackdrop(scope: scope, theme: c)),
+          surface,
+        ]),
+      );
+    }
     return ClipRRect(
       borderRadius: BorderRadius.circular(radius),
       // Niklas 2026-10-04: glaset försvann under scroll (S26 Ultra) — ett

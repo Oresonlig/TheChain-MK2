@@ -1,16 +1,20 @@
 /// DIAGNOS (DEV, 2026-10-04): glaset tappar sin blur medan listor scrollar
-/// (Niklas S26 Ultra, build 47). Hypotes: renderingsmotorn tappar blur-steget
-/// för listkort vars färdiga lager återanvänds och bara flyttas under scroll.
-///
-/// "Repaint while scrolling" stänger av listornas repaint boundaries så att
-/// korten ritas om varje bildruta i stället. Lagar det felet är mekanismen
-/// bekräftad. Bara i minnet — nollställs vid omstart. Tas bort när frågan är
-/// avgjord (dödkod rensas i samma version som ersätter den).
+/// (Niklas S26 Ultra, build 47–48).
+///   * engine        — som förut: motorns bakgrundsblur (BackdropFilter).
+///   * engineRepaint — samma, men listorna ritar om korten varje bildruta.
+///                     Build 48: lagade INTE felet → inte lageråteranvändning.
+///   * painted       — glaset ritar själv bakgrundens ton + en mjuk kopia av
+///                     hex-väven (ingen bakgrundsläsning alls).
+/// Bara i minnet — nollställs vid omstart. Tas bort när frågan är avgjord
+/// (dödkod rensas i samma version som ersätter den).
 library;
 
 import 'package:flutter/foundation.dart';
 
-final repaintWhileScrolling = ValueNotifier<bool>(false);
+enum GlassMode { engine, engineRepaint, painted }
+
+final glassMode = ValueNotifier<GlassMode>(GlassMode.engine);
 
 /// Värdet till `ListView(addRepaintBoundaries: ...)` på skärmar med glas.
-bool get glassListRepaintBoundaries => !repaintWhileScrolling.value;
+/// Ritat glas måste ritas om när kortet flyttas (det räknar ut var det står).
+bool get glassListRepaintBoundaries => glassMode.value == GlassMode.engine;

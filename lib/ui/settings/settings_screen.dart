@@ -283,19 +283,25 @@ class AppearanceSettingsScreen extends StatelessWidget {
             // DIAGNOS, bara DEV-bygget (se glass_diagnostics.dart).
             if (app.updater != null)
               settingsSection(context, 'GLASS TEST (DEV)', [
-                ValueListenableBuilder<bool>(
-                  valueListenable: repaintWhileScrolling,
-                  builder: (context, on, _) => SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    value: on,
-                    onChanged: (v) => repaintWhileScrolling.value = v,
-                    title: Text('Repaint while scrolling', style: text.titleMedium),
-                    subtitle: Text(
-                      'Off = normal. On = cards are redrawn every frame while a list scrolls. '
-                      'Open a session after switching, then scroll and compare the glass. Resets on restart.',
-                      style: text.bodySmall,
-                    ),
-                  ),
+                ValueListenableBuilder<GlassMode>(
+                  valueListenable: glassMode,
+                  builder: (context, mode, _) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                    for (final (m, title, sub) in const [
+                      (GlassMode.engine, 'Engine blur', 'As before.'),
+                      (GlassMode.engineRepaint, 'Engine blur + repaint', 'Build 48 test — did not help.'),
+                      (GlassMode.painted, 'Painted glass', 'The card draws the soft hex itself. No engine blur.'),
+                    ])
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        selected: m == mode,
+                        onTap: () => glassMode.value = m,
+                        title: Text(title, style: text.titleMedium),
+                        subtitle: Text(sub, style: text.bodySmall),
+                        trailing: Icon(m == mode ? Icons.check_circle : Icons.circle_outlined,
+                            color: m == mode ? context.chain.accent : context.chain.textFaint),
+                      ),
+                    Text('Reopen a screen after switching. Resets on restart.', style: text.bodySmall),
+                  ]),
                 ),
               ]),
           ];

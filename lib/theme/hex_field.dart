@@ -129,6 +129,57 @@ Path _hex(Offset c, double r) {
   return p..close();
 }
 
+/// Ritar väven (och vågorna om [animated]) i vävens egna koordinater.
+/// [only]: rita bara hexagoner inom den ytan (glaskortens kopia).
+/// [blur]: mjuka upp varje streck/fyllning (MaskFilter — ingen lager- eller
+/// bakgrundsblur, som renderingsmotorn tappade under scroll 2026-10-04).
+void paintHexField(Canvas canvas, HexFieldModel model,
+    {required Color line, required bool animated, Rect? only, double blur = 0}) {
+  const r = HexFieldModel.size - 1.2;
+  final mask = blur > 0 ? MaskFilter.blur(BlurStyle.normal, blur) : null;
+  // Uppmjukningen når ~3 sigma utanför kanten — ta med hexagoner även där.
+  final reach = only?.inflate(HexFieldModel.size + 3 * blur);
+  bool inside(Offset h) => reach == null || reach.contains(h);
+  final base = Paint()
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 1
+    ..color = line
+    ..maskFilter = mask;
+  final weave = Path();
+  for (final h in model.hexes) {
+    if (inside(h)) weave.addPath(_hex(h, r), Offset.zero);
+  }
+  canvas.drawPath(weave, base);
+  if (!animated) return;
+
+  final fill = Paint()
+    ..blendMode = BlendMode.plus
+    ..maskFilter = mask;
+  final stroke = Paint()
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 1.2
+    ..blendMode = BlendMode.plus
+    ..maskFilter = mask;
+  final t = model.frame;
+  for (var i = 0; i < model.hexes.length; i++) {
+    final h = model.hexes[i];
+    if (!inside(h)) continue;
+    final idle = HexFieldModel.idleAmp * (0.5 + 0.5 * math.sin(t * 0.018 - model.phase[i] * 6));
+    var e = model.energyAt(h) * HexFieldModel.intensity + idle;
+    if (e < 0.06) continue;
+    if (e > 1.25) e = 1.25;
+    final k = math.min(1.0, e);
+    final path = _hex(h, r);
+    fill.color = Color.fromARGB(
+        (math.min(0.6, e * 0.42) * 255).round(), (174 * k * k).round(), math.min(255, (212 + 43 * k).round()), 255);
+    canvas.drawPath(path, fill);
+    if (e > 0.6) {
+      stroke.color = Color.fromARGB((math.min(0.9, e * 0.55) * 255).round(), (160 + 60 * k).round(), 255, 255);
+      canvas.drawPath(path, stroke);
+    }
+  }
+}
+
 class HexFieldPainter extends CustomPainter {
   HexFieldPainter(this.model, {required this.line, required this.animated}) : super(repaint: model);
 
@@ -139,41 +190,7 @@ class HexFieldPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     model.layout(size);
-    const r = HexFieldModel.size - 1.2;
-    final base = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1
-      ..color = line;
-    final weave = Path();
-    for (final h in model.hexes) {
-      weave.addPath(_hex(h, r), Offset.zero);
-    }
-    canvas.drawPath(weave, base);
-    if (!animated) return;
-
-    final fill = Paint()..blendMode = BlendMode.plus;
-    final stroke = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.2
-      ..blendMode = BlendMode.plus;
-    final t = model.frame;
-    for (var i = 0; i < model.hexes.length; i++) {
-      final h = model.hexes[i];
-      final idle = HexFieldModel.idleAmp * (0.5 + 0.5 * math.sin(t * 0.018 - model.phase[i] * 6));
-      var e = model.energyAt(h) * HexFieldModel.intensity + idle;
-      if (e < 0.06) continue;
-      if (e > 1.25) e = 1.25;
-      final k = math.min(1.0, e);
-      final path = _hex(h, r);
-      fill.color = Color.fromARGB(
-          (math.min(0.6, e * 0.42) * 255).round(), (174 * k * k).round(), math.min(255, (212 + 43 * k).round()), 255);
-      canvas.drawPath(path, fill);
-      if (e > 0.6) {
-        stroke.color = Color.fromARGB(
-            (math.min(0.9, e * 0.55) * 255).round(), (160 + 60 * k).round(), 255, 255);
-        canvas.drawPath(path, stroke);
-      }
-    }
+    paintHexField(canvas, model, line: line, animated: animated);
   }
 
   @override
@@ -188,7 +205,8 @@ class HexFieldBackground extends StatefulWidget {
   final Color line;
   final bool enabled;
 
-  /// Injiceras bara i tester, för att kunna läsa [HexFieldModel.frame].
+  /// Delad modell (ChainScaffold delar den med glaskorten) eller testens.
+  /// Ägs då av den som skickar in den — disposas inte här.
   final HexFieldModel? model;
 
   @override
@@ -233,7 +251,7 @@ class _HexFieldBackgroundState extends State<HexFieldBackground> with SingleTick
   @override
   void dispose() {
     _ticker.dispose();
-    _model.dispose();
+    if (widget.model == null) _model.dispose();
     super.dispose();
   }
 
