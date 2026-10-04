@@ -108,7 +108,7 @@ class _WeightScreenState extends State<WeightScreen> with ChartRangeState {
         content: Text('Deleted ${e.date} · ${_fmt(e.kg, s.weightUnit)}'),
         action: SnackBarAction(label: 'UNDO', onPressed: () => widget.app.restoreBodyweight(e)),
         persist: false, // annars ligger UNDO kvar tills den dras bort
-        duration: const Duration(seconds: 5),
+        duration: const Duration(milliseconds: 2500),
       ));
   }
 

@@ -36,7 +36,10 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
     expect(find.text('UNDO'), findsOneWidget);
 
-    await tester.pump(const Duration(seconds: 5));
+    // Timern startar när meddelandet glidit in (~1 s); 2,5 s senare glider det
+    // ut. Totalt ~5 s här — en timer på 5 s hade fortfarande visat UNDO.
+    await tester.pump(const Duration(seconds: 2));
+    await tester.pump(const Duration(seconds: 1));
     await tester.pump(const Duration(seconds: 1));
     expect(find.text('UNDO'), findsNothing);
     app.dispose();

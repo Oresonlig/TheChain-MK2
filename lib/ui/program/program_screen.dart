@@ -25,7 +25,7 @@ void _snack(BuildContext context, String message, {VoidCallback? undo}) {
       // En snackbar med knapp ligger annars kvar tills den dras bort (Niklas
       // 2026-10-04: UNDO ska försvinna av sig själv efter några sekunder).
       persist: false,
-      duration: const Duration(seconds: 5),
+      duration: const Duration(milliseconds: 2500), // 5 s var "en evighet"
     ));
 }
 
