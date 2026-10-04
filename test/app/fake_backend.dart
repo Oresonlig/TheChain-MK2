@@ -40,8 +40,18 @@ class FakeBackend implements Backend {
     _users.add(null);
   }
 
+  /// Som Supabase vid appstart: sparad inloggning + "initialSession"-händelse.
+  void restoreSession() => _uid = 'user-1';
+  void emitAuthEvent() => _users.add(_uid);
+
+  /// Hur många gånger lokala data öppnats (ska vara en per inloggning).
+  int storeOpens = 0;
+
   @override
-  Future<LocalStore> localStoreFor(String userId) async => _stores.putIfAbsent(userId, InMemoryLocalStore.new);
+  Future<LocalStore> localStoreFor(String userId) async {
+    storeOpens++;
+    return _stores.putIfAbsent(userId, InMemoryLocalStore.new);
+  }
   @override
   Future<String> deviceId() async => device;
   @override

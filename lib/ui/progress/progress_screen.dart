@@ -1,5 +1,5 @@
-/// Progress-fliken: PR per muskelgrupp + passhistoriken (med COPY). Grafer
-/// och detaljvy per övning kommer i F4.
+/// Progress-fliken: PR per muskelgrupp (→ detaljvy med graf per övning) +
+/// passhistoriken (med COPY).
 library;
 
 import 'package:flutter/material.dart';

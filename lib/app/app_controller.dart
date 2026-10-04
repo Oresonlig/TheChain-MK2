@@ -79,28 +79,59 @@ class AppController extends ChangeNotifier {
     await _onUser();
   }
 
+  /// Användaren vars data öppnas just nu. Vid start kommer både start()-anropet
+  /// och Supabase "initialSession" — utan spärren öppnades två synkmotorer mot
+  /// samma filer (2026-10-04).
+  String? _openingUid;
+
   Future<void> _onUser() async {
     final uid = backend.userId;
     if (uid == null) {
-      repo = null;
-      phase = Phase.signedOut;
-      notifyListeners();
+      if (repo != null || phase != Phase.signedOut) _clearSession();
       return;
     }
-    if (repo != null) return;
+    if (repo != null || _openingUid == uid) return;
+    _openingUid = uid;
     phase = Phase.loading;
     notifyListeners();
-    final engine = SyncEngine(
-      remote: backend.remote,
-      store: await backend.localStoreFor(uid),
-      deviceId: await backend.deviceId(),
-    );
-    await engine.open();
-    repo = Repository(engine);
-    phase = Phase.ready;
-    notifyListeners();
+    try {
+      final engine = SyncEngine(
+        remote: backend.remote,
+        store: await backend.localStoreFor(uid),
+        deviceId: await backend.deviceId(),
+      );
+      await engine.open();
+      // Utloggad (eller bytt konto) medan filerna lästes: öppna inte.
+      if (backend.userId != uid) return;
+      repo = Repository(engine);
+      phase = Phase.ready;
+    } catch (e) {
+      // Aldrig en evig snurra: tillbaka till inloggningen med beskedet.
+      error = 'Could not open the data on this phone: $e';
+      phase = Phase.signedOut;
+    } finally {
+      _openingUid = null;
+      notifyListeners();
+    }
+    if (repo == null) return;
     await syncNow(); // tar även första versionskollen
     await checkMoved();
+  }
+
+  /// Nollställer allt som hör till det inloggade kontot.
+  void _clearSession() {
+    _syncTimer?.cancel();
+    _syncTimer = null;
+    _syncAgain = false;
+    _openWorkout = null;
+    moved = null;
+    movedAt = null;
+    repo = null;
+    status = null;
+    lastSync = null;
+    error = null;
+    phase = Phase.signedOut;
+    notifyListeners();
   }
 
   Future<void> checkMoved() async {
@@ -158,8 +189,14 @@ class AppController extends ChangeNotifier {
   Future<void> installUpdate() async {
     final u = updater, info = update;
     if (u == null || info == null) return;
-    await for (final s in u.install(info)) {
-      updateStatus = s;
+    try {
+      await for (final s in u.install(info)) {
+        updateStatus = s;
+        notifyListeners();
+      }
+    } catch (e) {
+      // Annars stod bannern kvar på "Downloading…" och UPDATE var låst för gott.
+      updateStatus = 'Update failed: $e';
       notifyListeners();
     }
   }
@@ -185,13 +222,7 @@ class AppController extends ChangeNotifier {
       // Servern nåddes inte: logga ut lokalt ändå — aldrig fast i ett halvläge.
       debugPrint('signOut: $e');
     }
-    _syncTimer?.cancel();
-    _openWorkout = null;
-    moved = null;
-    movedAt = null;
-    repo = null;
-    phase = Phase.signedOut;
-    notifyListeners();
+    _clearSession();
   }
 
   /// [auto] = utlöst av en ändring under passet (inte av användaren).
@@ -208,6 +239,17 @@ class AppController extends ChangeNotifier {
     status = 'Syncing…';
     notifyListeners();
     final reports = await r.engine.syncAll();
+    if (!identical(repo, r)) {
+      // Utloggad under synken — inget av resultatet hör till nästa inloggning.
+      // Hann någon logga in under tiden väntar dess första synk här.
+      busy = false;
+      notifyListeners();
+      if (_syncAgain && repo != null) {
+        _syncAgain = false;
+        await syncNow();
+      }
+      return;
+    }
     final bad = reports.values.where((x) => x.outcome != SyncOutcome.ok).length;
     status = bad == 0 ? 'Synced' : 'Offline — changes are saved on this device';
     if (bad == 0) lastSync = _now();

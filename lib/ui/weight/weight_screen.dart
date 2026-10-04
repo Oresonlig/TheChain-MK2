@@ -57,7 +57,7 @@ class _WeightScreenState extends State<WeightScreen> with ChartRangeState {
         ],
       ),
     );
-    ctl.dispose();
+    // Ingen dispose: dialogens stängningsanimation läser fältet efter pop.
     if (result == null) return;
     final v = double.tryParse(result.trim().replaceAll(',', '.'));
     final kg = v == null ? null : (lbs ? v / _lbsPerKg : v);

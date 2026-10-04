@@ -411,8 +411,8 @@ class ExerciseCard extends StatelessWidget {
         ),
       ),
     );
+    // Ingen dispose: dialogens stängningsanimation läser fältet efter pop.
     if (ok == true) await controller.addNote(row.exerciseId, textCtl.text, pinned: pinned);
-    textCtl.dispose();
   }
 
   Future<void> _menu(BuildContext context) async {

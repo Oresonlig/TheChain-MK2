@@ -105,6 +105,35 @@ void main() {
     expect(find.text('START SESSION'), findsOneWidget);
   });
 
+  test('appstart med sparad inloggning: start() + initialSession öppnar data EN gång', () async {
+    final b = FakeBackend(mk1: mk1())..restoreSession();
+    final app = AppController(b);
+    final started = app.start();
+    b.emitAuthEvent(); // kommer medan start() fortfarande öppnar
+    b.emitAuthEvent(); // och en tokenRefresh för säkerhets skull
+    await started;
+    await pumpEventQueue();
+    expect(b.storeOpens, 1);
+    expect(app.phase, Phase.ready);
+  });
+
+  test('utloggning nollställer kontots läge (fel och synkstatus följer inte med till inloggningen)', () async {
+    final b = FakeBackend(mk1: mk1());
+    final app = AppController(b);
+    await app.start();
+    await app.signIn('x', 'secret');
+    await pumpEventQueue();
+    await app.importFromWebsite();
+    expect(app.status, 'Synced');
+    app.error = 'Import failed: something';
+    await app.signOut();
+    await pumpEventQueue();
+    expect(app.phase, Phase.signedOut);
+    expect(app.error, isNull);
+    expect(app.status, isNull);
+    expect(app.repo, isNull);
+  });
+
   testWidgets('UI: utloggning med en vy ovanpå (passvyn) → inloggningen syns, inte en evig snurra', (tester) async {
     tester.view.physicalSize = const Size(1080, 4000);
     tester.view.devicePixelRatio = 2.625;

@@ -1,5 +1,5 @@
-/// F2 DEV-vy: visar att inloggning, import och synk fungerar på riktig data.
-/// Ingen slutlig design — ersätts av kedjevyn i F3.
+/// Data check (Settings → Data): kontrollsiffror, SYNC NOW och engångsimporten
+/// från hemsidan. Öppnas ovanpå hemvyn.
 library;
 
 import 'package:flutter/material.dart';
