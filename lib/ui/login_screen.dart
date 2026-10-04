@@ -90,7 +90,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   if (widget.app.error != null) ...[
                     const SizedBox(height: 12),
-                    Text(widget.app.error!, style: text.bodySmall!.copyWith(color: const Color(0xFFFF6B6B))),
+                    Text(widget.app.error!, style: text.bodySmall!.copyWith(color: c.fail)),
                   ],
                   if (widget.versionLabel.isNotEmpty) ...[
                     const SizedBox(height: 16),

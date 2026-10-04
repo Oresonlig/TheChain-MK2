@@ -83,6 +83,13 @@ const manifestPath = 'android/app/src/main/AndroidManifest.xml';
 let manifest = readFileSync(manifestPath, 'utf8');
 if (!/android:label="[^"]*"/.test(manifest)) { console.error('android:label not found'); process.exit(1); }
 manifest = manifest.replace(/android:label="[^"]*"/, `android:label="${cfg.label}"`);
+// EN instans av appen (som MK1:s Capacitor-manifest). Flutters mall ger
+// singleTop + taskAffinity="" → "Öppna" i installationsdialogen efter en
+// självuppdatering startade appen i ett NYTT kort, och det gamla startade om
+// när man bytte till det (Niklas 2026-10-04, bekräftat med skärmdump).
+if (!/android:launchMode="[^"]*"/.test(manifest)) { console.error('android:launchMode not found'); process.exit(1); }
+manifest = manifest.replace(/android:launchMode="[^"]*"/, 'android:launchMode="singleTask"');
+manifest = manifest.replace(/\s*android:taskAffinity=""/, '');
 // Flutters mall ger bara debug-byggen INTERNET — release behöver den för Supabase.
 if (!manifest.includes('android.permission.INTERNET')) {
   manifest = manifest.replace(/<application/, '<uses-permission android:name="android.permission.INTERNET"/>\n    <application');

@@ -126,7 +126,7 @@ class DevHomeScreen extends StatelessWidget {
               ],
               if (app.error != null) ...[
                 const SizedBox(height: 12),
-                Text(app.error!, style: text.bodySmall!.copyWith(color: const Color(0xFFFF6B6B))),
+                Text(app.error!, style: text.bodySmall!.copyWith(color: c.fail)),
               ],
               const SizedBox(height: 20),
               Row(children: [
@@ -136,8 +136,6 @@ class DevHomeScreen extends StatelessWidget {
                 // skulle ersätta appens data med hemsidans gamla.
                 button('IMPORT', app.busy || app.moved != false ? null : () => _confirmImport(context)),
               ]),
-              const SizedBox(height: 8),
-              Row(children: [button('SIGN OUT', app.busy ? null : app.signOut)]),
             ],
           )),
           ]);

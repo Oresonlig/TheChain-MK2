@@ -96,6 +96,19 @@ class _WeightScreenState extends State<WeightScreen> with ChartRangeState {
     return '${v.toStringAsFixed(v == v.roundToDouble() ? 0 : 1)} ${u == WeightUnit.lbs ? 'lbs' : 'kg'}';
   }
 
+  /// Raderar direkt (ett tryck på gymmet) men med UNDO — ett feltryck ska
+  /// aldrig kosta en vägning (Niklas 2026-10-04).
+  Future<void> _delete(BodyweightEntry e, UserSettings s) async {
+    final messenger = ScaffoldMessenger.of(context);
+    await widget.app.deleteBodyweight(e.date);
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(
+        content: Text('Deleted ${e.date} · ${_fmt(e.kg, s.weightUnit)}'),
+        action: SnackBarAction(label: 'UNDO', onPressed: () => widget.app.restoreBodyweight(e)),
+      ));
+  }
+
   Future<void> _log(UserSettings s) async {
     final v = double.tryParse(_ctl.text.trim().replaceAll(',', '.'));
     if (v == null) return;
@@ -242,7 +255,7 @@ class _WeightScreenState extends State<WeightScreen> with ChartRangeState {
                         Text(_fmt(e.kg, s.weightUnit), style: text.titleMedium),
                         IconButton(
                           tooltip: 'Delete',
-                          onPressed: () => widget.app.deleteBodyweight(e.date),
+                          onPressed: () => _delete(e, s),
                           icon: Icon(Icons.close, size: 18, color: c.textFaint),
                         ),
                       ]),

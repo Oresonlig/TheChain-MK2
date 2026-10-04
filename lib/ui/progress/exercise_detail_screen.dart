@@ -36,9 +36,13 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> with ChartR
     loadSavedRange();
   }
 
+  // Läser om när synken hämtat något (annan enhet) — inte bara vid öppning.
   @override
-  Widget build(BuildContext context) {
-    final repo = widget.app.repo!;
+  Widget build(BuildContext context) => ListenableBuilder(listenable: widget.app, builder: (context, _) => _build(context));
+
+  Widget _build(BuildContext context) {
+    final repo = widget.app.repo;
+    if (repo == null) return const SizedBox.shrink(); // utloggad; vyn stängs
     final c = context.chain;
     final text = Theme.of(context).textTheme;
     final s = repo.settings();

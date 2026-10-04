@@ -191,6 +191,24 @@ void main() {
     expect(app.repo!.activeWorkoutFor(const SessionId('A'))!.exercises.length, 3);
   });
 
+  test('ett pass i taget: nytt pass medan ett annat pågår nekas; samma pass återupptas', () async {
+    final app = await ready();
+    final a = app.openWorkout(const SessionId('A'));
+    expect(() => app.openWorkout(const SessionId('B')), throwsA(isA<WorkoutError>()));
+    expect(app.openWorkout(const SessionId('A')).workout.id, a.workout.id);
+    expect(app.repo!.activeWorkouts().length, 1);
+  });
+
+  test('vikt: radera + UNDO ger tillbaka samma dag och vikt', () async {
+    final app = await ready();
+    final e = app.repo!.bodyweight().single;
+    await app.deleteBodyweight(e.date);
+    expect(app.repo!.bodyweight(), isEmpty);
+    await app.restoreBodyweight(e);
+    expect(app.repo!.bodyweight().single.kg, e.kg);
+    expect(app.repo!.bodyweight().single.date, e.date);
+  });
+
   test('hoppa över pass med anledning + UNDO (synkas som egen post)', () async {
     final app = await ready();
     await app.skipSession(const SessionId('A'), 'New tattoo');

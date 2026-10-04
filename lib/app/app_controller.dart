@@ -325,6 +325,8 @@ class AppController extends ChangeNotifier {
     final session = r.program().sessionById(sessionId)!;
     var w = r.activeWorkoutFor(sessionId);
     if (w == null) {
+      // Ett pass i taget (UI:t varnar först; det här är skyddsnätet).
+      if (r.activeWorkouts().isNotEmpty) throw const WorkoutError('Another session is in progress — finish or discard it first');
       w = startWorkout(
         session,
         (id) => r.exercise(id) ?? Exercise(id: id, name: id.value, group: MuscleGroup.other, measure: Measure.weight),
@@ -370,6 +372,13 @@ class AppController extends ChangeNotifier {
   /// Dagens vägning (en per dag — samma dag skrivs över, senaste vinner i synken).
   Future<void> logBodyweight(double kg) async {
     await repo!.saveBodyweight(BodyweightEntry(date: dayKey(_now()), kg: kg), _now());
+    notifyListeners();
+    await syncNow();
+  }
+
+  /// UNDO efter radering: samma dag och vikt tillbaka (nyare stämpel vinner).
+  Future<void> restoreBodyweight(BodyweightEntry e) async {
+    await repo!.saveBodyweight(e, _now());
     notifyListeners();
     await syncNow();
   }

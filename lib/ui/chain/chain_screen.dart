@@ -34,6 +34,25 @@ class _ChainScreenState extends State<ChainScreen> {
   DateTime get _now => (widget.now ?? DateTime.now)();
 
   Future<void> _openWorkout(SessionId id) async {
+    // Ett pass i taget (Niklas 2026-10-04: i MK1 glömde han ibland att avsluta).
+    final other = widget.app.repo?.activeWorkouts().where((w) => w.sessionId != id).firstOrNull;
+    if (other != null) {
+      final program = widget.app.repo!.program();
+      final name = program.sessionById(other.sessionId)?.name ?? other.sessionId.value;
+      final goThere = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text('${name.toUpperCase()} is in progress'),
+          content: Text('Finish or discard $name before you start ${program.sessionById(id)?.name ?? 'a new session'}.'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+            TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text('Go to $name')),
+          ],
+        ),
+      );
+      if (goThere == true && mounted) await _openWorkout(other.sessionId);
+      return;
+    }
     final wc = widget.app.openWorkout(id);
     await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => WorkoutScreen(controller: wc)));
     if (mounted) setState(() => _selected = null); // tillbaka: visa nästa föreslagna
