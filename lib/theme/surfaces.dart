@@ -11,33 +11,49 @@ import 'chain_theme.dart';
 /// Frostat glas: låg opacitet + blur. Gradienten går från [ChainTheme.glassTop]
 /// till [ChainTheme.glassBottom].
 class Glass extends StatelessWidget {
-  const Glass({super.key, required this.child, this.padding = const EdgeInsets.all(16), this.radius = 6, this.border = true});
+  const Glass({
+    super.key,
+    required this.child,
+    this.padding = const EdgeInsets.all(16),
+    this.radius = 6,
+    this.border = true,
+    this.grouped = true,
+  });
 
   final Widget child;
   final EdgeInsetsGeometry padding;
   final double radius;
   final bool border;
 
+  /// Delar bakgrundsläsningen med skärmens övriga glas (BackdropGroup i
+  /// ChainScaffold). Glas OVANPÅ annat glas (GhostButton i ett kort) ska inte
+  /// dela — överlappande filter med samma nyckel blurras bara en gång.
+  final bool grouped;
+
   @override
   Widget build(BuildContext context) {
     final c = context.chain;
+    final filter = ui.ImageFilter.blur(sigmaX: c.glassBlur, sigmaY: c.glassBlur);
+    final surface = DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [c.glassTop, c.glassBottom],
+        ),
+        borderRadius: BorderRadius.circular(radius),
+        border: border ? Border.all(color: c.border) : null,
+      ),
+      child: Padding(padding: padding, child: child),
+    );
     return ClipRRect(
       borderRadius: BorderRadius.circular(radius),
-      child: BackdropFilter(
-        filter: ui.ImageFilter.blur(sigmaX: c.glassBlur, sigmaY: c.glassBlur),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [c.glassTop, c.glassBottom],
-            ),
-            borderRadius: BorderRadius.circular(radius),
-            border: border ? Border.all(color: c.border) : null,
-          ),
-          child: Padding(padding: padding, child: child),
-        ),
-      ),
+      // Niklas 2026-10-04: glaset försvann under scroll (S26 Ultra) — ett
+      // filter per kort som var och ett läser bakgrunden. Grupperat = en
+      // gemensam läsning per bildruta (Flutters väg för många glas i listor).
+      child: grouped
+          ? BackdropFilter.grouped(filter: filter, child: surface)
+          : BackdropFilter(filter: filter, child: surface),
     );
   }
 }
@@ -92,7 +108,7 @@ class GhostButton extends StatelessWidget {
     return Semantics(
       label: semanticLabel,
       // Konturen är kanten — glaset ritar ingen egen.
-      child: Glass(padding: EdgeInsets.zero, radius: 0, border: false, child: button),
+      child: Glass(padding: EdgeInsets.zero, radius: 0, border: false, grouped: false, child: button),
     );
   }
 }

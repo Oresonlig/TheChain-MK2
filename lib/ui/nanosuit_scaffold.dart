@@ -31,7 +31,8 @@ class ChainScaffold extends StatelessWidget {
           ),
         ),
         if (c.hasAmbient) Positioned.fill(child: HexFieldBackground(line: c.hexLine, enabled: ambient)),
-        SafeArea(child: child),
+        // Skärmens glas delar en bakgrundsläsning (se Glass.grouped).
+        BackdropGroup(child: SafeArea(child: child)),
       ]),
     );
   }
