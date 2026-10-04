@@ -54,7 +54,7 @@ class _ChainScreenState extends State<ChainScreen> {
       return;
     }
     final wc = widget.app.openWorkout(id);
-    await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => WorkoutScreen(controller: wc)));
+    await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => WorkoutScreen(controller: wc, app: widget.app)));
     if (mounted) setState(() => _selected = null); // tillbaka: visa nästa föreslagna
   }
 

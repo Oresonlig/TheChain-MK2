@@ -87,7 +87,7 @@ class _ContinueBar extends StatelessWidget {
         behavior: HitTestBehavior.opaque,
         onTap: () {
           final wc = app.openWorkout(workout.sessionId);
-          Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => WorkoutScreen(controller: wc)));
+          Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => WorkoutScreen(controller: wc, app: app)));
         },
         child: Container(
           height: 52,

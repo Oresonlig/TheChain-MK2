@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:the_chain/app/app_controller.dart';
+import 'package:the_chain/app/updater.dart';
 import 'package:the_chain/data/sync_engine.dart';
 import 'package:the_chain/domain/domain.dart';
 import 'package:the_chain/main.dart';
@@ -154,6 +155,13 @@ void main() {
     await tester.tap(find.text('START SESSION'));
     await tester.pumpAndSettle();
     expect(find.text('FINISH SESSION'), findsOneWidget);
+
+    // Nytt bygge medan passet är öppet: diskret notis i passvyn, ingen knapp.
+    app.update = const UpdateInfo(build: 99, apkUrl: 'x');
+    await tester.runAsync(app.syncNow); // synken meddelar lyssnarna
+    await tester.pump();
+    expect(find.text('Build 99 ready · update after the session'), findsOneWidget);
+    expect(find.text('UPDATE'), findsNothing);
 
     await tester.runAsync(app.signOut);
     await tester.pumpAndSettle();

@@ -2,9 +2,12 @@
 /// har tydligt avstånd och stora träffytor (Niklas #3: "brottarfingrar").
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../app/app_controller.dart';
 import '../../app/workout_controller.dart';
 import '../../domain/domain.dart';
 import '../../theme/chain_theme.dart';
@@ -14,10 +17,13 @@ import '../units.dart';
 import 'exercise_picker.dart';
 
 class WorkoutScreen extends StatefulWidget {
-  const WorkoutScreen({super.key, required this.controller, this.now});
+  const WorkoutScreen({super.key, required this.controller, this.now, this.app});
 
   final WorkoutController controller;
   final DateTime Function()? now;
+
+  /// För notisen om nytt bygge (null i tester som bara visar passet).
+  final AppController? app;
 
   @override
   State<WorkoutScreen> createState() => _WorkoutScreenState();
@@ -26,16 +32,31 @@ class WorkoutScreen extends StatefulWidget {
 class _WorkoutScreenState extends State<WorkoutScreen> {
   WorkoutController get controller => widget.controller;
 
+  /// Under DEV-perioden väntar Niklas ofta på nästa bygge mitt i passet. Utan
+  /// ändringar synkar inget, så passvyn kollar själv (litet GET, ingen kvot).
+  Timer? _updateTimer;
+  static const _updatePoll = Duration(minutes: 3);
+
   @override
   void initState() {
     super.initState();
     controller.addListener(_showError);
+    widget.app?.addListener(_onApp);
+    if (widget.app?.updater != null) {
+      _updateTimer = Timer.periodic(_updatePoll, (_) => widget.app!.checkForUpdate());
+    }
   }
 
   @override
   void dispose() {
+    _updateTimer?.cancel();
+    widget.app?.removeListener(_onApp);
     controller.removeListener(_showError);
     super.dispose();
+  }
+
+  void _onApp() {
+    if (mounted) setState(() {});
   }
 
   /// Fel visas i nederkant så de syns oavsett var man har scrollat.
@@ -78,6 +99,20 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                 Text('$doneCount/${w.exercises.length}', style: text.labelSmall),
               ]),
             ),
+            // Diskret: bara besked, ingen knapp — installation startar om appen,
+            // inte mitt i ett set (Niklas 2026-10-04).
+            if (widget.app?.update case final u?)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+                child: Row(children: [
+                  Icon(Icons.system_update, size: 14, color: c.accent),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text('Build ${u.build} ready · update after the session',
+                        style: text.labelSmall!.copyWith(color: c.accent)),
+                  ),
+                ]),
+              ),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
