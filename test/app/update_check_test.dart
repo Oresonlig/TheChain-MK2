@@ -68,6 +68,22 @@ void main() {
     a.dispose();
   });
 
+  testWidgets('central koll var 3:e minut medan appen syns — utan synk; stoppad i bakgrunden', (tester) async {
+    // Uppsättningen behöver riktig tid (pumpEventQueue); timern körs på testets klocka.
+    final a = (await tester.runAsync(app))!;
+    a.startUpdatePolling();
+    a.startUpdatePolling(); // dubbelstart ger inte två timrar
+    latest = 36;
+    await tester.pump(const Duration(minutes: 3));
+    await tester.pump();
+    expect(calls, 2);
+    expect(a.update?.build, 36);
+    a.stopUpdatePolling(); // appen i bakgrunden
+    await tester.pump(const Duration(minutes: 30));
+    expect(calls, 2);
+    a.dispose();
+  });
+
   test('nätfel tar inte bort en redan hittad version ur bannern', () async {
     final a = await app();
     latest = 36;

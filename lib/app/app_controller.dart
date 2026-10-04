@@ -183,6 +183,22 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Central versionskoll medan appen syns (Niklas 2026-10-04: på alla vyer,
+  /// inte bara när något synkas). Ett litet GET, aldrig i bakgrunden. DEV:
+  /// var 3:e minut (bygget tar ~4). Stabila kanalen får ett längre intervall.
+  static const updatePollInterval = Duration(minutes: 3);
+  Timer? _updatePoll;
+
+  void startUpdatePolling() {
+    if (updater == null || _updatePoll != null) return;
+    _updatePoll = Timer.periodic(updatePollInterval, (_) => checkForUpdate());
+  }
+
+  void stopUpdatePolling() {
+    _updatePoll?.cancel();
+    _updatePoll = null;
+  }
+
   bool _disposed = false;
 
   /// Laddar ner i appen och öppnar Androids installationsdialog.
@@ -430,6 +446,7 @@ class AppController extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    stopUpdatePolling();
     _syncTimer?.cancel();
     _sub?.cancel();
     super.dispose();

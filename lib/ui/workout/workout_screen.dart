@@ -2,8 +2,6 @@
 /// har tydligt avstånd och stora träffytor (Niklas #3: "brottarfingrar").
 library;
 
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -32,24 +30,17 @@ class WorkoutScreen extends StatefulWidget {
 class _WorkoutScreenState extends State<WorkoutScreen> {
   WorkoutController get controller => widget.controller;
 
-  /// Under DEV-perioden väntar Niklas ofta på nästa bygge mitt i passet. Utan
-  /// ändringar synkar inget, så passvyn kollar själv (litet GET, ingen kvot).
-  Timer? _updateTimer;
-  static const _updatePoll = Duration(minutes: 3);
-
+  // Versionskollen går centralt (AppController.startUpdatePolling); passvyn
+  // lyssnar bara för att visa notisen.
   @override
   void initState() {
     super.initState();
     controller.addListener(_showError);
     widget.app?.addListener(_onApp);
-    if (widget.app?.updater != null) {
-      _updateTimer = Timer.periodic(_updatePoll, (_) => widget.app!.checkForUpdate());
-    }
   }
 
   @override
   void dispose() {
-    _updateTimer?.cancel();
     widget.app?.removeListener(_onApp);
     controller.removeListener(_showError);
     super.dispose();

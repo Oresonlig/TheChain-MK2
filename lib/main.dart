@@ -42,14 +42,21 @@ class _TheChainAppState extends State<TheChainApp> {
   AppController get app => widget.app;
   String Function() get emailOf => widget.emailOf;
 
+  /// Versionskollen går bara medan appen syns.
+  late final AppLifecycleListener _lifecycle;
+
   @override
   void initState() {
     super.initState();
     app.addListener(_onPhase);
+    app.startUpdatePolling();
+    _lifecycle = AppLifecycleListener(onShow: app.startUpdatePolling, onHide: app.stopUpdatePolling);
   }
 
   @override
   void dispose() {
+    _lifecycle.dispose();
+    app.stopUpdatePolling();
     app.removeListener(_onPhase);
     super.dispose();
   }
