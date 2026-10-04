@@ -66,6 +66,17 @@ void main() {
       if (v2 == null || (v2 - e.value).abs() > 1e-9) diffs.add('${e.key}: MK1 ${e.value} / MK2 $v2');
     }
 
+    // 3b. PR räknas på övningens NUVARANDE mätsätt (2026-10-04): vilka
+    // rekord ändras för den riktiga datan? Ska vara noll eller förklarbart.
+    final current = personalRecords(snap.history,
+        measureOf: (id) => resolveExercise(id, custom: snap.custom, overrides: snap.overrides)?.measure);
+    final measureDiffs = [
+      for (final e in mk2.entries)
+        if (current[e.key]?.value != e.value.value)
+          '${e.key.value}: alla ${e.value.value} (${e.value.measure.name}) / nuvarande ${current[e.key]?.value} '
+              '(${resolveExercise(e.key, custom: snap.custom, overrides: snap.overrides)?.measure.name})',
+    ];
+
     // 4. Övningar som inte känns igen (varken bibliotek eller egna).
     final unknown = <String>{
       for (final w in workouts)
@@ -82,6 +93,8 @@ void main() {
 Pass: ${workouts.length} · vilodagar: ${rests.length} · set: $mk2Sets
 PR: MK2 ${mk2.length} övningar · MK1-regeln ${mk1Best.length} · skillnader: ${diffs.length}
 ${diffs.take(10).join('\n')}
+PR med nuvarande mätsätt: ändrade ${measureDiffs.length}
+${measureDiffs.take(15).join('\n')}
 Program: ${snap.program.sessions.map((s) => s.id.value).join(' ')}
 Round: MK1 ${snap.mk1Round} · MK2 $round (offset $offset)
 Vikt: ${snap.bodyweight.length} · anteckningar: ${snap.notes.length} · egna övningar: ${snap.custom.length} · justeringar: ${snap.overrides.length}

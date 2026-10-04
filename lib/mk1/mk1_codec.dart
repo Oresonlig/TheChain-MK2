@@ -271,13 +271,9 @@ class _Decoder {
             final swap = _s(swaps[slotId]);
             final rename = _s(renames[slotId]);
             final current = swap ?? rename ?? baseName;
-            final exId = exIdForName(current, slotId);
-            final originalId = swap != null ? exIdForName(rename ?? baseName, slotId) : null;
-            return Slot(
-              id: SlotId(slotId),
-              exerciseId: exId,
-              originalExerciseId: originalId == exId ? null : originalId,
-            );
+            // Ett permanent byte är bara programmets nya övning — inget minne av
+            // originalet (Niklas 2026-10-04).
+            return Slot(id: SlotId(slotId), exerciseId: exIdForName(current, slotId));
           }(),
       ];
       sessions.add(Session(id: SessionId(id), name: _s(names[id]) ?? base.name, slots: slots));

@@ -114,19 +114,16 @@ void main() {
       expect(snap.program.sessionById(const SessionId('K'))!.name, 'Core');
     });
 
-    test('borttagen plats, egen ordning och permanent byte med original', () {
+    test('borttagen plats, egen ordning och permanent byte (nya övningen gäller)', () {
       final a = snap.program.sessionById(const SessionId('A'))!;
       expect(a.slots.map((s) => s.id.value), ['A3', 'A1', 'A2']);
-      final a2 = a.slots.last;
-      expect(a2.exerciseId, const ExerciseId('ex_bench_press_bb'));
-      expect(a2.originalExerciseId, const ExerciseId('ex_incline_press_smith'));
+      expect(a.slots.last.exerciseId, const ExerciseId('ex_bench_press_bb'));
     });
 
     test('tillagda övningar, byte på tillagd plats och egen övning via namn', () {
       final k = snap.program.sessionById(const SessionId('K'))!;
       final ids = {for (final s in k.slots) s.id.value: s};
       expect(ids['added_K_1']!.exerciseId, const ExerciseId('ex_running_with_sprints'));
-      expect(ids['added_K_1']!.originalExerciseId, const ExerciseId('ex_running'));
       expect(ids['added_K_2']!.exerciseId, const ExerciseId('custom_99'));
       expect(ids['K1']!.exerciseId, const ExerciseId('ex_ab_wheel'));
     });

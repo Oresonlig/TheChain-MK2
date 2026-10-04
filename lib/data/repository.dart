@@ -93,7 +93,62 @@ class Repository {
 
   Exercise? exercise(ExerciseId id) => resolveExercise(id, custom: customExercises(), overrides: overrides());
 
+  /// PR per övning, räknat på övningens NUVARANDE mätsätt (records.dart).
+  Map<ExerciseId, PersonalRecord> records({bool includeHidden = false}) {
+    final custom = customExercises(), over = overrides();
+    return personalRecords(
+      history(),
+      hidden: includeHidden ? const {} : hiddenRecords(),
+      measureOf: (id) => resolveExercise(id, custom: custom, overrides: over)?.measure,
+    );
+  }
+
+  /// Namnet en historikpost visas med: postens eget (lagt kort ligger), annars
+  /// programmets nuvarande, annars ett neutralt "Session" (borttaget pass).
+  String sessionNameOf(HistoryEntry e, [Program? p]) {
+    final (id, stored) = switch (e) {
+      WorkoutEntry(:final workout) => (workout.sessionId, workout.sessionName),
+      SkippedEntry(:final sessionId, :final sessionName) => (sessionId, sessionName),
+      RestEntry(:final sessionId) => (sessionId, 'Forced rest day'),
+    };
+    return stored ?? (p ?? program()).sessionById(id)?.name ?? 'Session';
+  }
+
   // ── skrivning ──
+
+  /// Engångsifyllnad (2026-10-04): poster från före Workout.sessionName får
+  /// passets namn som det är NU, en gång. Därefter ändras de aldrig — ett
+  /// omdöpt eller borttaget pass skriver inte om historiken. Pågående pass
+  /// hoppas över (passvyn håller egen kopia; namnet sätts vid avslut).
+  /// Returnerar antalet uppdaterade poster.
+  Future<int> backfillSessionNames(DateTime now) async {
+    final p = program();
+    final todo = <HistoryEntry>[];
+    for (final j in _w.liveValues.toList()) {
+      final h = tryHistoryFromJson(j);
+      final named = switch (h) {
+        WorkoutEntry(:final workout) when workout.isFinished && workout.sessionName == null =>
+          p.sessionById(workout.sessionId) == null
+              ? null
+              : WorkoutEntry(workout: workout.copyWith(sessionName: p.sessionById(workout.sessionId)!.name), source: h.source),
+        SkippedEntry(:final sessionId, :final sessionName) when sessionName == null => p.sessionById(sessionId) == null
+            ? null
+            : SkippedEntry(
+                date: h.date,
+                sessionId: sessionId,
+                reason: h.reason,
+                sessionName: p.sessionById(sessionId)!.name,
+              ),
+        _ => null,
+      };
+      if (named != null) todo.add(named);
+    }
+    for (final h in todo) {
+      await saveHistory(h, now);
+    }
+    return todo.length;
+  }
+
   static String historyId(HistoryEntry h) => switch (h) {
         WorkoutEntry(:final workout) => workout.id.value,
         RestEntry(:final sessionId, :final date) => 'rest.${sessionId.value}.${date.millisecondsSinceEpoch}',

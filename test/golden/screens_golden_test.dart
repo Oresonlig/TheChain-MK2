@@ -364,4 +364,67 @@ void main() {
     await tester.pumpAndSettle();
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/settings_training.png'));
   });
+
+  testWidgets('ny användare: tom kedja → BUILD YOUR PROGRAM', (tester) async {
+    await _loadSaira();
+    final b = FakeBackend();
+    final app = _app(b);
+    await _phone(tester, TheChainApp(app: app, emailOf: () => ''));
+    await tester.runAsync(() async {
+      await app.start();
+      await app.signIn('x', 'secret');
+      await pumpEventQueue();
+    });
+    await tester.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/chain_empty.png'));
+  });
+
+  testWidgets('programbyggaren: kedjan, passet, väljaren, egenskaper', (tester) async {
+    await _loadSaira();
+    final b = FakeBackend(mk1: {...mk1(), 'restSlots': [2], 'sessionOrder': ['A', 'B', 'C', 'D']});
+    final app = _app(b);
+    await _phone(tester, TheChainApp(app: app, emailOf: () => b.userEmail ?? ''));
+    await tester.runAsync(() async {
+      await app.start();
+      await app.signIn('niklas@example.com', 'secret');
+      await pumpEventQueue();
+      await app.importFromWebsite();
+    });
+    await tester.pumpAndSettle();
+    // Ett pågående pass: byggaren säger att ändringar gäller nästa gång.
+    await tester.tap(find.text('START SESSION'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Back to the chain'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('SETTINGS'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Program'));
+    await tester.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/program.png'));
+
+    await tester.tap(find.textContaining('exercises').at(1));
+    await tester.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/program_session.png'));
+
+    await tester.tap(find.text('+ ADD EXERCISES'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('CHEST'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Bench Press (DB)'));
+    await tester.tap(find.text('Cable Crossover'));
+    await tester.pumpAndSettle();
+    FocusManager.instance.primaryFocus?.unfocus();
+    await tester.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/program_picker.png'));
+    await tester.tap(find.text('ADD 2'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Cable Crossover'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(DropdownButton<Measure>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Reps').last);
+    await tester.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/program_exercise.png'));
+  });
 }

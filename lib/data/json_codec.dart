@@ -76,6 +76,7 @@ Json workoutToJson(Workout w) => {
       'v': kFormatVersion,
       'id': w.id.value,
       'session': w.sessionId.value,
+      'sessionName': ?w.sessionName,
       'start': w.startedAt.millisecondsSinceEpoch,
       if (w.finishedAt != null) 'end': w.finishedAt!.millisecondsSinceEpoch,
       'exercises': [
@@ -95,6 +96,7 @@ Json workoutToJson(Workout w) => {
 Workout workoutFromJson(Json j) => Workout(
       id: WorkoutId(j['id'] as String),
       sessionId: SessionId(j['session'] as String),
+      sessionName: j['sessionName'] as String?,
       startedAt: _t(j['start'])!,
       finishedAt: _t(j['end']),
       exercises: [
@@ -126,12 +128,13 @@ Json historyToJson(HistoryEntry h) => switch (h) {
           'session': sessionId.value,
           'note': ?note,
         },
-      SkippedEntry(:final date, :final sessionId, :final reason, :final source) => {
+      SkippedEntry(:final date, :final sessionId, :final reason, :final sessionName, :final source) => {
           'v': kFormatVersion,
           'type': 'skip',
           'source': source.name,
           'date': date.millisecondsSinceEpoch,
           'session': sessionId.value,
+          'sessionName': ?sessionName,
           'reason': reason,
         },
     };
@@ -142,7 +145,12 @@ HistoryEntry historyFromJson(Json j) {
     return RestEntry(date: _t(j['date'])!, sessionId: SessionId(j['session'] as String), note: j['note'] as String?);
   }
   if (j['type'] == 'skip') {
-    return SkippedEntry(date: _t(j['date'])!, sessionId: SessionId(j['session'] as String), reason: j['reason'] as String? ?? '');
+    return SkippedEntry(
+      date: _t(j['date'])!,
+      sessionId: SessionId(j['session'] as String),
+      reason: j['reason'] as String? ?? '',
+      sessionName: j['sessionName'] as String?,
+    );
   }
   return WorkoutEntry(workout: workoutFromJson(_m(j['workout'])), source: source);
 }
@@ -163,12 +171,7 @@ Json programToJson(Program p) => {
             'name': s.name,
             'kind': s.kind.name,
             'slots': [
-              for (final sl in s.slots)
-                {
-                  'id': sl.id.value,
-                  'ex': sl.exerciseId.value,
-                  if (sl.originalExerciseId != null) 'original': sl.originalExerciseId!.value,
-                },
+              for (final sl in s.slots) {'id': sl.id.value, 'ex': sl.exerciseId.value},
             ],
           },
       ],
@@ -181,12 +184,9 @@ Program programFromJson(Json j) => Program(sessions: [
           name: s['name'] as String? ?? '',
           kind: _enum(SessionKind.values, s['kind'], SessionKind.training),
           slots: [
-            for (final sl in _l(s['slots']).map(_m))
-              Slot(
-                id: SlotId(sl['id'] as String),
-                exerciseId: ExerciseId(sl['ex'] as String),
-                originalExerciseId: sl['original'] == null ? null : ExerciseId(sl['original'] as String),
-              ),
+            // Äldre poster kan ha 'original' (permanent byte med minne, borttaget
+            // 2026-10-04) — ignoreras.
+            for (final sl in _l(s['slots']).map(_m)) Slot(id: SlotId(sl['id'] as String), exerciseId: ExerciseId(sl['ex'] as String)),
           ],
         ),
     ]);
@@ -227,6 +227,7 @@ Json customExerciseToJson(Exercise e) => {
       'scheme': e.scheme.name,
       if (e.unilateral) 'unilateral': true,
       if (e.tip != null) 'tip': e.tip,
+      if (e.archived) 'archived': true,
     };
 
 Exercise customExerciseFromJson(Json j) => Exercise(
@@ -238,6 +239,7 @@ Exercise customExerciseFromJson(Json j) => Exercise(
       unilateral: j['unilateral'] == true,
       tip: j['tip'] as String?,
       isCustom: true,
+      archived: j['archived'] == true,
     );
 
 Json overrideToJson(ExerciseId id, ExerciseOverride o) => {

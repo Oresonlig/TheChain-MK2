@@ -240,15 +240,24 @@ void main() {
     const program = Program(sessions: [sessionB]);
     const b = SessionId('B'), b1 = SlotId('B1');
 
-    test('permanent byte sparar originalet, även efter flera byten, och kan ångras', () {
+    test('permanent byte ger platsen ny övning, utan minne av den gamla', () {
       var p = swapPermanently(program, b, b1, chins);
       p = swapPermanently(p, b, b1, flyes);
       final slot = p.sessions.first.slots.first;
+      expect(slot.id, b1);
       expect(slot.exerciseId, flyes);
-      expect(slot.originalExerciseId, hang);
-      p = revertSwap(p, b, b1);
-      expect(p.sessions.first.slots.first.exerciseId, hang);
-      expect(p.sessions.first.slots.first.isPermanentlySwapped, isFalse);
+      expect(p.sessions.first.slots.length, sessionB.slots.length);
+    });
+
+    test('namn krävs, och kedjan behåller minst ett träningspass', () {
+      expect(() => renameSession(program, b, '  '), throwsA(isA<WorkoutError>()));
+      expect(renameSession(program, b, ' Back ').sessions.first.name, 'Back');
+      expect(() => addSession(program, const Session(id: SessionId('X'), name: ' ')), throwsA(isA<WorkoutError>()));
+      var p = addSession(program, const Session(id: SessionId('V'), name: 'Rest', kind: SessionKind.rest));
+      expect(() => removeSession(p, b), throwsA(isA<WorkoutError>()));
+      p = removeSession(p, const SessionId('V'));
+      p = addSession(p, const Session(id: SessionId('C'), name: 'Core'));
+      expect(removeSession(p, b).sessions.map((s) => s.id), const [SessionId('C')]);
     });
 
     test('lägga till, flytta och ta bort platser och pass', () {

@@ -42,6 +42,21 @@ final d1 = DateTime(2026, 9, 1), d2 = DateTime(2026, 9, 8), d3 = DateTime(2026, 
 
 void main() {
   group('personalRecords', () {
+    test('bytt mätsätt startar om rekordet; tillbaka ger det gamla igen (2026-10-04)', () {
+      final h = [
+        entry(d1, [ex(bench, [work(const SetValues(weight: 100, reps: 5))])]),
+        entry(d2, [ex(bench, [work(const SetValues(secs: 60))], m: Measure.timed)]),
+      ];
+      expect(personalRecords(h, measureOf: (_) => Measure.weight)[bench]!.value, 100);
+      final timed = personalRecords(h, measureOf: (_) => Measure.timed)[bench]!;
+      expect((timed.value, timed.measure), (60, Measure.timed));
+      expect(personalRecords(h, measureOf: (_) => Measure.repsOnly)[bench], isNull);
+      // En rad per övning, aldrig två.
+      expect(personalRecords(h, measureOf: (_) => Measure.weight).length, 1);
+      expect(progression(h, bench, measure: Measure.timed).map((p) => p.value), [60]);
+      expect(progression(h, bench).length, 2);
+    });
+
     test('högsta vikten över alla pass vinner', () {
       final prs = personalRecords([
         entry(d1, [ex(bench, [work(const SetValues(weight: 100, reps: 5))])]),

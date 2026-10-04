@@ -72,7 +72,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
           final c = context.chain;
           final text = Theme.of(context).textTheme;
           final w = controller.workout;
-          final session = controller.repo.program().sessionById(w.sessionId);
+          final sessionName = w.sessionName ?? controller.repo.program().sessionById(w.sessionId)?.name ?? 'Session';
           final doneCount = w.exercises.where((e) => e.status != ExerciseStatus.open).length;
           final canFinish = controller.canFinish;
           return Column(children: [
@@ -85,7 +85,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                   icon: Icon(Icons.arrow_back, color: c.textMuted),
                 ),
                 Expanded(
-                  child: Text((session?.name ?? w.sessionId.value).toUpperCase(),
+                  child: Text(sessionName.toUpperCase(),
                       style: text.titleMedium!.copyWith(letterSpacing: 2), overflow: TextOverflow.ellipsis),
                 ),
                 Text('$doneCount/${w.exercises.length}', style: text.labelSmall),
@@ -126,7 +126,9 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                     label: '+ ADD EXERCISE',
                     onTap: () async {
                       final id = await pickExercise(context,
-                          title: 'Add exercise (today only)', custom: controller.repo.customExercises().values.toList());
+                          title: 'Add exercise (today only)',
+                          custom: controller.repo.customExercises().values.toList(),
+                          recent: recentExercises(controller.repo.history()));
                       if (id != null) controller.addExtra(id);
                     },
                   ),
@@ -472,7 +474,10 @@ class ExerciseCard extends StatelessWidget {
       await _confirmRemoveFromProgram(context);
       return;
     }
-    final id = await pickExercise(context, title: choice == 'perm' ? 'Swap permanently' : 'Swap for today', custom: custom);
+    final id = await pickExercise(context,
+        title: choice == 'perm' ? 'Swap permanently' : 'Swap for today',
+        custom: custom,
+        recent: recentExercises(controller.repo.history()));
     if (id == null) return;
     if (choice == 'perm') {
       await controller.swapPermanently(row.id, id);
@@ -483,7 +488,7 @@ class ExerciseCard extends StatelessWidget {
 
   Future<void> _confirmRemoveFromProgram(BuildContext context) async {
     final name = controller.exerciseOf(row).name;
-    final session = controller.repo.program().sessionById(controller.workout.sessionId)?.name ?? '';
+    final session = controller.repo.program().sessionById(controller.workout.sessionId)?.name ?? 'the program';
     final logged = row.sets.any((s) => s.isLogged);
     final ok = await showDialog<bool>(
       context: context,

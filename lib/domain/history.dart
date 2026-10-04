@@ -43,8 +43,11 @@ class RestEntry extends HistoryEntry {
 /// aldrig som gjort — inget i PR, "förra gången" eller passantal. Anledningen
 /// är obligatorisk: det ska kosta en tanke att hoppa över.
 class SkippedEntry extends HistoryEntry {
-  const SkippedEntry({required super.date, required this.sessionId, required this.reason});
+  const SkippedEntry({required super.date, required this.sessionId, required this.reason, this.sessionName});
 
   final SessionId sessionId;
   final String reason;
+
+  /// Passets namn när det hoppades över (se Workout.sessionName).
+  final String? sessionName;
 }

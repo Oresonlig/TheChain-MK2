@@ -62,6 +62,34 @@ Future<Repository> device(FakeRemote server, String id, [LocalStore? store]) asy
 }
 
 void main() {
+  test('passnamnet fylls i EN gång; omdöpt eller borttaget pass ändrar inte historiken', () async {
+    final repo = await device(FakeRemote(), 'phone');
+    const a = SessionId('A');
+    await repo.saveProgram(const Program(sessions: [Session(id: a, name: 'Chest'), Session(id: SessionId('B'), name: 'Back')]), now);
+    final old = Workout(
+      id: const WorkoutId('w1'),
+      sessionId: a,
+      startedAt: now,
+      finishedAt: now.add(const Duration(hours: 1)),
+    );
+    await repo.saveHistory(WorkoutEntry(workout: old), now);
+    await repo.saveHistory(SkippedEntry(date: now, sessionId: const SessionId('B'), reason: 'sick'), now);
+    // Pågående pass rörs inte (passvyn har egen kopia).
+    await repo.saveActiveWorkout(Workout(id: const WorkoutId('w2'), sessionId: a, startedAt: now), now);
+
+    expect(await repo.backfillSessionNames(now), 2);
+    expect(await repo.backfillSessionNames(now), 0);
+    expect(repo.activeWorkouts().single.sessionName, isNull);
+
+    await repo.saveProgram(const Program(sessions: [Session(id: a, name: 'Push')]), now);
+    expect(await repo.backfillSessionNames(now), 0);
+    final names = {for (final h in repo.history()) Repository.historyId(h): repo.sessionNameOf(h)};
+    expect(names, {'w1': 'Chest', 'skip.B.${now.millisecondsSinceEpoch}': 'Back'});
+    // Ett pass utan sparat namn vars pass är borttaget: neutralt namn, aldrig ett id.
+    expect(repo.sessionNameOf(WorkoutEntry(workout: Workout(id: const WorkoutId('x'), sessionId: const SessionId('zz'), startedAt: now))),
+        'Session');
+  });
+
   test('importen ger samma historik, PR, program, vikt och inställningar', () async {
     final snap = decodeMk1(mk1());
     final repo = await device(FakeRemote(), 'phone');
@@ -69,7 +97,6 @@ void main() {
     expect(repo.history().length, snap.history.length);
     expect(personalRecords(repo.history())[const ExerciseId('ex_bench_press_bb')]!.value, 110);
     expect(repo.program().sessions.map((s) => s.id.value), ['A', 'B', 'V']);
-    expect(repo.program().sessions.first.slots[1].originalExerciseId, const ExerciseId('ex_incline_press_smith'));
     expect(repo.bodyweight().single.kg, 100.3);
     expect(repo.notes().single.pinned, isTrue);
     expect(repo.customExercises().keys, [const ExerciseId('custom_1')]);

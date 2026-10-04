@@ -7,22 +7,14 @@ import 'ids.dart';
 
 enum SessionKind { training, rest }
 
-/// En plats i ett pass. Ett permanent byte ändrar [exerciseId] och sparar
-/// [originalExerciseId] så att bytet kan ångras.
+/// En plats i ett pass. Ett permanent byte ändrar bara [exerciseId] — appen
+/// minns inte originalet; vill man tillbaka byter man igen (Niklas 2026-10-04:
+/// "jag kanske inte ens VILL tillbaka till originalövningen").
 class Slot {
-  const Slot({
-    required this.id,
-    required this.exerciseId,
-    this.originalExerciseId,
-  });
+  const Slot({required this.id, required this.exerciseId});
 
   final SlotId id;
   final ExerciseId exerciseId;
-
-  /// Satt när platsen är permanent bytt.
-  final ExerciseId? originalExerciseId;
-
-  bool get isPermanentlySwapped => originalExerciseId != null;
 }
 
 class Session {

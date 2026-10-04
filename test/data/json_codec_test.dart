@@ -64,10 +64,14 @@ void main() {
   });
 
   test('historik: överhoppat pass med anledning; okänd posttyp hoppas över', () {
-    final s = tryHistoryFromJson(
-        viaText(historyToJson(SkippedEntry(date: end, sessionId: const SessionId('C'), reason: 'New tattoo'))));
+    final s = tryHistoryFromJson(viaText(
+        historyToJson(SkippedEntry(date: end, sessionId: const SessionId('C'), reason: 'New tattoo', sessionName: 'Core'))));
     expect(s, isA<SkippedEntry>());
     expect((s as SkippedEntry).reason, 'New tattoo');
+    expect(s.sessionName, 'Core');
+    final w = Workout(id: const WorkoutId('w'), sessionId: const SessionId('A'), sessionName: 'Chest', startedAt: start);
+    expect(workoutFromJson(viaText(workoutToJson(w))).sessionName, 'Chest');
+    expect(workoutFromJson(viaText(workoutToJson(w.copyWith(finishedAt: end)))).sessionName, 'Chest');
     expect(s.sessionId, const SessionId('C'));
     // En posttyp från ett framtida bygge får inte krascha det här.
     expect(tryHistoryFromJson({'type': 'something-new', 'date': 1}), isNull);
@@ -77,13 +81,26 @@ void main() {
     const p = Program(sessions: [
       Session(id: SessionId('A'), name: 'Chest', slots: [
         Slot(id: SlotId('A1'), exerciseId: ExerciseId('ex_bench_press_bb')),
-        Slot(id: SlotId('A2'), exerciseId: ExerciseId('ex_chins'), originalExerciseId: ExerciseId('ex_incline_press_smith')),
+        Slot(id: SlotId('A2'), exerciseId: ExerciseId('ex_chins')),
       ]),
       Session(id: SessionId('V'), name: 'Rest', kind: SessionKind.rest),
     ]);
     final p2 = programFromJson(viaText(programToJson(p)));
     expect(p2.sessions.last.isRest, isTrue);
-    expect(p2.sessions.first.slots.last.originalExerciseId, const ExerciseId('ex_incline_press_smith'));
+    expect(p2.sessions.first.slots.last.exerciseId, const ExerciseId('ex_chins'));
+    // Äldre post med 'original' (borttaget 2026-10-04) läses utan fel.
+    final old = programFromJson({
+      'sessions': [
+        {
+          'id': 'A',
+          'name': 'Chest',
+          'slots': [
+            {'id': 'A1', 'ex': 'ex_chins', 'original': 'ex_bench_press_bb'},
+          ],
+        },
+      ],
+    });
+    expect(old.sessions.single.slots.single.exerciseId, const ExerciseId('ex_chins'));
 
     expect(bodyweightFromJson(viaText(bodyweightToJson(const BodyweightEntry(date: '2026-10-02', kg: 99.8)))).kg, 99.8);
 

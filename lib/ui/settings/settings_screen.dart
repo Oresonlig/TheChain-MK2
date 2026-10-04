@@ -11,6 +11,7 @@ import '../../theme/chain_theme.dart';
 import '../../theme/background_scope.dart';
 import '../../theme/surfaces.dart';
 import '../nanosuit_scaffold.dart';
+import '../program/program_screen.dart';
 import 'data_sync_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -68,6 +69,11 @@ class SettingsScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 12),
+              SettingsRow(
+                title: 'Program',
+                subtitle: 'Sessions, exercises and their order',
+                onTap: () => open(ProgramScreen(app: app)),
+              ),
               SettingsRow(
                 title: 'Training',
                 subtitle: 'Units',

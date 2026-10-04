@@ -37,7 +37,7 @@ class DataSyncScreen extends StatelessWidget {
           final program = repo.program();
           final chain = repo.chain();
           final settings = repo.settings();
-          final prs = personalRecords(history, hidden: repo.hiddenRecords()).values.toList()
+          final prs = repo.records().values.toList()
             ..sort((a, b) => b.date.compareTo(a.date));
           final workouts = history.whereType<WorkoutEntry>().toList()..sort((a, b) => b.date.compareTo(a.date));
           final weights = repo.bodyweight();

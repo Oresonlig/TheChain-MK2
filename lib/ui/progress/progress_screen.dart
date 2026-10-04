@@ -65,7 +65,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
               const SizedBox(height: 16),
               Row(children: [toggle('RECORDS', !_history), const SizedBox(width: 8), toggle('HISTORY', _history)]),
               const SizedBox(height: 16),
-              if (!_history) ..._records(repo.exercise, history, repo.hiddenRecords(), s, c, text) else ..._historyList(history, s, c, text),
+              if (!_history) ..._records(repo.exercise, repo.records(), s, c, text) else ..._historyList(history, s, c, text),
             ],
           ),
         );
@@ -73,9 +73,9 @@ class _ProgressScreenState extends State<ProgressScreen> {
     );
   }
 
-  List<Widget> _records(Exercise? Function(ExerciseId) exerciseOf, List<HistoryEntry> history, Set<ExerciseId> hidden,
+  List<Widget> _records(Exercise? Function(ExerciseId) exerciseOf, Map<ExerciseId, PersonalRecord> records,
       UserSettings s, ChainTheme c, TextTheme text) {
-    final prs = personalRecords(history, hidden: hidden).values.toList();
+    final prs = records.values.toList();
     if (prs.isEmpty) return [Glass(child: Text('No records yet', style: text.bodySmall))];
     final byGroup = <MuscleGroup, List<PersonalRecord>>{};
     for (final pr in prs) {
@@ -127,8 +127,9 @@ class _ProgressScreenState extends State<ProgressScreen> {
   List<Widget> _historyList(List<HistoryEntry> history, UserSettings s, ChainTheme c, TextTheme text) {
     final entries = [...history]..sort((a, b) => b.date.compareTo(a.date));
     if (entries.isEmpty) return [Glass(child: Text('No history yet', style: text.bodySmall))];
-    final program = widget.app.repo!.program();
-    String name(SessionId id) => program.sessionById(id)?.name ?? id.value;
+    final repo = widget.app.repo!;
+    final program = repo.program();
+    String name(HistoryEntry e) => repo.sessionNameOf(e, program);
     return [
       for (final e in entries.take(60))
         Padding(
@@ -136,7 +137,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
           child: Glass(
             padding: const EdgeInsets.fromLTRB(14, 10, 6, 10),
             child: switch (e) {
-              RestEntry(:final sessionId, :final note) => Row(children: [
+              RestEntry(:final note) => Row(children: [
                   Text('V', style: text.titleMedium!.copyWith(color: c.restGold)),
                   const SizedBox(width: 12),
                   Expanded(
@@ -145,12 +146,11 @@ class _ProgressScreenState extends State<ProgressScreen> {
                       Text('${fmtDate(e.date)}${note == null ? '' : ' · $note'}', style: text.bodySmall),
                     ]),
                   ),
-                  Text(sessionId.value, style: text.labelSmall),
                 ]),
-              SkippedEntry(:final sessionId, :final reason) => Row(children: [
+              SkippedEntry(:final reason) => Row(children: [
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text('${name(sessionId)} — skipped', style: text.titleMedium!.copyWith(color: c.textMuted)),
+                      Text('${name(e)} — skipped', style: text.titleMedium!.copyWith(color: c.textMuted)),
                       Text('${fmtDate(e.date)} · $reason', style: text.bodySmall),
                     ]),
                   ),
@@ -158,7 +158,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
               WorkoutEntry(:final workout) => Row(children: [
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(name(workout.sessionId), style: text.titleMedium),
+                      Text(name(e), style: text.titleMedium),
                       Text(
                         '${fmtDate(e.date)} · ${workout.exercises.where((x) => x.status == ExerciseStatus.done).length} exercises'
                         '${e.source == EntrySource.imported ? ' · imported' : ''}',
@@ -168,12 +168,12 @@ class _ProgressScreenState extends State<ProgressScreen> {
                   ),
                   IconButton(
                     tooltip: 'Show',
-                    onPressed: () => _showWorkout(context, workout, name(workout.sessionId), s),
+                    onPressed: () => _showWorkout(context, workout, name(e), s),
                     icon: Icon(Icons.list_alt, color: c.textMuted),
                   ),
                   IconButton(
                     tooltip: 'Copy',
-                    onPressed: () => _copy(context, workout, name(workout.sessionId), s),
+                    onPressed: () => _copy(context, workout, name(e), s),
                     icon: Icon(Icons.copy, color: c.accent),
                   ),
                 ]),

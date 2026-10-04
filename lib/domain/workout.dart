@@ -70,12 +70,18 @@ class Workout {
     required this.id,
     required this.sessionId,
     required this.startedAt,
+    this.sessionName,
     this.finishedAt,
     this.exercises = const [],
   });
 
   final WorkoutId id;
   final SessionId sessionId;
+
+  /// Passets namn när det startades. "Lagt kort ligger": byter man namn på
+  /// eller tar bort passet senare står historiken kvar som den var
+  /// (Niklas 2026-10-04). Null = äldre post (fylls i en gång, se Repository).
+  final String? sessionName;
   final DateTime startedAt;
 
   /// Null medan passet pågår.
@@ -84,9 +90,10 @@ class Workout {
 
   bool get isFinished => finishedAt != null;
 
-  Workout copyWith({DateTime? finishedAt, List<WorkoutExercise>? exercises}) => Workout(
+  Workout copyWith({DateTime? finishedAt, List<WorkoutExercise>? exercises, String? sessionName}) => Workout(
         id: id,
         sessionId: sessionId,
+        sessionName: sessionName ?? this.sessionName,
         startedAt: startedAt,
         finishedAt: finishedAt ?? this.finishedAt,
         exercises: exercises ?? this.exercises,

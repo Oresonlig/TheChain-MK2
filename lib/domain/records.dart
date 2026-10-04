@@ -89,13 +89,18 @@ Iterable<(DateTime, EntrySource, WorkoutExercise)> _performed(
 
 /// PR per övning. [hidden] = övningar användaren dolt (MK1 "ignore PR", nu per id).
 /// Vid helt lika värde och tiebreak vinner det äldsta — det sattes först.
+/// [measureOf] = övningens NUVARANDE mätsätt: bara pass loggade med det räknas,
+/// så ett bytt mätsätt startar om rekordet utan att något raderas. Byter man
+/// tillbaka kommer de gamla rekorden tillbaka (Niklas 2026-10-04).
 Map<ExerciseId, PersonalRecord> personalRecords(
   Iterable<HistoryEntry> history, {
   Set<ExerciseId> hidden = const {},
+  Measure? Function(ExerciseId id)? measureOf,
 }) {
   final out = <ExerciseId, PersonalRecord>{};
   for (final (date, source, ex) in _performed(history, null)) {
     if (hidden.contains(ex.exerciseId)) continue;
+    if (!_current(ex, measureOf?.call(ex.exerciseId))) continue;
     final b = bestSet(ex.measure, ex.sets);
     if (b == null) continue;
     final (set, v, tb) = b;
@@ -128,12 +133,17 @@ double? progressionValue(Measure m, SetEntry s) {
   return m.prValue(s);
 }
 
+/// Loggad med [measure] (null = okänt mätsätt, allt räknas).
+bool _current(WorkoutExercise ex, Measure? measure) => measure == null || ex.measure == measure;
+
 /// En punkt per pass där övningen loggats (passets bästa set), äldst först.
-List<ProgressionPoint> progression(Iterable<HistoryEntry> history, ExerciseId id) {
+/// [measure] = bara pass loggade med det mätsättet (se [personalRecords]).
+List<ProgressionPoint> progression(Iterable<HistoryEntry> history, ExerciseId id, {Measure? measure}) {
   final rows = _performed(history, id).toList().reversed;
   final out = <ProgressionPoint>[];
   (double, double)? high;
   for (final (date, _, ex) in rows) {
+    if (!_current(ex, measure)) continue;
     final b = bestSet(ex.measure, ex.sets, valueOf: (s) => progressionValue(ex.measure, s));
     if (b == null) continue;
     final (set, v, tb) = b;

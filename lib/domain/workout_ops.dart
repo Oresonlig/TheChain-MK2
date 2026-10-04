@@ -55,6 +55,7 @@ Workout startWorkout(
   return Workout(
     id: WorkoutId(newId()),
     sessionId: session.id,
+    sessionName: session.name,
     startedAt: now,
     exercises: [for (final s in session.slots) _row(catalogue(s.exerciseId), history, newId, slot: s.id)],
   );
@@ -254,5 +255,5 @@ SkippedEntry skippedEntry(Session session, DateTime now, String reason) {
   if (session.isRest) throw const WorkoutError('A forced rest day cannot be skipped');
   final text = reason.trim();
   if (text.length < kMinSkipReason) throw const WorkoutError('Write a reason for skipping');
-  return SkippedEntry(date: now, sessionId: session.id, reason: text);
+  return SkippedEntry(date: now, sessionId: session.id, reason: text, sessionName: session.name);
 }

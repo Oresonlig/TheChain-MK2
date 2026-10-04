@@ -245,7 +245,11 @@ class WorkoutController extends ChangeNotifier {
       return false;
     }
     try {
-      final res = finishWorkout(workout, _now(), repo.notes());
+      // Pass startat före Workout.sessionName: namnet som det är nu, vid avslut.
+      final named = workout.sessionName != null
+          ? workout
+          : workout.copyWith(sessionName: repo.program().sessionById(workout.sessionId)?.name);
+      final res = finishWorkout(named, _now(), repo.notes());
       await repo.saveHistory(res.entry, _now());
       for (final n in res.notes) {
         await repo.saveNote(n, _now());

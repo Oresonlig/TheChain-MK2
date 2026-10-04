@@ -30,6 +30,7 @@ class Exercise {
     this.unilateral = false,
     this.tip,
     this.isCustom = false,
+    this.archived = false,
   });
 
   final ExerciseId id;
@@ -46,6 +47,32 @@ class Exercise {
 
   /// Skapad av användaren.
   final bool isCustom;
+
+  /// Borttagen egen övning. Raderas aldrig — historik och PR behåller namnet —
+  /// men visas inte i väljaren (Niklas 2026-10-04).
+  final bool archived;
+
+  Exercise copyWith({
+    String? name,
+    MuscleGroup? group,
+    Measure? measure,
+    SetScheme? scheme,
+    bool? unilateral,
+    String? tip,
+    bool clearTip = false,
+    bool? archived,
+  }) =>
+      Exercise(
+        id: id,
+        name: name ?? this.name,
+        group: group ?? this.group,
+        measure: measure ?? this.measure,
+        scheme: scheme ?? this.scheme,
+        unilateral: unilateral ?? this.unilateral,
+        tip: clearTip ? null : (tip ?? this.tip),
+        isCustom: isCustom,
+        archived: archived ?? this.archived,
+      );
 }
 
 /// Användarens egna justeringar av en biblioteksövning. Nycklas på övningens id,
@@ -66,5 +93,6 @@ class ExerciseOverride {
         unilateral: unilateral ?? e.unilateral,
         tip: e.tip,
         isCustom: e.isCustom,
+        archived: e.archived,
       );
 }

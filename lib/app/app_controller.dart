@@ -269,6 +269,8 @@ class AppController extends ChangeNotifier {
     final bad = reports.values.where((x) => x.outcome != SyncOutcome.ok).length;
     status = bad == 0 ? 'Synced' : 'Offline — changes are saved on this device';
     if (bad == 0) lastSync = _now();
+    // Efter en lyckad synk (läs före skriv): äldre poster får passnamnet en gång.
+    if (bad == 0 && await r.backfillSessionNames(_now()) > 0) _syncAgain = true;
     busy = false;
     if (reports.values.any((x) => x.localChanged)) _openWorkout?.reloadFromRepo();
     notifyListeners();
@@ -374,11 +376,104 @@ class AppController extends ChangeNotifier {
   Future<void> undoWorkout(WorkoutEntry entry) async {
     final w = entry.workout;
     await repo!.saveActiveWorkout(
-      Workout(id: w.id, sessionId: w.sessionId, startedAt: w.startedAt, exercises: w.exercises),
+      Workout(id: w.id, sessionId: w.sessionId, sessionName: w.sessionName, startedAt: w.startedAt, exercises: w.exercises),
       _now(),
     );
     notifyListeners();
     await syncNow();
+  }
+
+  // ── programmet (byggaren) ──
+  // Allt sparas direkt; UNDO = spara tillbaka programmet från före ändringen.
+  // Ett pågående pass är en ögonblicksbild och påverkas inte (Niklas 2026-10-04).
+
+  /// Kör [op] på programmet och sparar. Kastar [WorkoutError] (inget sparas)
+  /// om ändringen inte går. Returnerar programmet FÖRE ändringen, för UNDO.
+  Future<Program> editProgram(Program Function(Program p) op) async {
+    final r = repo!;
+    final before = r.program();
+    final after = op(before);
+    await r.saveProgram(after, _now());
+    notifyListeners();
+    scheduleSync();
+    return before;
+  }
+
+  /// UNDO i byggaren.
+  Future<void> restoreProgram(Program p) async {
+    await repo!.saveProgram(p, _now());
+    notifyListeners();
+    scheduleSync();
+  }
+
+  /// Ett pass som pågår kan inte tas bort — det skulle bli en kvarleva utan väg in.
+  Future<Program> deleteSession(SessionId id) {
+    final r = repo!;
+    if (r.activeWorkoutFor(id) != null) {
+      final name = r.program().sessionById(id)?.name ?? 'the session';
+      throw WorkoutError('$name is in progress — finish or discard it first');
+    }
+    return editProgram((p) => removeSession(p, id));
+  }
+
+  /// Sparar övningens egenskaper: egna övningar direkt, biblioteksövningar som
+  /// justering (bara det som skiljer från biblioteket).
+  Future<void> saveExercise(Exercise e) async {
+    final r = repo!;
+    if (e.isCustom) {
+      await r.saveCustomExercise(e, _now());
+    } else {
+      final base = libraryExercise(e.id) ?? e;
+      await r.saveOverride(
+        e.id,
+        ExerciseOverride(
+          measure: e.measure == base.measure ? null : e.measure,
+          scheme: e.scheme == base.scheme ? null : e.scheme,
+          unilateral: e.unilateral == base.unilateral ? null : e.unilateral,
+        ),
+        _now(),
+      );
+    }
+    notifyListeners();
+    scheduleSync();
+  }
+
+  /// Ny egen övning. Id = namnets slug (som MK1). Finns en borttagen egen
+  /// övning med samma namn återuppstår den med de nya egenskaperna.
+  Future<Exercise> createExercise(Exercise draft) async {
+    final r = repo!;
+    final name = draft.name.trim();
+    if (name.isEmpty) throw const WorkoutError('Give the exercise a name');
+    final id = exerciseIdFromName(name);
+    final lib = libraryExercise(id);
+    if (lib != null) throw WorkoutError('${lib.name} is already in the library');
+    final mine = r.customExercises()[id];
+    if (mine != null && !mine.archived) throw WorkoutError('You already have ${mine.name}');
+    final e = Exercise(
+      id: id,
+      name: name,
+      group: draft.group,
+      measure: draft.measure,
+      scheme: draft.scheme,
+      unilateral: draft.unilateral,
+      tip: draft.tip,
+      isCustom: true,
+    );
+    await saveExercise(e);
+    return e;
+  }
+
+  /// Tar bort en egen övning (arkiveras; historik och PR behåller namnet).
+  Future<void> archiveExercise(ExerciseId id) async {
+    final r = repo!;
+    final e = r.customExercises()[id];
+    if (e == null) throw const WorkoutError('Only your own exercises can be removed');
+    final usedIn = [
+      for (final s in r.program().sessions)
+        if (s.slots.any((x) => x.exerciseId == id)) s.name,
+    ];
+    if (usedIn.isNotEmpty) throw WorkoutError('Remove it from ${usedIn.join(', ')} first');
+    await saveExercise(e.copyWith(archived: true));
   }
 
   // ── vikt och inställningar ──

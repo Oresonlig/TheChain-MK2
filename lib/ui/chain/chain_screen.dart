@@ -11,6 +11,7 @@ import '../../theme/chain_theme.dart';
 import '../../theme/background_scope.dart';
 import '../../theme/surfaces.dart';
 import '../copy_text.dart';
+import '../program/program_screen.dart';
 import '../settings/data_sync_screen.dart';
 import '../nanosuit_scaffold.dart';
 import '../units.dart';
@@ -84,17 +85,32 @@ class _ChainScreenState extends State<ChainScreen> {
           final history = repo.history();
           final inProgress = {for (final w in repo.activeWorkouts()) w.sessionId};
 
+          // Ny användare: den enda gången byggaren nås från kedjevyn (Niklas
+          // 2026-10-04: så lite plotter som möjligt — sedan via Settings).
           if (program.sessions.isEmpty) {
             return Center(
               child: Padding(
                 padding: const EdgeInsets.all(24),
                 child: Glass(
-                  child: Column(mainAxisSize: MainAxisSize.min, children: [
-                  Text('No program yet', style: text.titleLarge),
-                  const SizedBox(height: 8),
-                  Text('Import your data from the website to get started.', style: text.bodySmall, textAlign: TextAlign.center),
-                  const SizedBox(height: 16),
-                  TextButton(onPressed: () => _openDev(context), child: const Text('OPEN DATA & SYNC')),
+                  child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                    Text('No program yet', style: text.titleLarge, textAlign: TextAlign.center),
+                    const SizedBox(height: 8),
+                    Text('Build your chain of sessions — one muscle group or day per letter.',
+                        style: text.bodySmall, textAlign: TextAlign.center),
+                    const SizedBox(height: 16),
+                    GestureDetector(
+                      onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => ProgramScreen(app: widget.app))),
+                      child: Raised(
+                        material: c.raisedActive,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        child: Center(child: Text('BUILD YOUR PROGRAM', style: text.labelLarge)),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextButton(
+                      onPressed: () => _openDev(context),
+                      child: Text('Used the website? Import your data', style: text.bodySmall),
+                    ),
                   ]),
                 ),
               ),
@@ -192,7 +208,7 @@ class _ChainScreenState extends State<ChainScreen> {
                     await Clipboard.setData(ClipboardData(
                       text: buildCopyText(
                         workout: entry.workout,
-                        sessionName: session.name,
+                        sessionName: repo.sessionNameOf(entry, program),
                         nameOf: (id) => repo.exercise(id)?.name ?? id.value,
                         settings: repo.settings(),
                       ),
@@ -356,6 +372,7 @@ class _SessionPanel extends StatelessWidget {
           ..sort((a, b) => b.date.compareTo(a.date)))
         .firstOrNull;
     final skip = inProgress ? null : skipped;
+    final canStart = inProgress || session.slots.isNotEmpty;
     final statusText = inProgress
         ? 'IN PROGRESS'
         : skip != null
@@ -441,14 +458,24 @@ class _SessionPanel extends StatelessWidget {
             settings: settings,
           ),
           const SizedBox(height: 16),
+          // Ett tomt pass går inte att starta — och användaren får veta varför.
           GestureDetector(
-            onTap: onStart,
+            onTap: canStart ? onStart : null,
             child: Raised(
-              material: c.raisedActive,
+              material: canStart ? c.raisedActive : c.raisedIdle,
               padding: const EdgeInsets.symmetric(vertical: 16),
-              child: Center(child: Text(inProgress ? 'CONTINUE SESSION' : 'START SESSION', style: text.labelLarge)),
+              child: Center(
+                child: Text(inProgress ? 'CONTINUE SESSION' : 'START SESSION',
+                    style: text.labelLarge!.copyWith(color: canStart ? c.textStrong : c.textFaint)),
+              ),
             ),
           ),
+          if (!canStart)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text('No exercises yet — add them in Settings › Program',
+                  style: text.labelSmall, textAlign: TextAlign.center),
+            ),
           // Diskret, som "Discard session" inne i passet. Bara före start —
           // ett påbörjat pass kasseras först (aldrig två utvägar samtidigt).
           if (!inProgress && !done) ...[
