@@ -9,6 +9,7 @@ import '../../app/app_controller.dart';
 import '../../app/workout_controller.dart';
 import '../../domain/domain.dart';
 import '../../theme/chain_theme.dart';
+import '../../theme/glass_diagnostics.dart';
 import '../../theme/surfaces.dart';
 import '../nanosuit_scaffold.dart';
 import '../units.dart';
@@ -106,6 +107,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
               ),
             Expanded(
               child: ListView(
+                addRepaintBoundaries: glassListRepaintBoundaries,
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
                 children: [
                   for (final r in w.exercises) ...[

@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import '../../app/app_controller.dart';
 import '../../domain/domain.dart';
 import '../../theme/chain_theme.dart';
+import '../../theme/glass_diagnostics.dart';
 import '../../theme/surfaces.dart';
 import '../nanosuit_scaffold.dart';
 import 'data_sync_screen.dart';
@@ -36,6 +37,7 @@ class SettingsScreen extends StatelessWidget {
         return ChainScaffold(
           ambient: s.ambientEffects,
           child: ListView(
+            addRepaintBoundaries: glassListRepaintBoundaries,
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
             children: [
               Text('SETTINGS', style: text.titleLarge!.copyWith(letterSpacing: 4)),
@@ -171,6 +173,7 @@ class SettingsPage extends StatelessWidget {
                   ),
                   Expanded(
                     child: ListView(
+                      addRepaintBoundaries: glassListRepaintBoundaries,
                       padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
                       children: builder(context, app),
                     ),
@@ -277,6 +280,24 @@ class AppearanceSettingsScreen extends StatelessWidget {
                 subtitle: Text('The hex wave behind the app. Turn off to save battery.', style: text.bodySmall),
               ),
             ]),
+            // DIAGNOS, bara DEV-bygget (se glass_diagnostics.dart).
+            if (app.updater != null)
+              settingsSection(context, 'GLASS TEST (DEV)', [
+                ValueListenableBuilder<bool>(
+                  valueListenable: repaintWhileScrolling,
+                  builder: (context, on, _) => SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    value: on,
+                    onChanged: (v) => repaintWhileScrolling.value = v,
+                    title: Text('Repaint while scrolling', style: text.titleMedium),
+                    subtitle: Text(
+                      'Off = normal. On = cards are redrawn every frame while a list scrolls. '
+                      'Open a session after switching, then scroll and compare the glass. Resets on restart.',
+                      style: text.bodySmall,
+                    ),
+                  ),
+                ),
+              ]),
           ];
         },
       );

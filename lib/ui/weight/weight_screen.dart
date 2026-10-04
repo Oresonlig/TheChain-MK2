@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import '../../app/app_controller.dart';
 import '../../domain/domain.dart';
 import '../../theme/chain_theme.dart';
+import '../../theme/glass_diagnostics.dart';
 import '../../theme/surfaces.dart';
 import '../charts/chain_chart.dart';
 import '../charts/series.dart';
@@ -143,6 +144,7 @@ class _WeightScreenState extends State<WeightScreen> with ChartRangeState {
         return ChainScaffold(
           ambient: s.ambientEffects,
           child: ListView(
+            addRepaintBoundaries: glassListRepaintBoundaries,
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
             children: [
               Text('WEIGHT', style: text.titleLarge!.copyWith(letterSpacing: 4)),

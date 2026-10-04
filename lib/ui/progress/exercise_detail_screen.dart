@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import '../../app/app_controller.dart';
 import '../../domain/domain.dart';
 import '../../theme/chain_theme.dart';
+import '../../theme/glass_diagnostics.dart';
 import '../../theme/surfaces.dart';
 import '../charts/chain_chart.dart';
 import '../charts/chart_data.dart';
@@ -71,7 +72,7 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> with ChartR
           ]),
         ),
         Expanded(
-          child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 24), children: [
+          child: ListView(addRepaintBoundaries: glassListRepaintBoundaries, padding: const EdgeInsets.fromLTRB(16, 8, 16, 24), children: [
             Glass(
               padding: const EdgeInsets.fromLTRB(14, 12, 10, 8),
               child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
