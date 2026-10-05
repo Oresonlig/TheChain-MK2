@@ -23,6 +23,9 @@ abstract class Backend {
   Future<void> signIn(String email, String password);
   Future<void> signOut();
 
+  /// Androids kontoväljare → Supabase. false = användaren avbröt.
+  Future<bool> signInWithGoogle();
+
   /// Glömt lösenord: mejlet bär både hemsidans länk och en kod för appen.
   Future<void> sendPasswordReset(String email);
 
@@ -251,6 +254,20 @@ class AppController extends ChangeNotifier {
       await backend.signIn(email.trim(), password);
     } catch (e) {
       error = 'Sign in failed: $e';
+    } finally {
+      busy = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> signInWithGoogle() async {
+    error = null;
+    busy = true;
+    notifyListeners();
+    try {
+      await backend.signInWithGoogle(); // avbrutet = inget besked
+    } catch (e) {
+      error = 'Google sign-in failed: ${_reason(e)}';
     } finally {
       busy = false;
       notifyListeners();

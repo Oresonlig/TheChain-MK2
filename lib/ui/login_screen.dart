@@ -148,6 +148,21 @@ class _LoginScreenState extends State<LoginScreen> {
   List<Widget> _signInFields(ChainTheme c, TextTheme text) => [
         Text('Sign in with your account', style: text.titleMedium),
         const SizedBox(height: 16),
+        GhostButton(
+          label: 'SIGN IN WITH GOOGLE',
+          onTap: widget.app.busy ? null : widget.app.signInWithGoogle,
+          color: c.textStrong,
+        ),
+        const SizedBox(height: 12),
+        Row(children: [
+          Expanded(child: Divider(color: c.border, height: 1)),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Text('or', style: text.bodySmall!.copyWith(color: c.textMuted)),
+          ),
+          Expanded(child: Divider(color: c.border, height: 1)),
+        ]),
+        const SizedBox(height: 12),
         TextField(
           controller: _email,
           decoration: _deco(c, text, 'EMAIL'),

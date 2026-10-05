@@ -4,6 +4,7 @@ library;
 import 'dart:io';
 import 'dart:math';
 
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -42,7 +43,38 @@ class SupabaseBackend implements Backend {
       _client.auth.signInWithPassword(email: email, password: password);
 
   @override
-  Future<void> signOut() => _client.auth.signOut();
+  Future<void> signOut() async {
+    try {
+      await GoogleSignIn.instance.signOut(); // annars väljs samma konto tyst nästa gång
+    } catch (_) {}
+    await _client.auth.signOut();
+  }
+
+  /// Webbklientens id (Google Cloud → "MK1"): Supabase kontrollerar id-tokenets
+  /// mottagare mot den. Android-klienterna (paketnamn + SHA-1) behövs bara hos
+  /// Google, inte i koden.
+  static const _googleServerClientId = '776616187427-hn8io3ie5j5oriq4iipiieruasggatgb.apps.googleusercontent.com';
+  bool _googleReady = false;
+
+  @override
+  Future<bool> signInWithGoogle() async {
+    final g = GoogleSignIn.instance;
+    if (!_googleReady) {
+      await g.initialize(serverClientId: _googleServerClientId);
+      _googleReady = true;
+    }
+    final GoogleSignInAccount account;
+    try {
+      account = await g.authenticate();
+    } on GoogleSignInException catch (e) {
+      if (e.code == GoogleSignInExceptionCode.canceled) return false;
+      throw Exception(e.description ?? e.code.name);
+    }
+    final idToken = account.authentication.idToken;
+    if (idToken == null) throw Exception('Google gave no ID token.');
+    await _auth(() => _client.auth.signInWithIdToken(provider: OAuthProvider.google, idToken: idToken));
+    return true;
+  }
 
   /// Länken i mejlet går till hemsidans återställning (som i MK1); koden i
   /// samma mejl används i appen. Mallen i Supabase bär båda.

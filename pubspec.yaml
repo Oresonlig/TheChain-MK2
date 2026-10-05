@@ -11,6 +11,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  google_sign_in: ^7.2.0
   http: ^1.6.0
   ota_update: ^7.1.0
   package_info_plus: ^10.2.2

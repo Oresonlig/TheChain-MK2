@@ -40,6 +40,18 @@ class FakeBackend implements Backend {
     _users.add(null);
   }
 
+  /// Google: 'ok' loggar in, 'cancel' = användaren stängde väljaren, annars fel.
+  String google = 'ok';
+
+  @override
+  Future<bool> signInWithGoogle() async {
+    if (google == 'cancel') return false;
+    if (google != 'ok') throw Exception(google);
+    _uid = 'user-1';
+    _users.add(_uid);
+    return true;
+  }
+
   /// Glömt lösenord: senaste skickade koden (null = inget mejl).
   String? sentCode;
   bool failPasswordUpdate = false;

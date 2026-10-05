@@ -59,6 +59,23 @@ void main() {
     expect(app.status, 'Synced');
   });
 
+  test('Google: inloggad; avbrutet = inget besked; fel = besked', () async {
+    final b = FakeBackend()..google = 'cancel';
+    final app = AppController(b);
+    await app.start();
+    await app.signInWithGoogle();
+    expect(app.error, isNull);
+    expect(app.phase, Phase.signedOut);
+    b.google = 'ApiException: 10';
+    await app.signInWithGoogle();
+    expect(app.error, contains('ApiException: 10'));
+    b.google = 'ok';
+    await app.signInWithGoogle();
+    await pumpEventQueue();
+    expect(app.error, isNull);
+    expect(app.phase, Phase.ready);
+  });
+
   group('glömt lösenord', () {
     test('kod + nytt lösenord → inloggad, gamla lösenordet ogiltigt', () async {
       final b = FakeBackend();
