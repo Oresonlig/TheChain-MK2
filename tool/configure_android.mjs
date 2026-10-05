@@ -124,6 +124,10 @@ for (const perm of [
   'FOREGROUND_SERVICE',
   'FOREGROUND_SERVICE_MEDIA_PLAYBACK',
   'WAKE_LOCK',
+  // "Visa ovanpå andra appar": larmvyn öppnas även när telefonen används.
+  // Användaren slår på den själv. Inför Google Play: se VISION.md (exakta larm,
+  // helskärm och den här behöver ses över tillsammans).
+  'SYSTEM_ALERT_WINDOW',
 ]) {
   if (!manifest.includes(`android.permission.${perm}"`)) {
     manifest = manifest.replace(/<application/, `<uses-permission android:name="android.permission.${perm}"/>\n    <application`);

@@ -41,6 +41,16 @@ class MainActivity : FlutterActivity() {
                         }
                         result.success(null)
                     }
+                    // "Visa ovanpå andra appar": larmvyn tar över även när telefonen används.
+                    "canOverlay" -> result.success(Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(this))
+                    "requestOverlay" -> {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
+                            startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
+                            result.success(false)
+                        } else {
+                            result.success(true)
+                        }
+                    }
                     // Läser bara av behörigheten (Settings visar den) — öppnar ingenting.
                     "canWakeScreen" -> {
                         val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager

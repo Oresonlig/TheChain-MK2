@@ -22,6 +22,7 @@ import android.os.PowerManager
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
+import android.provider.Settings
 
 class RestAlarmService : Service() {
     companion object {
@@ -70,8 +71,26 @@ class RestAlarmService : Service() {
         }
         if (am.ringerMode == AudioManager.RINGER_MODE_NORMAL) startBeep()
         startVibration()
+        openOverOtherApps()
         handler.postDelayed(timeout, RestAlarm.RING_MAX_MS)
         return START_NOT_STICKY
+    }
+
+    /// Används telefonen visar Android helskärmsnotisen bara som en liten notis.
+    /// Med "Visa ovanpå andra appar" öppnar vi larmvyn själva, ovanpå det som är
+    /// öppet (Niklas 2026-10-05: "ska ställa sig i vägen"). DISMISS tar en
+    /// tillbaka dit man var. Utan behörigheten: notisen som förut.
+    private fun openOverOtherApps() {
+        if (!RestAlarm.wakeScreen(this)) return
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) return
+        try {
+            startActivity(
+                Intent(this, RestAlarmActivity::class.java)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_USER_ACTION),
+            )
+        } catch (_: Exception) {
+            // Android stoppade starten — notisen och helskärmen bär signalen ändå.
+        }
     }
 
     private fun startBeep() {

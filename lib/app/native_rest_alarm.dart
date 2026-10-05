@@ -87,11 +87,19 @@ class NativeRestAlarm implements RestAlarm {
   }
 
   @override
-  Future<bool?> canWakeScreen() async {
+  Future<bool?> canWakeScreen() => _ask('canWakeScreen');
+
+  @override
+  Future<bool?> requestOverlay() => _ask('requestOverlay');
+
+  @override
+  Future<bool?> canOverlay() => _ask('canOverlay');
+
+  Future<bool?> _ask(String method) async {
     try {
-      return await _ch.invokeMethod<bool>('canWakeScreen');
+      return await _ch.invokeMethod<bool>(method);
     } catch (e) {
-      debugPrint('rest alarm canWake: $e');
+      debugPrint('rest alarm $method: $e');
       return null;
     }
   }

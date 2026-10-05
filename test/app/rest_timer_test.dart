@@ -21,6 +21,10 @@ class RecordingAlarm implements RestAlarm {
   Future<bool?> requestWakeScreen() async => true;
   @override
   Future<bool?> canWakeScreen() async => true;
+  @override
+  Future<bool?> requestOverlay() async => true;
+  @override
+  Future<bool?> canOverlay() async => true;
 
   /// Larmmotorns läge som appResumed läser.
   RestAlarmState? native;

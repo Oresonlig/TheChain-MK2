@@ -277,9 +277,11 @@ class _WakeScreenSection extends StatefulWidget {
 }
 
 class _WakeScreenSectionState extends State<_WakeScreenSection> with WidgetsBindingObserver {
-  /// Androids svar: given eller inte (null = okänt). Läses av när sidan öppnas
+  /// Androids svar per behörighet (null = okänt). Läses av när sidan öppnas
   /// och när man kommer tillbaka från Androids inställningssida.
+  /// [_granted] = låsskärmen (helskärm), [_overlay] = ovanpå andra appar.
   bool? _granted;
+  bool? _overlay;
 
   @override
   void initState() {
@@ -300,14 +302,28 @@ class _WakeScreenSectionState extends State<_WakeScreenSection> with WidgetsBind
   }
 
   Future<void> _check() async {
-    final g = await widget.app.restTimer.alarm.canWakeScreen();
-    if (mounted) setState(() => _granted = g);
+    final alarm = widget.app.restTimer.alarm;
+    final g = await alarm.canWakeScreen();
+    final o = await alarm.canOverlay();
+    if (!mounted) return;
+    setState(() {
+      _granted = g;
+      _overlay = o;
+    });
   }
 
+  /// ON: frågar efter det som saknas, en behörighet i taget (Androids sidor).
+  /// Kommer man tillbaka med något kvar säger statusraden det — ON igen tar nästa.
   Future<void> _on() async {
     await widget.app.updateSettings(_copy(widget.settings, wakeScreen: true));
-    final g = await widget.app.restTimer.alarm.requestWakeScreen();
-    if (mounted) setState(() => _granted = g == true);
+    final alarm = widget.app.restTimer.alarm;
+    final g = await alarm.requestWakeScreen();
+    final o = g == true ? await alarm.requestOverlay() : await alarm.canOverlay();
+    if (!mounted) return;
+    setState(() {
+      _granted = g == true;
+      _overlay = o;
+    });
   }
 
   @override
@@ -315,13 +331,13 @@ class _WakeScreenSectionState extends State<_WakeScreenSection> with WidgetsBind
     final s = widget.settings;
     final c = context.chain;
     final text = Theme.of(context).textTheme;
+    String yes(bool? v) => v == null ? '—' : (v ? 'allowed' : 'not allowed');
+    final missing = s.restWakeScreen && (_granted == false || _overlay == false);
     final status = !s.restWakeScreen
         ? 'Off: the alert beeps and vibrates, the screen stays dark.'
-        : _granted == false
-            ? 'Android does not allow it yet — tap ON and turn on full-screen notifications for the app.'
-            : _granted == true
-                ? 'Allowed by Android. The screen lights up when the rest is over; the phone stays locked.'
-                : 'The screen lights up when the rest is over. The phone stays locked.';
+        : 'The rest-over screen takes over — also over other apps. The phone stays locked.\n'
+            'Lock screen: ${yes(_granted)} · Over other apps: ${yes(_overlay)}'
+            '${missing ? '\nTap ON to allow what is missing.' : ''}';
     return settingsSection(context, 'SCREEN WAKE-UP', [
       Row(children: [
         _choice(context, 'ON', s.restWakeScreen, _on),
@@ -329,7 +345,7 @@ class _WakeScreenSectionState extends State<_WakeScreenSection> with WidgetsBind
         _choice(context, 'OFF', !s.restWakeScreen, () => widget.app.updateSettings(_copy(s, wakeScreen: false))),
       ]),
       const SizedBox(height: 8),
-      Text(status, style: text.bodySmall!.copyWith(color: _granted == false && s.restWakeScreen ? c.accent : c.textMuted)),
+      Text(status, style: text.bodySmall!.copyWith(color: missing ? c.accent : c.textMuted)),
     ]);
   }
 }

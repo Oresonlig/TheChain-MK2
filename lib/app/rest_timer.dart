@@ -35,6 +35,10 @@ abstract class RestAlarm {
   /// Samma behörighet, bara avläst (null = okänt, t.ex. i tester).
   Future<bool?> canWakeScreen();
 
+  /// "Visa ovanpå andra appar": larmvyn tar över även när telefonen används.
+  Future<bool?> requestOverlay();
+  Future<bool?> canOverlay();
+
   /// Larmet avfärdades / fick +30 utanför appen (larmvyn, notisens knappar).
   void listen({required void Function() onStopped, required void Function(DateTime end) onSnoozed});
 }
@@ -52,6 +56,10 @@ class SilentRestAlarm implements RestAlarm {
   Future<bool?> requestWakeScreen() async => null;
   @override
   Future<bool?> canWakeScreen() async => null;
+  @override
+  Future<bool?> requestOverlay() async => null;
+  @override
+  Future<bool?> canOverlay() async => null;
   @override
   void listen({required void Function() onStopped, required void Function(DateTime end) onSnoozed}) {}
 }
