@@ -8,6 +8,7 @@ library;
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../domain/domain.dart';
 import '../../theme/chain_theme.dart';
@@ -46,6 +47,8 @@ class _RoundCompleteState extends State<RoundComplete> with SingleTickerProvider
     super.didChangeDependencies();
     if (_started) return;
     _started = true;
+    HapticFeedback.heavyImpact(); // följer telefonens vibrationsfeedback
+
     final still = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
     if (still) {
       _a.value = .5; // allt tänt, ingen våg

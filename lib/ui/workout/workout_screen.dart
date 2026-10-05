@@ -170,6 +170,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                                   if (note == null) return; // avbrutet: passet pågår
                                 }
                                 final ok = await controller.finish(note: note);
+                                if (ok) HapticFeedback.mediumImpact();
                                 if (ok && context.mounted) Navigator.pop(context);
                               }
                             : null,
@@ -413,7 +414,12 @@ class ExerciseCard extends StatelessWidget {
                 enabled: canDone,
                 label: 'Exercise done',
                 child: GestureDetector(
-                  onTap: canDone ? () => controller.markDone(row.id) : null,
+                  onTap: canDone
+                      ? () {
+                          HapticFeedback.mediumImpact();
+                          controller.markDone(row.id);
+                        }
+                      : null,
                   // Släckt tills varje set är loggat (Niklas 2026-10-03).
                   child: Raised(
                     material: canDone ? c.raisedActive : c.raisedIdle,
@@ -724,7 +730,12 @@ class _SetRowState extends State<SetRow> {
       Column(children: [
         GestureDetector(
           key: widget.logKey,
-          onTap: widget.editable ? () => widget.controller.toggleLog(widget.row.id, s.id) : null,
+          onTap: widget.editable
+              ? () {
+                  HapticFeedback.lightImpact(); // följer telefonens vibrationsfeedback
+                  widget.controller.toggleLog(widget.row.id, s.id);
+                }
+              : null,
           child: SizedBox(
             width: 72,
             height: 48,
