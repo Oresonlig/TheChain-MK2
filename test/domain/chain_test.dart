@@ -20,6 +20,20 @@ HistoryEntry rested(SessionId s, int d) => RestEntry(date: day(d), sessionId: s)
 HistoryEntry skippedOn(SessionId s, int d) => SkippedEntry(date: day(d), sessionId: s, reason: 'tattoo');
 
 void main() {
+  test('senast avslutade rundan: start, slut, gjorda och överhoppade (ROUND N COMPLETE)', () {
+    final st = chainState(program, [trained(a, 1), skippedOn(b, 3), rested(v, 4), trained(c, 9), trained(a, 10)]);
+    expect(st.round, 2);
+    final r = st.lastRound!;
+    expect(r.round, 1);
+    expect(r.start, day(1));
+    expect(r.end, day(9));
+    expect(r.trained, 3);
+    expect(r.skipped, 1);
+    // En omstart mitt i en runda är ingen "klar runda".
+    final restarted = chainState(program, [trained(a, 1)], manualRestarts: [day(2)]);
+    expect(restarted.lastRound, isNull);
+  });
+
   group('överhoppat pass (2026-10-04)', () {
     test('räknas som hanterat men inte gjort; nästa hoppar förbi', () {
       final st = chainState(program, [trained(a, 1), skippedOn(b, 2)]);

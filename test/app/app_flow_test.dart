@@ -359,7 +359,13 @@ void main() {
     await tester.enterText(find.byType(TextField).last, 'Slept 4 h');
     await tester.tap(find.text('Finish'));
     await tester.runAsync(() => pumpEventQueue());
+    await tester.pump();
+    // Programmet har bara pass A: rundan blev klar → "ROUND 1 COMPLETE", ett tryck stänger.
+    expect(find.text('ROUND 1 COMPLETE'), findsOneWidget);
+    expect(find.text('1 session · 1 day · 1 new PR'), findsOneWidget);
+    await tester.tapAt(const Offset(200, 200));
     await tester.pumpAndSettle();
+    expect(find.text('ROUND 1 COMPLETE'), findsNothing);
     expect(find.text('TRAIN AGAIN'), findsNothing);
     final h = app.repo!.history();
     expect(h.length, 1);

@@ -9,8 +9,21 @@ import 'history.dart';
 import 'ids.dart';
 import 'program.dart';
 
+/// Den senast avslutade rundan — för "ROUND 18 COMPLETE" (Niklas 2026-10-05).
+class RoundSummary {
+  const RoundSummary({required this.round, required this.start, required this.end, required this.trained, required this.skipped});
+  final int round;
+  final DateTime start, end;
+
+  /// Genomförda pass (vilodagar inräknade) och överhoppade i rundan.
+  final int trained, skipped;
+}
+
 class ChainState {
-  const ChainState({required this.round, required this.done, required this.next, this.skipped = const {}});
+  const ChainState({required this.round, required this.done, required this.next, this.skipped = const {}, this.lastRound});
+
+  /// Senast avslutade rundan (null = ingen avslutad, eller avslutad av en omstart).
+  final RoundSummary? lastRound;
 
   /// Pågående cykel, 1-baserad ("Round 18").
   final int round;
@@ -50,11 +63,18 @@ ChainState chainState(
   var done = <SessionId>{};
   var skipped = <SessionId>{};
   var r = 0;
+  DateTime? start;
+  RoundSummary? last;
 
-  void closeCycle() {
+  void closeCycle({DateTime? end}) {
     completed++;
+    // Bara en runda som fullbordades (inte en omstart) räknas som "klar".
+    last = end == null || start == null
+        ? null
+        : RoundSummary(round: completed, start: start!, end: end, trained: done.length, skipped: skipped.length);
     done = <SessionId>{};
     skipped = <SessionId>{};
+    start = null;
   }
 
   for (final e in entries) {
@@ -69,13 +89,14 @@ ChainState chainState(
       SkippedEntry(:final sessionId) => (sessionId, true),
     };
     if (!all.contains(id)) continue;
+    start ??= e.date;
     if (isSkip) {
       if (!done.contains(id)) skipped.add(id);
     } else {
       skipped.remove(id);
       done.add(id);
     }
-    if (all.isNotEmpty && done.length + skipped.length == all.length) closeCycle();
+    if (all.isNotEmpty && done.length + skipped.length == all.length) closeCycle(end: e.date);
   }
   while (r < restarts.length) {
     if (done.isNotEmpty || skipped.isNotEmpty) closeCycle();
@@ -89,5 +110,5 @@ ChainState chainState(
       break;
     }
   }
-  return ChainState(round: completed + 1, done: done, skipped: skipped, next: next);
+  return ChainState(round: completed + 1, done: done, skipped: skipped, next: next, lastRound: last);
 }

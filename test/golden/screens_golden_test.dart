@@ -11,6 +11,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:the_chain/app/app_controller.dart';
 import 'package:the_chain/domain/domain.dart';
 import 'package:the_chain/main.dart';
+import 'package:the_chain/theme/nanosuit.dart';
+import 'package:the_chain/ui/chain/round_complete.dart';
 import 'package:the_chain/ui/charts/chain_chart.dart';
 import 'package:the_chain/ui/workout/workout_screen.dart';
 
@@ -51,6 +53,33 @@ AppController _app(FakeBackend b) => AppController(b, syncDelay: Duration.zero);
 Future<void> _tourSeen(AppController app) => app.updateSettings(app.repo!.settings().copyWith(workoutTourSeen: true));
 
 void main() {
+  testWidgets('runda klar: våg, puls, omladdning', (tester) async {
+    await _loadSaira();
+    tester.view.physicalSize = const Size(1080, 2340);
+    tester.view.devicePixelRatio = 2.625;
+    addTearDown(tester.view.reset);
+    const ids = ['A', 'B', 'C', 'V', 'D', 'E', 'F', 'K', 'V2'];
+    await tester.pumpWidget(MaterialApp(
+      theme: nanosuitThemeData(),
+      home: Scaffold(
+        body: RoundComplete(
+          summary: RoundSummary(round: 18, start: DateTime(2026, 9, 24), end: DateTime(2026, 10, 5), trained: 8, skipped: 1),
+          letters: [for (final id in ids) (SessionId(id), id.startsWith('V') ? 'V' : id)],
+          restIds: const {SessionId('V'), SessionId('V2')},
+          newPrs: 3,
+          onDone: () {},
+        ),
+      ),
+    ));
+    await tester.pump(const Duration(milliseconds: 800)); // vågen halvvägs
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/round_wave.png'));
+    await tester.pump(const Duration(milliseconds: 900)); // pulsen, allt tänt
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/round_lit.png'));
+    await tester.pump(const Duration(milliseconds: 700)); // omladdad: ROUND 19
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/round_reset.png'));
+    await tester.pumpAndSettle();
+  });
+
   testWidgets('adminsidan (påhittade användare)', (tester) async {
     await _loadSaira();
     final now = DateTime.now();

@@ -16,6 +16,7 @@ import '../onboarding/welcome_panel.dart';
 import '../units.dart';
 import '../workout/workout_screen.dart';
 import 'chain_strip.dart';
+import 'round_complete.dart';
 
 class ChainScreen extends StatefulWidget {
   const ChainScreen({super.key, required this.app, this.email = '', this.buildLabel = '', this.now});
@@ -32,7 +33,26 @@ class ChainScreen extends StatefulWidget {
 class _ChainScreenState extends State<ChainScreen> {
   SessionId? _selected;
 
+  /// "ROUND N COMPLETE" som visas just nu (null = ingen).
+  RoundSummary? _celebrate;
+  int _newPrs = 0;
+
   DateTime get _now => (widget.now ?? DateTime.now)();
+
+  /// Efter ett avslutat pass eller en vilodag: blev rundan klar nyss? Bara då —
+  /// aldrig vid appstart, import eller synk från en annan enhet.
+  void _checkRound(int before) {
+    final repo = widget.app.repo;
+    if (repo == null || !mounted) return;
+    final ch = repo.chain();
+    final s = ch.lastRound;
+    if (ch.round != before + 1 || s == null) return;
+    final prs = repo.records().values.where((p) => !p.date.isBefore(s.start) && !p.date.isAfter(s.end)).length;
+    setState(() {
+      _celebrate = s;
+      _newPrs = prs;
+    });
+  }
 
   Future<void> _openWorkout(SessionId id) async {
     // Ett pass i taget (Niklas 2026-10-04: i MK1 glömde han ibland att avsluta).
@@ -54,9 +74,11 @@ class _ChainScreenState extends State<ChainScreen> {
       if (goThere == true && mounted) await _openWorkout(other.sessionId);
       return;
     }
+    final before = widget.app.repo!.chain().round;
     final wc = widget.app.openWorkout(id);
     await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => WorkoutScreen(controller: wc, app: widget.app)));
     if (mounted) setState(() => _selected = null); // tillbaka: visa nästa föreslagna
+    _checkRound(before);
   }
 
   @override
@@ -65,7 +87,24 @@ class _ChainScreenState extends State<ChainScreen> {
       listenable: widget.app,
       builder: (context, _) => ChainScaffold(
         ambient: widget.app.repo?.settings().ambientEffects ?? true,
-        child: _content(context),
+        child: Stack(children: [
+          _content(context),
+          if ((_celebrate, widget.app.repo) case (final s?, final repo?))
+            Positioned.fill(
+              child: Builder(builder: (context) {
+                final program = repo.program();
+                final letters = ChainStrip.letters(program);
+                return RoundComplete(
+                  key: ValueKey(s.round),
+                  summary: s,
+                  letters: [for (final x in program.sessions) (x.id, letters[x.id] ?? '?')],
+                  restIds: {for (final x in program.sessions) if (x.isRest) x.id},
+                  newPrs: _newPrs,
+                  onDone: () => setState(() => _celebrate = null),
+                );
+              }),
+            ),
+        ]),
       ),
     );
   }
@@ -155,7 +194,11 @@ class _ChainScreenState extends State<ChainScreen> {
                 _RestPanel(
                   key: ValueKey('rest-${session.id.value}'),
                   done: chain.isDone(session.id),
-                  onDone: (note) => widget.app.markRestDone(session.id, note: note),
+                  onDone: (note) async {
+                    final before = chain.round;
+                    await widget.app.markRestDone(session.id, note: note);
+                    _checkRound(before);
+                  },
                   onUndo: () async {
                     final last = (history.whereType<RestEntry>().where((e) => e.sessionId == session.id).toList()
                           ..sort((a, b) => b.date.compareTo(a.date)))
