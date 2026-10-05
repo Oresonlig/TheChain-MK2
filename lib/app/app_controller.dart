@@ -509,11 +509,19 @@ class AppController extends ChangeNotifier {
   Future<void> undoWorkout(WorkoutEntry entry) async {
     final w = entry.workout;
     await repo!.saveActiveWorkout(
-      Workout(id: w.id, sessionId: w.sessionId, sessionName: w.sessionName, startedAt: w.startedAt, exercises: w.exercises),
+      Workout(
+          id: w.id, sessionId: w.sessionId, sessionName: w.sessionName, startedAt: w.startedAt, exercises: w.exercises, note: w.note),
       _now(),
     );
     notifyListeners();
     await syncNow();
+  }
+
+  /// Ändrar anteckningen på ett avslutat pass (tom = ta bort). Seten rörs inte.
+  Future<void> setWorkoutNote(WorkoutEntry entry, String? note) async {
+    await repo!.saveHistory(WorkoutEntry(workout: entry.workout.withNote(note), source: entry.source), _now());
+    notifyListeners();
+    scheduleSync();
   }
 
   // ── programmet (byggaren) ──

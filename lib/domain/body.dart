@@ -23,6 +23,7 @@ class UserSettings {
     this.restTimerSecs = 120,
     this.weightGoalKg,
     this.ambientEffects = true,
+    this.finishNote = true,
   });
 
   final WeightUnit weightUnit;
@@ -35,4 +36,28 @@ class UserSettings {
 
   /// Rörliga bakgrunder (av för prestanda eller minskad rörelse).
   final bool ambientEffects;
+
+  /// "How did it feel?" vid FINISH SESSION (Settings → Training).
+  final bool finishNote;
+
+  /// [clearGoal] = ta bort viktmålet (null betyder annars "oförändrat").
+  UserSettings copyWith({
+    WeightUnit? weightUnit,
+    TempUnit? tempUnit,
+    bool? restTimerEnabled,
+    int? restTimerSecs,
+    double? weightGoalKg,
+    bool clearGoal = false,
+    bool? ambientEffects,
+    bool? finishNote,
+  }) =>
+      UserSettings(
+        weightUnit: weightUnit ?? this.weightUnit,
+        tempUnit: tempUnit ?? this.tempUnit,
+        restTimerEnabled: restTimerEnabled ?? this.restTimerEnabled,
+        restTimerSecs: restTimerSecs ?? this.restTimerSecs,
+        weightGoalKg: clearGoal ? null : (weightGoalKg ?? this.weightGoalKg),
+        ambientEffects: ambientEffects ?? this.ambientEffects,
+        finishNote: finishNote ?? this.finishNote,
+      );
 }

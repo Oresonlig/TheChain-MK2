@@ -77,6 +77,7 @@ Json workoutToJson(Workout w) => {
       'id': w.id.value,
       'session': w.sessionId.value,
       'sessionName': ?w.sessionName,
+      'note': ?w.note,
       'start': w.startedAt.millisecondsSinceEpoch,
       if (w.finishedAt != null) 'end': w.finishedAt!.millisecondsSinceEpoch,
       'exercises': [
@@ -97,6 +98,7 @@ Workout workoutFromJson(Json j) => Workout(
       id: WorkoutId(j['id'] as String),
       sessionId: SessionId(j['session'] as String),
       sessionName: j['sessionName'] as String?,
+      note: j['note'] as String?,
       startedAt: _t(j['start'])!,
       finishedAt: _t(j['end']),
       exercises: [
@@ -268,6 +270,7 @@ Json settingsToJson(UserSettings s) => {
       'restSecs': s.restTimerSecs,
       if (s.weightGoalKg != null) 'goalKg': s.weightGoalKg,
       'ambient': s.ambientEffects,
+      'finishNote': s.finishNote,
     };
 
 UserSettings settingsFromJson(Json j) => UserSettings(
@@ -277,4 +280,5 @@ UserSettings settingsFromJson(Json j) => UserSettings(
       restTimerSecs: _i(j['restSecs']) ?? 120,
       weightGoalKg: _d(j['goalKg']),
       ambientEffects: j['ambient'] != false,
+      finishNote: j['finishNote'] != false,
     );

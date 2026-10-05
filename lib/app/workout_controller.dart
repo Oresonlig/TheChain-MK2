@@ -244,7 +244,7 @@ class WorkoutController extends ChangeNotifier {
   // ── avsluta ──
   bool get canFinish => workout.canFinish;
 
-  Future<bool> finish() async {
+  Future<bool> finish({String? note}) async {
     if (closedElsewhere) {
       error = _closedMessage;
       notifyListeners();
@@ -252,9 +252,10 @@ class WorkoutController extends ChangeNotifier {
     }
     try {
       // Pass startat före Workout.sessionName: namnet som det är nu, vid avslut.
-      final named = workout.sessionName != null
+      final base = workout.sessionName != null
           ? workout
           : workout.copyWith(sessionName: repo.program().sessionById(workout.sessionId)?.name);
+      final named = note == null ? base : base.withNote(note);
       final res = finishWorkout(named, _now(), repo.notes());
       await repo.saveHistory(res.entry, _now());
       for (final n in res.notes) {

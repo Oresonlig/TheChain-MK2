@@ -299,11 +299,16 @@ void main() {
       await tester.pump();
     }
     await tester.tap(find.text('FINISH SESSION'));
+    await tester.pumpAndSettle();
+    // "How did it feel?" (på som standard).
+    await tester.enterText(find.byType(TextField).last, 'Slept 4 h');
+    await tester.tap(find.text('Finish'));
     await tester.runAsync(() => pumpEventQueue());
     await tester.pumpAndSettle();
     expect(find.text('TRAIN AGAIN'), findsNothing);
     final h = app.repo!.history();
     expect(h.length, 1);
+    expect((h.single as WorkoutEntry).workout.note, 'Slept 4 h');
     final bench = personalRecordsOf(app);
     expect(bench, 100);
   });

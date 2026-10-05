@@ -60,6 +60,15 @@ void main() {
     expect(text, contains('Unilateral Row (Cable) +\n  S1: 40 kg × 10 (L)'));
     expect(text, isNot(contains('ex_skip')));
     expect(text, endsWith('thechain.training\n\n#thechain\n#gymlife'));
+    expect(text, isNot(contains('📝')));
+    final withNote = buildCopyText(
+      workout: w.withNote('Slept 4 h'),
+      sessionName: 'B',
+      nameOf: (id) => id.value,
+      settings: const UserSettings(),
+      random: Random(1),
+    );
+    expect(withNote, endsWith('\n📝 Slept 4 h\n\nthechain.training\n\n#thechain\n#gymlife'));
   });
 
   test('etiketten följer tidsspannet', () {

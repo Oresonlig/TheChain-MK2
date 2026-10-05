@@ -207,13 +207,14 @@ Widget settingsSection(BuildContext context, String title, List<Widget> children
   );
 }
 
-UserSettings _copy(UserSettings s, {WeightUnit? w, TempUnit? t, bool? ambient, bool? timer, int? timerSecs}) => UserSettings(
-      weightUnit: w ?? s.weightUnit,
-      tempUnit: t ?? s.tempUnit,
-      restTimerEnabled: timer ?? s.restTimerEnabled,
-      restTimerSecs: timerSecs ?? s.restTimerSecs,
-      weightGoalKg: s.weightGoalKg,
-      ambientEffects: ambient ?? s.ambientEffects,
+UserSettings _copy(UserSettings s, {WeightUnit? w, TempUnit? t, bool? ambient, bool? timer, int? timerSecs, bool? finishNote}) =>
+    s.copyWith(
+      weightUnit: w,
+      tempUnit: t,
+      restTimerEnabled: timer,
+      restTimerSecs: timerSecs,
+      ambientEffects: ambient,
+      finishNote: finishNote,
     );
 
 /// Två- eller flervalsknapp (KG / LBS).
@@ -260,6 +261,16 @@ class TrainingSettingsScreen extends StatelessWidget {
                 const SizedBox(width: 8),
                 _choice(context, '°F', s.tempUnit == TempUnit.fahrenheit, () => app.updateSettings(_copy(s, t: TempUnit.fahrenheit))),
               ]),
+            ]),
+            settingsSection(context, 'NOTE WHEN FINISHING', [
+              Row(children: [
+                _choice(context, 'ON', s.finishNote, () => app.updateSettings(_copy(s, finishNote: true))),
+                const SizedBox(width: 8),
+                _choice(context, 'OFF', !s.finishNote, () => app.updateSettings(_copy(s, finishNote: false))),
+              ]),
+              const SizedBox(height: 8),
+              Text('FINISH SESSION asks "How did it feel?" (optional). The note shows in History and at the end of COPY.',
+                  style: Theme.of(context).textTheme.bodySmall!.copyWith(color: context.chain.textMuted)),
             ]),
             settingsSection(context, 'REST TIMER', [
               Row(children: [

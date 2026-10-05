@@ -15,6 +15,7 @@ import '../nanosuit_scaffold.dart';
 import '../units.dart';
 import 'exercise_picker.dart';
 import 'rest_timer_bar.dart';
+import 'session_note_dialog.dart';
 
 class WorkoutScreen extends StatefulWidget {
   const WorkoutScreen({super.key, required this.controller, this.now, this.app});
@@ -140,7 +141,12 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                       GestureDetector(
                         onTap: canFinish
                             ? () async {
-                                final ok = await controller.finish();
+                                String? note;
+                                if (controller.repo.settings().finishNote) {
+                                  note = await askSessionNote(context, title: 'Finish session', confirmLabel: 'Finish');
+                                  if (note == null) return; // avbrutet: passet pågår
+                                }
+                                final ok = await controller.finish(note: note);
                                 if (ok && context.mounted) Navigator.pop(context);
                               }
                             : null,

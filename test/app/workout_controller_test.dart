@@ -55,6 +55,28 @@ Future<AppController> ready() async {
 }
 
 void main() {
+  test('anteckning vid avslut: sparas, ändras, tas bort; UNDO behåller den', () async {
+    final app = await ready();
+    final wc = app.openWorkout(const SessionId('A'));
+    for (final r in wc.workout.exercises) {
+      logAll(wc, r);
+      wc.markDone(r.id);
+    }
+    expect(await wc.finish(note: '  Slept 4 h  '), isTrue);
+    WorkoutEntry last() => app.repo!.history().whereType<WorkoutEntry>().firstWhere((e) => e.workout.id == wc.workout.id);
+    expect(last().workout.note, 'Slept 4 h');
+    final sets = last().workout.exercises.expand((x) => x.sets).length;
+    await app.setWorkoutNote(last(), 'Felt strong');
+    expect(last().workout.note, 'Felt strong');
+    expect(last().workout.exercises.expand((x) => x.sets).length, sets, reason: 'seten rörs inte');
+    await app.undoWorkout(last());
+    expect(app.repo!.activeWorkouts().single.note, 'Felt strong');
+    final wc2 = app.openWorkout(const SessionId('A'));
+    await wc2.finish();
+    await app.setWorkoutNote(last(), '   ');
+    expect(last().workout.note, isNull);
+  });
+
   test('starta → logga → klar → avsluta: historik, kedja och synk', () async {
     final app = await ready();
     expect(app.repo!.chain().next, const SessionId('A'));

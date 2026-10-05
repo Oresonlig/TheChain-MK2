@@ -16,6 +16,7 @@ import '../nanosuit_scaffold.dart';
 import '../units.dart';
 import 'exercise_detail_screen.dart';
 import '../workout/exercise_picker.dart' show GroupHeader, groupLabel;
+import '../workout/session_note_dialog.dart';
 
 class ProgressScreen extends StatefulWidget {
   const ProgressScreen({super.key, required this.app});
@@ -164,7 +165,17 @@ class _ProgressScreenState extends State<ProgressScreen> {
                         '${e.source == EntrySource.imported ? ' · imported' : ''}',
                         style: text.bodySmall,
                       ),
+                      if (workout.note case final n?)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text(n, style: text.bodySmall!.copyWith(color: c.textBody)),
+                        ),
                     ]),
+                  ),
+                  IconButton(
+                    tooltip: workout.note == null ? 'Add note' : 'Edit note',
+                    onPressed: () => _editNote(context, e),
+                    icon: Icon(Icons.edit_note, color: c.textMuted),
                   ),
                   IconButton(
                     tooltip: 'Show',
@@ -181,6 +192,11 @@ class _ProgressScreenState extends State<ProgressScreen> {
           ),
         ),
     ];
+  }
+
+  Future<void> _editNote(BuildContext context, WorkoutEntry e) async {
+    final note = await askSessionNote(context, title: 'Session note', confirmLabel: 'Save', initial: e.workout.note);
+    if (note != null) await widget.app.setWorkoutNote(e, note);
   }
 
   Future<void> _copy(BuildContext context, Workout w, String sessionName, UserSettings s) async {

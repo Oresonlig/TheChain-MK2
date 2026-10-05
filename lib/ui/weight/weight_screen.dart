@@ -63,14 +63,7 @@ class _WeightScreenState extends State<WeightScreen> with ChartRangeState {
     final v = double.tryParse(result.trim().replaceAll(',', '.'));
     final kg = v == null ? null : (lbs ? v / _lbsPerKg : v);
     if (kg != null && (kg < 20 || kg > 300)) return;
-    await widget.app.updateSettings(UserSettings(
-      weightUnit: s.weightUnit,
-      tempUnit: s.tempUnit,
-      restTimerEnabled: s.restTimerEnabled,
-      restTimerSecs: s.restTimerSecs,
-      weightGoalKg: kg,
-      ambientEffects: s.ambientEffects,
-    ));
+    await widget.app.updateSettings(s.copyWith(weightGoalKg: kg, clearGoal: kg == null));
   }
 
   /// En siffra under TREND. Bara läsning — målet ändras i TODAY-kortet

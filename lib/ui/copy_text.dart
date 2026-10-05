@@ -75,6 +75,8 @@ String buildCopyText({
     }
     lines.add('');
   }
+  // Sist i innehållet (Niklas 2026-10-05): guld för PT-Claude.
+  if (workout.note case final n?) lines..add('📝 $n')..add('');
   lines
     ..add('thechain.training')
     ..add('')

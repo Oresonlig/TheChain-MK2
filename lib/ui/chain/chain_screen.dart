@@ -420,6 +420,12 @@ class _SessionPanel extends StatelessWidget {
             row: ex,
             settings: settings,
           ),
+          if (lastOfSession.workout.note case final n?)
+            Container(
+              padding: const EdgeInsets.only(top: 10),
+              decoration: BoxDecoration(border: Border(top: BorderSide(color: c.border))),
+              child: Text(n, style: text.bodyMedium!.copyWith(color: c.textBody)),
+            ),
           const SizedBox(height: 16),
           Row(children: [
             Expanded(

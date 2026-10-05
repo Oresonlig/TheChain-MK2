@@ -73,7 +73,12 @@ class Workout {
     this.sessionName,
     this.finishedAt,
     this.exercises = const [],
+    this.note,
   });
+
+  /// "How did it feel?" — frivillig anteckning vid avslut, går att ändra
+  /// efteråt (Niklas 2026-10-05). Inga träningsdata: låset gäller inte den.
+  final String? note;
 
   final WorkoutId id;
   final SessionId sessionId;
@@ -97,7 +102,22 @@ class Workout {
         startedAt: startedAt,
         finishedAt: finishedAt ?? this.finishedAt,
         exercises: exercises ?? this.exercises,
+        note: note,
       );
+
+  /// Tom eller bara blanksteg = ingen anteckning.
+  Workout withNote(String? text) {
+    final t = text?.trim();
+    return Workout(
+      id: id,
+      sessionId: sessionId,
+      sessionName: sessionName,
+      startedAt: startedAt,
+      finishedAt: finishedAt,
+      exercises: exercises,
+      note: (t == null || t.isEmpty) ? null : t,
+    );
+  }
 
   /// Klart att avsluta när varje övning är gjord eller överhoppad.
   bool get canFinish =>
