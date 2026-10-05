@@ -5,6 +5,23 @@ import 'package:the_chain/data/json_codec.dart';
 import 'package:the_chain/data/sync_engine.dart';
 import 'package:the_chain/domain/sync.dart';
 
+/// Lokal lagring i minnet (appen använder FileLocalStore).
+class InMemoryLocalStore implements LocalStore {
+  final _tables = <String, TableState>{};
+
+  @override
+  Future<TableState> load(String table) async {
+    final s = _tables[table];
+    if (s == null) return TableState();
+    return TableState(items: {...s.items}, cursor: s.cursor, dirty: {...s.dirty});
+  }
+
+  @override
+  Future<void> save(String table, TableState state) async {
+    _tables[table] = TableState(items: {...state.items}, cursor: state.cursor, dirty: {...state.dirty});
+  }
+}
+
 class FakeRemote implements Remote {
   final _tables = <String, Map<String, RemoteRow>>{};
   int _rev = 0;
@@ -45,5 +62,12 @@ class FakeRemote implements Remote {
   /// En annan klient (t.ex. gammal kod) skriver direkt.
   void serverWrite(String t, String id, Json data, Stamp stamp) {
     table(t)[id] = RemoteRow(id: id, stamp: stamp, deleted: false, data: data, rev: ++_rev);
+  }
+
+  /// Delar ut ett rev nu men raden syns först senare ([commitLate]) — som en
+  /// Postgres-transaktion som blir klar efter en senare.
+  int reserveRev() => ++_rev;
+  void commitLate(String t, String id, Json data, Stamp stamp, int rev) {
+    table(t)[id] = RemoteRow(id: id, stamp: stamp, deleted: false, data: data, rev: rev);
   }
 }

@@ -46,26 +46,10 @@ class TableState {
   final Set<String> dirty;
 }
 
-/// Lokal lagring (fil i appen, minne i tester).
+/// Lokal lagring (FileLocalStore i appen, InMemoryLocalStore i tester).
 abstract class LocalStore {
   Future<TableState> load(String table);
   Future<void> save(String table, TableState state);
-}
-
-class InMemoryLocalStore implements LocalStore {
-  final _tables = <String, TableState>{};
-
-  @override
-  Future<TableState> load(String table) async {
-    final s = _tables[table];
-    if (s == null) return TableState();
-    return TableState(items: {...s.items}, cursor: s.cursor, dirty: {...s.dirty});
-  }
-
-  @override
-  Future<void> save(String table, TableState state) async {
-    _tables[table] = TableState(items: {...state.items}, cursor: state.cursor, dirty: {...state.dirty});
-  }
 }
 
 enum SyncOutcome { ok, offline, pushBlockedByGate }
@@ -91,6 +75,17 @@ class TableSync {
   TableState _state = TableState();
   bool _pulledThisSession = false;
 
+  /// Ökar vid varje ändring av posterna (lokal eller från servern) — Repository
+  /// cachar avkodade värden per version i stället för att avkoda vid varje läsning.
+  int version = 0;
+
+  /// Hämtningen börjar så här många rev före markören. `rev` delas ut när en
+  /// rad SKRIVS men syns först när transaktionen är klar: två samtidiga pushar
+  /// kan bli synliga i omvänd ordning, och en ren "rev > markör" skulle då hoppa
+  /// över den lägre för gott. Överlappet hämtar om dem; sammanslagningen är
+  /// idempotent (samma stämpel = ingen ändring), så det kostar bara några rader.
+  static const pullOverlap = 1000;
+
   bool get hasPulled => _pulledThisSession;
   Map<String, Synced<Json>> get items => Map.unmodifiable(_state.items);
   Iterable<Json> get liveValues => _state.items.values.where((s) => !s.isDeleted).map((s) => s.value!);
@@ -98,15 +93,24 @@ class TableSync {
 
   Future<void> open() async {
     _state = await store.load(table);
+    version++;
     for (final s in _state.items.values) {
       clock.observe(s.stamp);
     }
   }
 
   /// Lokal ändring. Sparas direkt lokalt (offline fungerar), skickas vid nästa sync.
-  Future<void> put(String id, Json value, DateTime now) async {
-    _state.items[id] = Synced(id, clock.tick(now), value);
-    _state.dirty.add(id);
+  Future<void> put(String id, Json value, DateTime now) => putAll({id: value}, now);
+
+  /// Många ändringar, EN skrivning till disk (importen: annars hela tabellen
+  /// en gång per post).
+  Future<void> putAll(Map<String, Json> values, DateTime now) async {
+    if (values.isEmpty) return;
+    for (final e in values.entries) {
+      _state.items[e.key] = Synced(e.key, clock.tick(now), e.value);
+      _state.dirty.add(e.key);
+    }
+    version++;
     await store.save(table, _state);
   }
 
@@ -114,11 +118,13 @@ class TableSync {
     if (!_state.items.containsKey(id)) return;
     _state.items[id] = Synced.deleted(id, clock.tick(now));
     _state.dirty.add(id);
+    version++;
     await store.save(table, _state);
   }
 
   Future<bool> _pull() async {
-    final rows = await remote.pull(table, _state.cursor);
+    final from = _state.cursor > pullOverlap ? _state.cursor - pullOverlap : 0;
+    final rows = await remote.pull(table, from);
     var changed = false;
     for (final r in rows) {
       clock.observe(r.stamp);
@@ -134,6 +140,7 @@ class TableSync {
       if (r.rev > _state.cursor) _state.cursor = r.rev;
     }
     _pulledThisSession = true;
+    if (changed) version++;
     return changed;
   }
 

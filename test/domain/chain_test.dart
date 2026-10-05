@@ -25,7 +25,7 @@ void main() {
       final st = chainState(program, [trained(a, 1), skippedOn(b, 2)]);
       expect(st.done, {a});
       expect(st.skipped, {b});
-      expect(st.isHandled(b), isTrue);
+      expect(st.isSkipped(b), isTrue);
       expect(st.isDone(b), isFalse);
       expect(st.next, v);
     });

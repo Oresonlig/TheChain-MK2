@@ -33,7 +33,7 @@ class WorkoutExercise {
   final SlotId? slotId;
 
   /// Satt vid tillfälligt byte: övningen som platsen normalt har.
-  /// Programmet ändras inte (permanent byte = Slot.originalExerciseId).
+  /// Programmet ändras inte (permanent byte ändrar programmets plats, utan minne).
   final ExerciseId? temporarySwapFrom;
 
   final ExerciseStatus status;

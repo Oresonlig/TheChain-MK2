@@ -31,7 +31,7 @@ class WorkoutEntry extends HistoryEntry {
 
 /// En avklarad vilodag. Räknas inte i PR eller passantal.
 class RestEntry extends HistoryEntry {
-  const RestEntry({required super.date, required this.sessionId, this.note});
+  const RestEntry({required super.date, required this.sessionId, this.note, super.source});
 
   final SessionId sessionId;
 
@@ -43,7 +43,7 @@ class RestEntry extends HistoryEntry {
 /// aldrig som gjort — inget i PR, "förra gången" eller passantal. Anledningen
 /// är obligatorisk: det ska kosta en tanke att hoppa över.
 class SkippedEntry extends HistoryEntry {
-  const SkippedEntry({required super.date, required this.sessionId, required this.reason, this.sessionName});
+  const SkippedEntry({required super.date, required this.sessionId, required this.reason, this.sessionName, super.source});
 
   final SessionId sessionId;
   final String reason;

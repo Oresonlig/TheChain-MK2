@@ -71,11 +71,11 @@ class _ChainScreenState extends State<ChainScreen> {
     );
   }
 
+  /// Byggs inuti ChainScaffold (temat och glaset hämtas därifrån). Den yttre
+  /// ListenableBuilder bygger om — en andra lyssnare här byggde om allt två gånger.
   Widget _content(BuildContext context) {
     return Builder(
-      builder: (context) => ListenableBuilder(
-        listenable: widget.app,
-        builder: (context, _) {
+        builder: (context) {
           final repo = widget.app.repo;
           if (repo == null) return const Center(child: CircularProgressIndicator());
           final c = context.chain;
@@ -231,7 +231,6 @@ class _ChainScreenState extends State<ChainScreen> {
             ],
           );
         },
-      ),
     );
   }
 

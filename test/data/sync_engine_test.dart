@@ -13,6 +13,15 @@ Future<SyncEngine> device(FakeRemote server, String id, [LocalStore? store]) asy
   return e;
 }
 
+class _CountingStore extends InMemoryLocalStore {
+  int saves = 0;
+  @override
+  Future<void> save(String table, TableState state) {
+    saves++;
+    return super.save(table, state);
+  }
+}
+
 void main() {
   test('offline-ändring sparas lokalt och skickas vid nästa sync', () async {
     final server = FakeRemote()..offline = true;
@@ -119,6 +128,27 @@ void main() {
     final r = await phone[bw].sync();
     expect(r.pulled, 1);
     expect(phone[bw].liveValues.length, 2);
+  });
+
+  test('rad som blir synlig EFTER en senare (samtidiga pushar) missas inte', () async {
+    final server = FakeRemote();
+    final phone = await device(server, 'phone');
+    final early = server.reserveRev(); // transaktion A får rev först…
+    server.serverWrite(bw, 'b', {'kg': 2}, Stamp(at(2).millisecondsSinceEpoch, 0, 'web'));
+    await phone[bw].sync(); // …men B blir klar först; markören hamnar efter A:s rev
+    server.commitLate(bw, 'a', {'kg': 1}, Stamp(at(1).millisecondsSinceEpoch, 0, 'tablet'), early);
+    await phone[bw].sync();
+    expect(phone[bw].items['a']?.value, {'kg': 1});
+  });
+
+  test('putAll: många poster, en diskskrivning', () async {
+    final server = FakeRemote();
+    final store = _CountingStore();
+    final phone = await device(server, 'phone', store);
+    await phone[bw].putAll({for (var i = 0; i < 50; i++) 'd$i': {'kg': i}}, at(1));
+    expect(store.saves, 1);
+    expect(phone[bw].pendingCount, 50);
+    expect(phone[bw].version, greaterThan(0));
   });
 
   test('syncAll kör alla sex tabellerna', () async {

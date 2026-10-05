@@ -59,6 +59,21 @@ void main() {
     expect(app.status, 'Synced');
   });
 
+  test('fullt minne under synk: synken fastnar inte, nästa synk fungerar', () async {
+    final b = FakeBackend();
+    final app = AppController(b);
+    await app.start();
+    await app.signIn('x', 'secret');
+    await pumpEventQueue();
+    b.diskFull = true;
+    await app.syncNow();
+    expect(app.busy, isFalse);
+    expect(app.status, contains('Could not save'));
+    b.diskFull = false;
+    await app.syncNow();
+    expect(app.status, 'Synced');
+  });
+
   test('Google: inloggad; avbrutet = inget besked; fel = besked', () async {
     final b = FakeBackend()..google = 'cancel';
     final app = AppController(b);

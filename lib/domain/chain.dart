@@ -27,9 +27,6 @@ class ChainState {
 
   bool isDone(SessionId id) => done.contains(id);
   bool isSkipped(SessionId id) => skipped.contains(id);
-
-  /// Gjort eller överhoppat — passet behöver inte göras mer i den här cykeln.
-  bool isHandled(SessionId id) => isDone(id) || isSkipped(id);
 }
 
 /// Räknar fram kedjans läge.

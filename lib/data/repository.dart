@@ -24,18 +24,37 @@ class Repository {
 
   TableSync get _w => engine[Tables.workouts];
 
+  /// Avkodade värden per tabellversion. Varje skärm läser historik, program och
+  /// övningar många gånger per ombyggnad (kedjan, PR, "förra gången" per rad) —
+  /// utan cache avkodades alla pass från JSON vid varje läsning. Värdena är
+  /// oföränderliga, så en cachad lista kan delas.
+  final _memo = <String, (String, Object?)>{};
+
+  T _cached<T>(String key, List<String> tables, T Function() build) {
+    final v = [for (final t in tables) engine[t].version].join('.');
+    final hit = _memo[key];
+    if (hit != null && hit.$1 == v) return hit.$2 as T;
+    final value = build();
+    _memo[key] = (v, value);
+    return value;
+  }
+
+  List<HistoryEntry> _allEntries() => _cached('entries', const [Tables.workouts], () => List.unmodifiable([
+        for (final j in _w.liveValues) ?tryHistoryFromJson(j),
+      ]));
+
   // ── läsning ──
   /// Avslutade pass och vilodagar. Pågående pass räknas inte (PR, kedja, "förra gången").
-  List<HistoryEntry> history() => [
-        for (final j in _w.liveValues)
-          if (tryHistoryFromJson(j) case final h? when h is! WorkoutEntry || h.workout.isFinished) h,
-      ];
+  List<HistoryEntry> history() => _cached('history', const [Tables.workouts], () => List.unmodifiable([
+        for (final h in _allEntries())
+          if (h is! WorkoutEntry || h.workout.isFinished) h,
+      ]));
 
   /// Pågående pass (synkas mellan enheter, beslut 2026-10-02). Normalt högst ett.
-  List<Workout> activeWorkouts() => [
-        for (final j in _w.liveValues)
-          if (tryHistoryFromJson(j) case WorkoutEntry(:final workout) when !workout.isFinished) workout,
-      ];
+  List<Workout> activeWorkouts() => _cached('active', const [Tables.workouts], () => List.unmodifiable([
+        for (final h in _allEntries())
+          if (h case WorkoutEntry(:final workout) when !workout.isFinished) workout,
+      ]));
 
   Workout? activeWorkoutFor(SessionId id) {
     for (final w in activeWorkouts()) {
@@ -44,64 +63,75 @@ class Repository {
     return null;
   }
 
-  Program program() {
-    final j = engine[Tables.program].items[_programId];
-    if (j == null || j.isDeleted) return const Program(sessions: []);
-    return programFromJson(_sub(j.value!, 'program'));
-  }
+  Program program() => _cached('program', const [Tables.program], () {
+        final j = engine[Tables.program].items[_programId];
+        if (j == null || j.isDeleted) return const Program(sessions: []);
+        return programFromJson(_sub(j.value!, 'program'));
+      });
 
-  ChainMeta chainMeta() {
-    final j = engine[Tables.program].items[_programId];
-    if (j == null || j.isDeleted) return const ChainMeta();
-    final c = _sub(j.value!, 'chain');
-    return ChainMeta(
-      restarts: [for (final ms in (c['restarts'] as List?) ?? const []) DateTime.fromMillisecondsSinceEpoch((ms as num).toInt())],
-      roundOffset: (c['roundOffset'] as num?)?.toInt() ?? 0,
-    );
-  }
+  ChainMeta chainMeta() => _cached('chainMeta', const [Tables.program], () {
+        final j = engine[Tables.program].items[_programId];
+        if (j == null || j.isDeleted) return const ChainMeta();
+        final c = _sub(j.value!, 'chain');
+        return ChainMeta(
+          restarts: [for (final ms in (c['restarts'] as List?) ?? const []) DateTime.fromMillisecondsSinceEpoch((ms as num).toInt())],
+          roundOffset: (c['roundOffset'] as num?)?.toInt() ?? 0,
+        );
+      });
 
-  ChainState chain() {
-    final m = chainMeta();
-    return chainState(program(), history(), manualRestarts: m.restarts, roundOffset: m.roundOffset);
-  }
+  ChainState chain() => _cached('chain', const [Tables.program, Tables.workouts], () {
+        final m = chainMeta();
+        return chainState(program(), history(), manualRestarts: m.restarts, roundOffset: m.roundOffset);
+      });
 
-  List<BodyweightEntry> bodyweight() =>
-      [for (final j in engine[Tables.bodyweight].liveValues) bodyweightFromJson(j)]..sort((a, b) => a.date.compareTo(b.date));
+  List<BodyweightEntry> bodyweight() => _cached('bodyweight', const [Tables.bodyweight], () {
+        final list = <BodyweightEntry>[for (final j in engine[Tables.bodyweight].liveValues) bodyweightFromJson(j)]
+          ..sort((a, b) => a.date.compareTo(b.date));
+        return List<BodyweightEntry>.unmodifiable(list);
+      });
 
-  List<ExerciseNote> notes() => [for (final j in engine[Tables.notes].liveValues) noteFromJson(j)];
+  List<ExerciseNote> notes() =>
+      _cached('notes', const [Tables.notes], () => List.unmodifiable([for (final j in engine[Tables.notes].liveValues) noteFromJson(j)]));
 
-  Map<ExerciseId, Exercise> customExercises() => {
-        for (final j in engine[Tables.exercises].liveValues)
-          if (j['kind'] == 'custom') ExerciseId(j['id'] as String): customExerciseFromJson(j),
-      };
+  Map<ExerciseId, Exercise> customExercises() => _cached(
+      'custom',
+      const [Tables.exercises],
+      () => Map.unmodifiable({
+            for (final j in engine[Tables.exercises].liveValues)
+              if (j['kind'] == 'custom') ExerciseId(j['id'] as String): customExerciseFromJson(j),
+          }));
 
-  Map<ExerciseId, ExerciseOverride> overrides() => {
-        for (final j in engine[Tables.exercises].liveValues)
-          if (j['kind'] == 'override') overrideFromJson(j).$1: overrideFromJson(j).$2,
-      };
+  Map<ExerciseId, ExerciseOverride> overrides() => _cached(
+      'overrides',
+      const [Tables.exercises],
+      () => Map.unmodifiable({
+            for (final j in engine[Tables.exercises].liveValues)
+              if (j['kind'] == 'override') overrideFromJson(j).$1: overrideFromJson(j).$2,
+          }));
 
-  UserSettings settings() {
-    final j = engine[Tables.settings].items[_settingsId];
-    return (j == null || j.isDeleted) ? const UserSettings() : settingsFromJson(j.value!);
-  }
+  UserSettings settings() => _cached('settings', const [Tables.settings], () {
+        final j = engine[Tables.settings].items[_settingsId];
+        return (j == null || j.isDeleted) ? const UserSettings() : settingsFromJson(j.value!);
+      });
 
-  Set<ExerciseId> hiddenRecords() {
-    final j = engine[Tables.settings].items[_settingsId];
-    if (j == null || j.isDeleted) return {};
-    return {for (final id in (j.value!['hiddenRecords'] as List?) ?? const []) ExerciseId(id as String)};
-  }
+  Set<ExerciseId> hiddenRecords() => _cached('hidden', const [Tables.settings], () {
+        final j = engine[Tables.settings].items[_settingsId];
+        if (j == null || j.isDeleted) return const <ExerciseId>{};
+        return Set.unmodifiable({for (final id in (j.value!['hiddenRecords'] as List?) ?? const []) ExerciseId(id as String)});
+      });
 
   Exercise? exercise(ExerciseId id) => resolveExercise(id, custom: customExercises(), overrides: overrides());
 
   /// PR per övning, räknat på övningens NUVARANDE mätsätt (records.dart).
-  Map<ExerciseId, PersonalRecord> records({bool includeHidden = false}) {
-    final custom = customExercises(), over = overrides();
-    return personalRecords(
-      history(),
-      hidden: includeHidden ? const {} : hiddenRecords(),
-      measureOf: (id) => resolveExercise(id, custom: custom, overrides: over)?.measure,
-    );
-  }
+  Map<ExerciseId, PersonalRecord> records({bool includeHidden = false}) =>
+      _cached('records.$includeHidden', const [Tables.workouts, Tables.exercises, Tables.settings], () {
+        final custom = customExercises(), over = overrides();
+        return Map.unmodifiable(personalRecords(
+          history(),
+          hidden: includeHidden ? const {} : hiddenRecords(),
+          measureOf: (id) => resolveExercise(id, custom: custom, overrides: over)?.measure,
+        ));
+      });
 
   /// Namnet en historikpost visas med: postens eget (lagt kort ligger), annars
   /// programmets nuvarande, annars ett neutralt "Session" (borttaget pass).
@@ -138,6 +168,7 @@ class Repository {
                 sessionId: sessionId,
                 reason: h.reason,
                 sessionName: p.sessionById(sessionId)!.name,
+                source: h.source,
               ),
         _ => null,
       };
@@ -203,21 +234,14 @@ class Repository {
   Future<void> importMk1(Mk1Snapshot s, DateTime now) async {
     await saveProgram(s.program, now,
         meta: ChainMeta(restarts: s.manualRestarts, roundOffset: s.roundOffsetFor(s.program)));
-    for (final h in s.history) {
-      await saveHistory(h, now);
-    }
-    for (final b in s.bodyweight) {
-      await saveBodyweight(b, now);
-    }
-    for (final n in s.notes) {
-      await saveNote(n, now);
-    }
-    for (final e in s.custom.values) {
-      await saveCustomExercise(e, now);
-    }
-    for (final o in s.overrides.entries) {
-      await saveOverride(o.key, o.value, now);
-    }
+    // En diskskrivning per tabell (114 pass skrev annars hela tabellen 114 gånger).
+    await _w.putAll({for (final h in s.history) historyId(h): historyToJson(h)}, now);
+    await engine[Tables.bodyweight].putAll({for (final b in s.bodyweight) b.date: bodyweightToJson(b)}, now);
+    await engine[Tables.notes].putAll({for (final n in s.notes) n.id: noteToJson(n)}, now);
+    await engine[Tables.exercises].putAll({
+      for (final e in s.custom.values) 'custom:${e.id.value}': customExerciseToJson(e),
+      for (final o in s.overrides.entries) 'override:${o.key.value}': overrideToJson(o.key, o.value),
+    }, now);
     await saveSettings(s.settings, now, hidden: s.hiddenRecords);
   }
 }

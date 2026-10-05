@@ -144,7 +144,12 @@ Json historyToJson(HistoryEntry h) => switch (h) {
 HistoryEntry historyFromJson(Json j) {
   final source = _enum(EntrySource.values, j['source'], EntrySource.app);
   if (j['type'] == 'rest') {
-    return RestEntry(date: _t(j['date'])!, sessionId: SessionId(j['session'] as String), note: j['note'] as String?);
+    return RestEntry(
+      date: _t(j['date'])!,
+      sessionId: SessionId(j['session'] as String),
+      note: j['note'] as String?,
+      source: source,
+    );
   }
   if (j['type'] == 'skip') {
     return SkippedEntry(
@@ -152,16 +157,26 @@ HistoryEntry historyFromJson(Json j) {
       sessionId: SessionId(j['session'] as String),
       reason: j['reason'] as String? ?? '',
       sessionName: j['sessionName'] as String?,
+      source: source,
     );
   }
   return WorkoutEntry(workout: workoutFromJson(_m(j['workout'])), source: source);
 }
 
 /// Historikposter som det här bygget känner till. En posttyp från ett NYARE
-/// bygge (synkad från en annan enhet) hoppas över i stället för att krascha.
+/// bygge (synkad från en annan enhet) hoppas över i stället för att krascha —
+/// och likaså en post med trasig form: EN dålig rad får aldrig ta ner kedjan,
+/// PR och historiken. Raden ligger kvar orörd i lagringen och i backupen.
 const _knownHistoryTypes = {null, 'workout', 'rest', 'skip'};
 
-HistoryEntry? tryHistoryFromJson(Json j) => _knownHistoryTypes.contains(j['type']) ? historyFromJson(j) : null;
+HistoryEntry? tryHistoryFromJson(Json j) {
+  if (!_knownHistoryTypes.contains(j['type'])) return null;
+  try {
+    return historyFromJson(j);
+  } catch (_) {
+    return null;
+  }
+}
 
 // ── program ──
 Json programToJson(Program p) => {

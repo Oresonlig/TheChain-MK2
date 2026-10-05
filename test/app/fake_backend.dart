@@ -1,9 +1,20 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:the_chain/app/app_controller.dart';
 import 'package:the_chain/data/sync_engine.dart';
 
 import '../data/fake_remote.dart';
+
+class _FlakyStore extends InMemoryLocalStore {
+  _FlakyStore(this.backend);
+  final FakeBackend backend;
+  @override
+  Future<void> save(String table, TableState state) {
+    if (backend.diskFull) throw const FileSystemException('No space left on device');
+    return super.save(table, state);
+  }
+}
 
 class FakeBackend implements Backend {
   FakeBackend({this.mk1, FakeRemote? server, this.device = 'phone'}) : server = server ?? FakeRemote();
@@ -15,6 +26,9 @@ class FakeBackend implements Backend {
   final String device;
   final _users = StreamController<String?>.broadcast();
   final _stores = <String, InMemoryLocalStore>{};
+
+  /// Telefonens lagring kastar vid varje sparning (fullt minne).
+  bool diskFull = false;
   String? _uid;
   String password = 'secret';
 
@@ -83,7 +97,7 @@ class FakeBackend implements Backend {
   @override
   Future<LocalStore> localStoreFor(String userId) async {
     storeOpens++;
-    return _stores.putIfAbsent(userId, InMemoryLocalStore.new);
+    return _stores.putIfAbsent(userId, () => _FlakyStore(this));
   }
   @override
   Future<String> deviceId() async => device;

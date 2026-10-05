@@ -382,7 +382,17 @@ class AppController extends ChangeNotifier {
     busy = true;
     status = 'Syncing…';
     notifyListeners();
-    final reports = await r.engine.syncAll();
+    final Map<String, SyncReport> reports;
+    try {
+      reports = await r.engine.syncAll();
+    } catch (e) {
+      // Bara lokal lagring kan kasta här (fullt minne, …) — synkmotorn fångar
+      // nätfel själv. Utan det här fastnade `busy` och appen synkade aldrig mer.
+      busy = false;
+      status = 'Could not save on this phone: $e';
+      notifyListeners();
+      return;
+    }
     if (!identical(repo, r)) {
       // Utloggad under synken — inget av resultatet hör till nästa inloggning.
       // Hann någon logga in under tiden väntar dess första synk här.
@@ -398,7 +408,13 @@ class AppController extends ChangeNotifier {
     status = bad == 0 ? 'Synced' : 'Offline — changes are saved on this device';
     if (bad == 0) lastSync = _now();
     // Efter en lyckad synk (läs före skriv): äldre poster får passnamnet en gång.
-    if (bad == 0 && await r.backfillSessionNames(_now()) > 0) _syncAgain = true;
+    if (bad == 0) {
+      try {
+        if (await r.backfillSessionNames(_now()) > 0) _syncAgain = true;
+      } catch (e) {
+        debugPrint('backfill: $e'); // görs om vid nästa synk
+      }
+    }
     busy = false;
     if (reports.values.any((x) => x.localChanged)) _openWorkout?.reloadFromRepo();
     notifyListeners();

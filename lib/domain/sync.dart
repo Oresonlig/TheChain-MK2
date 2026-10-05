@@ -3,8 +3,11 @@
 /// allt — MK1 hade sju merge-funktioner med olika regler, och glappen gav buggar
 /// (kroppsvikt där lokalt alltid vann 3.92.1, anteckningar som återuppstod 3.38.0).
 ///
-/// Läs-före-skriv-grinden och CAS mot servern hör till datalagret (F2) och är
-/// oförändrade invarianter (Behåll). Det här är regeln de bär.
+/// Läs-före-skriv-grinden, CAS mot servern och själva sammanslagningen (senaste
+/// stämpeln vinner, en tombstone hindrar återuppståndelse) bor i datalagret:
+/// TableSync i sync_engine.dart. Här finns stämpeln och klockan de bygger på.
+/// Tombstones rensas aldrig — de är små, och en rensad tombstone låter en enhet
+/// som varit offline länge återuppliva raderat.
 library;
 
 /// Hybrid-stämpel: väggtid + räknare + enhet. Tiden går aldrig bakåt på en enhet
@@ -73,53 +76,3 @@ class Synced<T> {
   bool get isDeleted => value == null;
 }
 
-class MergeResult<T> {
-  const MergeResult(this.merged, {required this.localChanged, required this.remoteBehind});
-
-  final Map<String, Synced<T>> merged;
-
-  /// Något från den andra sidan vann → lokal data behöver uppdateras.
-  final bool localChanged;
-
-  /// Lokalt finns något nyare än molnet → det behöver skickas.
-  final bool remoteBehind;
-}
-
-/// Slår ihop två samlingar post för post. Senaste stämpeln vinner, oavsett om
-/// den är en ändring eller en radering. En tombstone hindrar återuppståndelse;
-/// en NYARE ändring efter raderingen är en legitim återskapning.
-MergeResult<T> mergeSynced<T>(Map<String, Synced<T>> local, Map<String, Synced<T>> remote) {
-  final out = <String, Synced<T>>{};
-  var localChanged = false, remoteBehind = false;
-  for (final id in {...local.keys, ...remote.keys}) {
-    final l = local[id], r = remote[id];
-    if (l == null) {
-      out[id] = r!;
-      localChanged = true;
-    } else if (r == null) {
-      out[id] = l;
-      remoteBehind = true;
-    } else if (r.stamp > l.stamp) {
-      out[id] = r;
-      localChanged = true;
-    } else {
-      out[id] = l;
-      if (l.stamp > r.stamp) remoteBehind = true;
-    }
-  }
-  return MergeResult(out, localChanged: localChanged, remoteBehind: remoteBehind);
-}
-
-/// Rensar tombstones äldre än [ttl]. MK1 körde 30 dagar; en enhet som varit
-/// offline längre än så kan då återuppliva raderat. Standard här: 180 dagar.
-Map<String, Synced<T>> purgeTombstones<T>(
-  Map<String, Synced<T>> items,
-  DateTime now, {
-  Duration ttl = const Duration(days: 180),
-}) {
-  final cutoff = now.subtract(ttl).millisecondsSinceEpoch;
-  return {
-    for (final e in items.entries)
-      if (!(e.value.isDeleted && e.value.stamp.wallMs < cutoff)) e.key: e.value,
-  };
-}

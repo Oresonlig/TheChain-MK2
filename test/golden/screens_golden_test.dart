@@ -248,10 +248,11 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('+ ADD EXERCISE'));
     await tester.pumpAndSettle();
-    expect(find.text('Bench Press (BB)'), findsNothing, reason: 'kollapsat');
+    // "Recent" är öppen från början (senast gjorda övningar); CHEST är kollapsad.
+    expect(find.text('Bench Press (BB)'), findsOneWidget, reason: 'bara under Recent');
     await tester.tap(find.text('CHEST'));
     await tester.pumpAndSettle();
-    expect(find.text('Bench Press (BB)'), findsOneWidget);
+    expect(find.text('Bench Press (BB)'), findsNWidgets(2));
     FocusManager.instance.primaryFocus?.unfocus();
     await tester.pumpAndSettle();
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/picker.png'));

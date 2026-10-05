@@ -139,6 +139,23 @@ void main() {
     expect(repo.chain().done, isEmpty);
   });
 
+  test('en trasig post i historiken tar inte ner resten (kedja, PR, historik)', () async {
+    final repo = await device(FakeRemote(), 'phone');
+    await repo.importMk1(decodeMk1(mk1()), now);
+    final before = repo.history().length;
+    await repo.engine[Tables.workouts].put('broken', {'type': 'workout', 'workout': {'id': 42}}, now);
+    expect(repo.history().length, before);
+    expect(repo.chain().round, greaterThan(0));
+  });
+
+  test('vilodag och överhopp behåller sin källa (importerat) genom lagringen', () async {
+    final repo = await device(FakeRemote(), 'phone');
+    const b = SessionId('B');
+    await repo.saveHistory(RestEntry(date: now, sessionId: b, source: EntrySource.imported), now);
+    await repo.saveHistory(SkippedEntry(date: now, sessionId: b, reason: 'sick', source: EntrySource.imported), now);
+    expect(repo.history().map((h) => h.source).toSet(), {EntrySource.imported});
+  });
+
   test('fillagringen överlever omstart (riktiga filer)', () async {
     final dir = Directory('build/test_tmp/file_store');
     if (await dir.exists()) await dir.delete(recursive: true);
