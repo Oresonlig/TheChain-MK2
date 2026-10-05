@@ -1,0 +1,46 @@
+name: Bridge check (dry run)
+
+# Torrtest av bron till Resistance (2026-10-05): kan RESISTANCE_TOKEN läsa
+# versionsfilen och SKRIVA releaser? Skapar och raderar ett UTKAST — syns inte
+# för någon (varken hemsidan, /releases/latest eller MK1-appens uppdaterare).
+# Rör inte capacitor.config.json. Start: tagg bridge-check-<något>.
+
+on:
+  push:
+    tags: ['bridge-check-*']
+
+permissions:
+  contents: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Token present
+        env:
+          T: ${{ secrets.RESISTANCE_TOKEN }}
+        run: |
+          if [ -z "$T" ]; then echo "::error::RESISTANCE_TOKEN is missing"; exit 1; fi
+          echo "RESISTANCE_TOKEN is set"
+
+      - name: Read the version file
+        env:
+          GH_TOKEN: ${{ secrets.RESISTANCE_TOKEN }}
+        run: |
+          gh api repos/Oresonlig/Resistance/contents/capacitor.config.json --jq .content | base64 -d | grep appendUserAgent
+
+      - name: Write access (draft release, created and deleted)
+        env:
+          GH_TOKEN: ${{ secrets.RESISTANCE_TOKEN }}
+        run: |
+          R=Oresonlig/Resistance
+          TAG="bridge-check-${{ github.run_number }}"
+          gh release create "$TAG" -R "$R" --draft --title "Bridge check (delete me)" --notes "Dry run from TheChain-MK2." --target main
+          echo "Draft created"
+          gh release delete "$TAG" -R "$R" --yes --cleanup-tag
+          echo "Draft deleted — the token can write releases"
+
+      - name: Remove this repo's trigger tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api -X DELETE "repos/${{ github.repository }}/git/refs/tags/${{ github.ref_name }}" || true
