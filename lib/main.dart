@@ -53,7 +53,14 @@ class _TheChainAppState extends State<TheChainApp> {
     super.initState();
     app.addListener(_onPhase);
     app.startUpdatePolling();
-    _lifecycle = AppLifecycleListener(onShow: app.startUpdatePolling, onHide: app.stopUpdatePolling);
+    app.restTimer.appResumed(); // gammal signalnotis bort vid start
+    _lifecycle = AppLifecycleListener(
+      onShow: () {
+        app.startUpdatePolling();
+        app.restTimer.appResumed();
+      },
+      onHide: app.stopUpdatePolling,
+    );
   }
 
   @override

@@ -14,6 +14,12 @@ abstract class RestAlarm {
   /// Ersätter en tidigare schemaläggning.
   Future<void> schedule(DateTime end);
   Future<void> cancel();
+
+  /// Tar bort den avklarade signalen (man är tillbaka i appen).
+  Future<void> clearDone();
+
+  /// Behörigheten att tända skärmen. true = given, false/null = inte given.
+  Future<bool?> requestWakeScreen();
 }
 
 /// Ingen signal (tester, och om notiser inte går att starta).
@@ -23,6 +29,10 @@ class SilentRestAlarm implements RestAlarm {
   Future<void> schedule(DateTime end) async {}
   @override
   Future<void> cancel() async {}
+  @override
+  Future<void> clearDone() async {}
+  @override
+  Future<bool?> requestWakeScreen() async => null;
 }
 
 class RestTimer extends ChangeNotifier {
@@ -78,6 +88,12 @@ class RestTimer extends ChangeNotifier {
     _ticker = null;
     unawaited(alarm.cancel());
     notifyListeners();
+  }
+
+  /// Appen syns igen. Signalen tas bort först när vilan är slut — en pågående
+  /// nedräkning har kvar sin schemalagda signal (cancel tar även den).
+  void appResumed() {
+    if (!running || done) unawaited(alarm.clearDone());
   }
 
   void _arm() {

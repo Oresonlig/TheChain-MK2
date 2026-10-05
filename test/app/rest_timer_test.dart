@@ -13,6 +13,11 @@ class RecordingAlarm implements RestAlarm {
   Future<void> schedule(DateTime end) async => scheduled.add(end);
   @override
   Future<void> cancel() async => cancels++;
+  int clears = 0;
+  @override
+  Future<void> clearDone() async => clears++;
+  @override
+  Future<bool?> requestWakeScreen() async => true;
 }
 
 void main() {
@@ -61,6 +66,17 @@ void main() {
       timer.start(120);
       expect(timer.remainingSecs, 120);
       expect(alarm.scheduled.length, 2);
+    });
+
+    test('tillbaka i appen: signalen rensas — men inte mitt i en vila', () {
+      timer.appResumed();
+      expect(alarm.clears, 1);
+      timer.start(60);
+      timer.appResumed();
+      expect(alarm.clears, 1, reason: 'den schemalagda signalen får inte försvinna');
+      now = now.add(const Duration(seconds: 61));
+      timer.appResumed();
+      expect(alarm.clears, 2);
     });
 
     test('fri vilotid i Settings: 10 s – 10 min', () {

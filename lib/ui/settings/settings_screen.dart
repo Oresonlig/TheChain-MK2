@@ -262,6 +262,50 @@ Future<void> _askRestSecs(BuildContext context, AppController app, UserSettings 
   if (v != null) await app.updateSettings(_copy(s, timerSecs: clampRestSecs(v)));
 }
 
+/// Behörigheten att tända skärmen när vilan är slut. Samsung kan ha den
+/// avstängd — då blir signalen en liten notis (Niklas 2026-10-05).
+class _WakeScreenRow extends StatefulWidget {
+  const _WakeScreenRow({required this.app});
+  final AppController app;
+
+  @override
+  State<_WakeScreenRow> createState() => _WakeScreenRowState();
+}
+
+class _WakeScreenRowState extends State<_WakeScreenRow> {
+  bool? _granted;
+  bool _asked = false;
+
+  Future<void> _ask() async {
+    final g = await widget.app.restTimer.alarm.requestWakeScreen();
+    if (!mounted) return;
+    setState(() {
+      _granted = g;
+      _asked = true;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.chain;
+    final text = Theme.of(context).textTheme;
+    final status = !_asked
+        ? 'Lets the alert light up the screen and show over the lock screen.'
+        : _granted == true
+            ? 'Allowed — the screen lights up when the rest is over.'
+            : 'Not allowed. Turn on full-screen notifications for the app in the page that opened, then come back.';
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      GhostButton(
+        label: _granted == true ? 'SCREEN WAKE-UP · ALLOWED' : 'ALLOW SCREEN WAKE-UP',
+        onTap: _ask,
+        color: _granted == true ? c.success : null,
+      ),
+      const SizedBox(height: 6),
+      Text(status, style: text.bodySmall!.copyWith(color: c.textMuted)),
+    ]);
+  }
+}
+
 class TrainingSettingsScreen extends StatelessWidget {
   const TrainingSettingsScreen({super.key, required this.app});
   final AppController app;
@@ -352,6 +396,8 @@ class TrainingSettingsScreen extends StatelessWidget {
                 Text('Tap the time to type exact seconds. Starts when you log a work set. Signals with sound and '
                     'vibration, also when the phone is locked or you are in another app.',
                     style: Theme.of(context).textTheme.bodySmall!.copyWith(color: context.chain.textMuted)),
+                const SizedBox(height: 12),
+                _WakeScreenRow(app: app),
               ],
             ]),
           ];

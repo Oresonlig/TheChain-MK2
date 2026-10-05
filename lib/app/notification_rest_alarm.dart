@@ -17,7 +17,13 @@ class NotificationRestAlarm implements RestAlarm {
 
   static const _countdownId = 7001;
   static const _doneId = 7002;
-  static const _doneChannel = 'rest_alert';
+
+  // Kanalens ljud, prioritet och bubbla låses av Android när den skapats —
+  // ändras de krävs ett nytt id. v2: ingen röd bubbla på appikonen (Niklas
+  // 2026-10-05: "stör mig som fan").
+  static const _countdownChannel = 'rest_countdown_v2';
+  static const _doneChannel = 'rest_alert_v2';
+  static const _oldChannels = ['rest_done', 'rest_alert', 'rest_countdown'];
 
   Future<bool> _init() async {
     if (_ready) return true;
@@ -26,8 +32,10 @@ class NotificationRestAlarm implements RestAlarm {
         settings: const InitializationSettings(android: AndroidInitializationSettings('@mipmap/ic_launcher')),
       );
       _ready = true;
-      // Den gamla, lilla kanalen (bygge 58–59) ska inte ligga kvar i telefonens notisinställningar.
-      await _android?.deleteNotificationChannel(channelId: 'rest_done');
+      // Gamla kanaler (bygge 58–60) bort — deras kvarlämnade notiser och bubblor försvinner med dem.
+      for (final id in _oldChannels) {
+        await _android?.deleteNotificationChannel(channelId: id);
+      }
     } catch (e) {
       debugPrint('rest alarm init: $e');
     }
@@ -56,7 +64,7 @@ class NotificationRestAlarm implements RestAlarm {
         body: 'Next set when the timer hits zero',
         notificationDetails: NotificationDetails(
           android: AndroidNotificationDetails(
-            'rest_countdown',
+            _countdownChannel,
             'Rest timer countdown',
             channelDescription: 'Silent countdown while you rest',
             importance: Importance.low,
@@ -67,6 +75,7 @@ class NotificationRestAlarm implements RestAlarm {
             ongoing: true,
             autoCancel: false,
             onlyAlertOnce: true,
+            channelShowBadge: false,
             showWhen: true,
             when: end.millisecondsSinceEpoch,
             usesChronometer: true,
@@ -84,8 +93,6 @@ class NotificationRestAlarm implements RestAlarm {
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
         notificationDetails: NotificationDetails(
           android: AndroidNotificationDetails(
-            // Kanalens ljud/prioritet låses av Android när den skapats — ny
-            // kanal i stället för den lilla 'rest_done' (Niklas 2026-10-05).
             _doneChannel,
             'Rest timer alert',
             channelDescription: 'Beeps, vibrates and wakes the screen when the rest is over',
@@ -95,8 +102,9 @@ class NotificationRestAlarm implements RestAlarm {
             sound: const RawResourceAndroidNotificationSound('rest_beep'),
             vibrationPattern: Int64List.fromList([0, 500, 200, 500, 200, 500]),
             category: AndroidNotificationCategory.alarm,
-            // Tänder skärmen och visar appen över låsskärmen; i en annan app
-            // blir det en stor notis överst.
+            channelShowBadge: false,
+            // Tänder skärmen och visar appen över låsskärmen (kräver att
+            // behörigheten är given, se requestWakeScreen); annars stor notis.
             fullScreenIntent: true,
             visibility: NotificationVisibility.public,
             timeoutAfter: const Duration(minutes: 2).inMilliseconds,
@@ -117,6 +125,30 @@ class NotificationRestAlarm implements RestAlarm {
       await _plugin.cancel(id: _doneId);
     } catch (e) {
       debugPrint('rest alarm cancel: $e');
+    }
+  }
+
+  /// Den avklarade signalen har gjort sitt när man är tillbaka i appen.
+  @override
+  Future<void> clearDone() async {
+    if (!await _init()) return;
+    try {
+      await _plugin.cancel(id: _doneId);
+    } catch (e) {
+      debugPrint('rest alarm clear: $e');
+    }
+  }
+
+  /// Helskärmsnotisen (skärmen tänds) kräver en behörighet som Samsung kan ha
+  /// stängt av. Given → true direkt; annars öppnas Androids inställningssida.
+  @override
+  Future<bool?> requestWakeScreen() async {
+    if (!await _init()) return false;
+    try {
+      return await _android?.requestFullScreenIntentPermission();
+    } catch (e) {
+      debugPrint('rest alarm wake: $e');
+      return null;
     }
   }
 }
