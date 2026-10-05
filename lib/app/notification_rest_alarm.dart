@@ -17,6 +17,7 @@ class NotificationRestAlarm implements RestAlarm {
 
   static const _countdownId = 7001;
   static const _doneId = 7002;
+  static const _doneChannel = 'rest_alert';
 
   Future<bool> _init() async {
     if (_ready) return true;
@@ -25,6 +26,8 @@ class NotificationRestAlarm implements RestAlarm {
         settings: const InitializationSettings(android: AndroidInitializationSettings('@mipmap/ic_launcher')),
       );
       _ready = true;
+      // Den gamla, lilla kanalen (bygge 58–59) ska inte ligga kvar i telefonens notisinställningar.
+      await _android?.deleteNotificationChannel(channelId: 'rest_done');
     } catch (e) {
       debugPrint('rest alarm init: $e');
     }
@@ -81,13 +84,21 @@ class NotificationRestAlarm implements RestAlarm {
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
         notificationDetails: NotificationDetails(
           android: AndroidNotificationDetails(
-            'rest_done',
-            'Rest timer done',
-            channelDescription: 'Sound and vibration when the rest is over',
-            importance: Importance.high,
-            priority: Priority.high,
-            vibrationPattern: Int64List.fromList([0, 300, 150, 300]),
+            // Kanalens ljud/prioritet låses av Android när den skapats — ny
+            // kanal i stället för den lilla 'rest_done' (Niklas 2026-10-05).
+            _doneChannel,
+            'Rest timer alert',
+            channelDescription: 'Beeps, vibrates and wakes the screen when the rest is over',
+            importance: Importance.max,
+            priority: Priority.max,
+            // Notisljud, inte larm: ljudlöst/vibration respekteras (Niklas).
+            sound: const RawResourceAndroidNotificationSound('rest_beep'),
+            vibrationPattern: Int64List.fromList([0, 500, 200, 500, 200, 500]),
             category: AndroidNotificationCategory.alarm,
+            // Tänder skärmen och visar appen över låsskärmen; i en annan app
+            // blir det en stor notis överst.
+            fullScreenIntent: true,
+            visibility: NotificationVisibility.public,
             timeoutAfter: const Duration(minutes: 2).inMilliseconds,
           ),
         ),

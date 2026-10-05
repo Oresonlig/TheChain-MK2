@@ -7,7 +7,7 @@
 //
 // stable = SAMMA paket som MK1-appen → med samma nyckel kommer MK2 som en
 // uppdatering av MK1 (se LESSONS_MK1_ANDROID.md §1).
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, copyFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -90,6 +90,10 @@ manifest = manifest.replace(/android:label="[^"]*"/, `android:label="${cfg.label
 if (!/android:launchMode="[^"]*"/.test(manifest)) { console.error('android:launchMode not found'); process.exit(1); }
 manifest = manifest.replace(/android:launchMode="[^"]*"/, 'android:launchMode="singleTask"');
 manifest = manifest.replace(/\s*android:taskAffinity=""/, '');
+// Vilotimerns full-screen-notis får tända skärmen och visa appen över låsskärmen.
+if (!manifest.includes('android:showWhenLocked')) {
+  manifest = manifest.replace(/android:launchMode="singleTask"/, 'android:launchMode="singleTask"\n            android:showWhenLocked="true"\n            android:turnScreenOn="true"');
+}
 // Flutters mall ger bara debug-byggen INTERNET — release behöver den för Supabase.
 if (!manifest.includes('android.permission.INTERNET')) {
   manifest = manifest.replace(/<application/, '<uses-permission android:name="android.permission.INTERNET"/>\n    <application');
@@ -112,7 +116,9 @@ if (!manifest.includes('OtaUpdateFileProvider')) {
 // Vilotimern (flutter_local_notifications): exakt larm utan att användaren
 // måste godkänna (USE_EXACT_ALARM — ingen butik som granskar), omstart efter
 // omboot, och mottagarna som visar den schemalagda notisen.
-for (const perm of ['USE_EXACT_ALARM', 'RECEIVE_BOOT_COMPLETED']) {
+// Full-screen intent: skärmen tänds och appen visas över låsskärmen när vilan
+// är slut (Niklas 2026-10-05). Beviljas som standard utanför Play Store.
+for (const perm of ['USE_EXACT_ALARM', 'RECEIVE_BOOT_COMPLETED', 'USE_FULL_SCREEN_INTENT']) {
   if (!manifest.includes(`android.permission.${perm}`)) {
     manifest = manifest.replace(/<application/, `<uses-permission android:name="android.permission.${perm}"/>\n    <application`);
   }
@@ -135,6 +141,14 @@ writeFileSync('android/app/src/main/res/xml/filepaths.xml', `<?xml version="1.0"
 <paths xmlns:android="http://schemas.android.com/apk/res/android">
     <files-path name="internal_apk_storage" path="ota_update/"/>
 </paths>
+`);
+
+// Vilotimerns pipljud (tool/make_beep.mjs) + keep-fil: resursen nås bara via
+// namn från notisen, så release-byggets resurskrympning skulle annars ta bort den.
+mkdirSync('android/app/src/main/res/raw', { recursive: true });
+copyFileSync('tool/res/raw/rest_beep.wav', 'android/app/src/main/res/raw/rest_beep.wav');
+writeFileSync('android/app/src/main/res/raw/keep.xml', `<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:keep="@raw/rest_beep" />
 `);
 
 console.log(`Configured ${channel}: ${cfg.appId} "${cfg.label}" · ${signed ? 'release-signed' : 'DEBUG-signed (no keystore secret)'}`);
