@@ -186,6 +186,16 @@ class AppController extends ChangeNotifier {
     return moved == true;
   }
 
+  /// Återställning från en backup-fil: först planen (visas för användaren),
+  /// sedan [restore]. Kastar [BackupFormatError] om filen inte är en backup.
+  RestorePlan planBackupRestore(String raw) => planRestore(repo!.engine, raw);
+
+  Future<void> restore(RestorePlan plan) async {
+    await applyRestore(repo!.engine, plan, _now());
+    notifyListeners();
+    await syncNow();
+  }
+
   /// Hela appens data som en JSON-sträng (Settings → Export backup).
   String exportBackup(String appVersion) =>
       encodeBackup(buildBackup(repo!.engine, email: backend.userEmail, now: _now(), appVersion: appVersion));
@@ -618,6 +628,22 @@ class AppController extends ChangeNotifier {
           id: w.id, sessionId: w.sessionId, sessionName: w.sessionName, startedAt: w.startedAt, exercises: w.exercises, note: w.note),
       _now(),
     );
+    notifyListeners();
+    await syncNow();
+  }
+
+  /// Raderar en post ur historiken (felloggat pass, vilodag, överhopp) —
+  /// tombstone, så den återuppstår inte från en annan enhet. Kedja och PR
+  /// räknas om. UNDO = [restoreHistoryEntry].
+  Future<void> deleteHistoryEntry(HistoryEntry e) async {
+    await repo!.deleteHistory(e, _now());
+    notifyListeners();
+    await syncNow();
+  }
+
+  /// UNDO efter radering: samma post tillbaka (nyare stämpel vinner över tombstonen).
+  Future<void> restoreHistoryEntry(HistoryEntry e) async {
+    await repo!.saveHistory(e, _now());
     notifyListeners();
     await syncNow();
   }

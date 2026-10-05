@@ -6,6 +6,7 @@ library;
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -82,6 +83,8 @@ class DataSyncScreen extends StatelessWidget {
             settingsSection(context, 'BACKUP', [
               tile('Export backup', 'Everything in the app as one file — save it to Drive or mail it to yourself.', Icons.ios_share,
                   () => _exportBackup()),
+              tile('Restore from backup', 'Brings back what is missing. Nothing is deleted; newer changes on this phone are kept.',
+                  Icons.settings_backup_restore, app.busy ? null : () => _restoreBackup(context)),
             ]),
             settingsSection(context, 'WEBSITE', [
               if (app.moved == true)
@@ -179,6 +182,58 @@ class DataSyncScreen extends StatelessWidget {
       fileNameOverrides: [name],
       subject: 'The Chain backup',
     ));
+  }
+
+  /// Väljer fil → visar vad som händer → återställer först efter ja.
+  Future<void> _restoreBackup(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final file = await openFile(acceptedTypeGroups: const [
+      XTypeGroup(label: 'Backup', extensions: ['json'], mimeTypes: ['application/json', 'text/plain', 'application/octet-stream']),
+    ]);
+    if (file == null) return;
+    final RestorePlan plan;
+    try {
+      plan = app.planBackupRestore(await file.readAsString());
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('$e')));
+      return;
+    }
+    if (!context.mounted) return;
+    if (plan.isEmpty) {
+      messenger.showSnackBar(const SnackBar(content: Text('Nothing to restore — everything in the backup is already here')));
+      return;
+    }
+    final lines = [
+      for (final (t, label) in const [
+        (Tables.workouts, 'sessions, rest days and skips'),
+        (Tables.bodyweight, 'weight entries'),
+        (Tables.notes, 'notes'),
+        (Tables.exercises, 'exercises and adjustments'),
+        (Tables.program, 'program'),
+        (Tables.settings, 'settings'),
+      ])
+        if (plan.count(t) > 0) '${plan.count(t)} $label',
+    ];
+    final other = plan.email != null && plan.email != email && email.isNotEmpty;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Restore from backup?'),
+        content: Text([
+          'Brings back: ${lines.join(', ')}.',
+          if (plan.keptNewer > 0) '${plan.keptNewer} newer changes on this phone are kept.',
+          'Nothing is deleted.',
+          if (other) '\nThis backup belongs to ${plan.email}.',
+        ].join('\n')),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Restore')),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    await app.restore(plan);
+    messenger.showSnackBar(SnackBar(content: Text('Restored ${lines.join(', ')}')));
   }
 
   Future<void> _confirmImport(BuildContext context) async {

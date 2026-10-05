@@ -147,6 +147,11 @@ class _ProgressScreenState extends State<ProgressScreen> {
                       Text('${fmtDate(e.date)}${note == null ? '' : ' · $note'}', style: text.bodySmall),
                     ]),
                   ),
+                  IconButton(
+                    tooltip: 'Delete',
+                    onPressed: () => _delete(context, e, 'forced rest day · ${fmtDate(e.date)}'),
+                    icon: Icon(Icons.delete_outline, color: c.textFaint),
+                  ),
                 ]),
               SkippedEntry(:final reason) => Row(children: [
                   Expanded(
@@ -154,6 +159,11 @@ class _ProgressScreenState extends State<ProgressScreen> {
                       Text('${name(e)} — skipped', style: text.titleMedium!.copyWith(color: c.textMuted)),
                       Text('${fmtDate(e.date)} · $reason', style: text.bodySmall),
                     ]),
+                  ),
+                  IconButton(
+                    tooltip: 'Delete',
+                    onPressed: () => _delete(context, e, '${name(e)} skip · ${fmtDate(e.date)}'),
+                    icon: Icon(Icons.delete_outline, color: c.textFaint),
                   ),
                 ]),
               WorkoutEntry(:final workout) => Row(children: [
@@ -179,7 +189,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
                   ),
                   IconButton(
                     tooltip: 'Show',
-                    onPressed: () => _showWorkout(context, workout, name(e), s),
+                    onPressed: () => _showWorkout(context, e, name(e), s),
                     icon: Icon(Icons.list_alt, color: c.textMuted),
                   ),
                   IconButton(
@@ -207,13 +217,15 @@ class _ProgressScreenState extends State<ProgressScreen> {
     if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Copied')));
   }
 
-  Future<void> _showWorkout(BuildContext context, Workout w, String sessionName, UserSettings s) {
+  Future<void> _showWorkout(BuildContext context, WorkoutEntry e, String sessionName, UserSettings s) {
     final repo = widget.app.repo!;
+    final w = e.workout;
     return showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       builder: (ctx) {
         final text = Theme.of(ctx).textTheme;
+        final c = ctx.chain;
         return SafeArea(
           child: Padding(
             padding: const EdgeInsets.all(16),
@@ -227,10 +239,47 @@ class _ProgressScreenState extends State<ProgressScreen> {
                 for (final set in ex.sets.where((x) => x.isLogged))
                   Text('${set.kind == SetKind.warmup ? 'W' : 'S'}  ${fmtSet(set, ex.measure, s)}', style: text.bodySmall),
               ],
+              const SizedBox(height: 24),
+              // Felloggat pass ska gå att få bort (MK1 kunde, Niklas 2026-10-05).
+              GhostButton(
+                label: 'DELETE SESSION',
+                leadingIcon: Icons.delete_outline,
+                color: c.fail,
+                onTap: () async {
+                  Navigator.pop(ctx);
+                  await _delete(context, e, '$sessionName · ${fmtDate(e.date)}');
+                },
+              ),
             ]),
           ),
         );
       },
     );
+  }
+
+  /// Bekräftelse (ett helt pass är mer än en vägning) + UNDO i 2,5 s.
+  Future<void> _delete(BuildContext context, HistoryEntry e, String label) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Delete $label?'),
+        content: const Text('It is removed from history, records and the chain on all your devices.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Keep')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete')),
+        ],
+      ),
+    );
+    if (ok != true || !context.mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    await widget.app.deleteHistoryEntry(e);
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(
+        content: Text('Deleted $label'),
+        action: SnackBarAction(label: 'UNDO', onPressed: () => widget.app.restoreHistoryEntry(e)),
+        persist: false,
+        duration: const Duration(milliseconds: 2500),
+      ));
   }
 }
