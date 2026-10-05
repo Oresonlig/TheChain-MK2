@@ -344,6 +344,13 @@ class _Decoder {
   // MK1:s ignoredPRs läses medvetet INTE: "Remove PR" dolde hela övningen för
   // gott, även framtida rekord (MK1-bugg). I MK2 döljs inga PR (Niklas 2026-10-05).
 
+  /// MK1:s importedPRs kom med programfiler (ibland en väns PR, utan datum) —
+  /// de blir inte rekord i MK2, men får aldrig försvinna TYST: varning.
+  void warnImportedPrs() {
+    final n = _l(raw['importedPRs']).length;
+    if (n > 0) warnings.add('$n records that came with an imported program file were not brought over');
+  }
+
   List<BodyweightEntry> readBodyweight() => [
         for (final w in _l(raw['weightLog']).map(_m))
           if (_s(w['date']) != null && _d(w['weight']) != null)
@@ -362,7 +369,9 @@ class _Decoder {
 
 /// Läser en MK1-state (det som ligger i `app_state.data`).
 Mk1Snapshot decodeMk1(Map<String, Object?> raw) {
-  final d = _Decoder(raw)..readCustom();
+  final d = _Decoder(raw)
+    ..readCustom()
+    ..warnImportedPrs();
   final program = d.readProgram();
   final cycles = _l(raw['cycles']).map(_m).toList();
   return Mk1Snapshot(

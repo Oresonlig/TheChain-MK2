@@ -183,6 +183,12 @@ void main() {
       expect(o.keys.any((k) => k.value.startsWith('extra_')), isFalse);
     });
 
+    test('importedPRs (från programfiler) blir inga rekord men en varning — aldrig tyst', () {
+      final s = decodeMk1({'sessionOrder': ['A'], 'importedPRs': [{'name': 'Bench Press (BB)', 'weight': 150, 'reps': 1}]});
+      expect(s.warnings.single, contains('1 records'));
+      expect(personalRecords(s.history), isEmpty);
+    });
+
     test('anteckningar blir nålade, egen övning; ignoredPRs döljer ingenting', () {
       expect(snap.notes.single.pinned, isTrue);
       expect(snap.notes.single.text, 'seat 4');

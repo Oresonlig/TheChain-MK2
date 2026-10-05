@@ -155,7 +155,7 @@ writeFileSync(manifestPath, manifest);
 // Larmmotorns Kotlin-filer; MainActivity ersätts (samma FlutterActivity + kanalen).
 const ktDir = 'android/app/src/main/kotlin/com/oresonlig/the_chain';
 mkdirSync(ktDir, { recursive: true });
-for (const f of ['MainActivity.kt', 'RestAlarm.kt', 'RestAlarmReceiver.kt', 'RestAlarmService.kt', 'RestAlarmActivity.kt', 'RestAlarmView.kt']) {
+for (const f of ['MainActivity.kt', 'Housekeeping.kt', 'RestAlarm.kt', 'RestAlarmReceiver.kt', 'RestAlarmService.kt', 'RestAlarmActivity.kt', 'RestAlarmView.kt']) {
   copyFileSync(`tool/android/kotlin/${f}`, `${ktDir}/${f}`);
 }
 mkdirSync('android/app/src/main/res/xml', { recursive: true });
