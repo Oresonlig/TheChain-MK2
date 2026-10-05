@@ -76,6 +76,25 @@ class SupabaseBackend implements Backend {
     return true;
   }
 
+  @override
+  Future<bool> signUp(String email, String password, String name) async {
+    late final AuthResponse res;
+    await _auth(() async => res = await _client.auth.signUp(
+          email: email,
+          password: password,
+          emailRedirectTo: 'https://thechain.training',
+          data: {'display_name': name},
+        ));
+    return res.session != null; // bekräftelse avstängd i projektet = inloggad direkt
+  }
+
+  @override
+  Future<void> verifySignupCode(String email, String code) =>
+      _auth(() => _client.auth.verifyOTP(email: email, token: code, type: OtpType.signup));
+
+  @override
+  Future<void> resendSignupCode(String email) => _auth(() => _client.auth.resend(type: OtpType.signup, email: email));
+
   /// Länken i mejlet går till hemsidans återställning (som i MK1); koden i
   /// samma mejl används i appen. Mallen i Supabase bär båda.
   @override

@@ -66,6 +66,26 @@ class FakeBackend implements Backend {
     return true;
   }
 
+  /// Nytt konto: kod i mejlet (som Supabase med "Confirm email" på).
+  String? signupCode;
+
+  @override
+  Future<bool> signUp(String email, String password, String name) async {
+    this.password = password;
+    signupCode = '654321';
+    return false;
+  }
+
+  @override
+  Future<void> verifySignupCode(String email, String code) async {
+    if (code != signupCode) throw Exception('Token has expired or is invalid');
+    _uid = 'user-1';
+    _users.add(_uid);
+  }
+
+  @override
+  Future<void> resendSignupCode(String email) async => signupCode = '654321';
+
   /// Glömt lösenord: senaste skickade koden (null = inget mejl).
   String? sentCode;
   bool failPasswordUpdate = false;

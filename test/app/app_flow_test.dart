@@ -59,6 +59,24 @@ void main() {
     expect(app.status, 'Synced');
   });
 
+  test('nytt konto: valideras, kod i mejlet → inloggad', () async {
+    final b = FakeBackend();
+    final app = AppController(b);
+    await app.start();
+    expect(await app.signUp('nope', 'longpass1', 'longpass1', ''), isFalse);
+    expect(app.error, contains('email'));
+    expect(await app.signUp('a@b.se', 'short', 'short', ''), isFalse);
+    expect(app.error, contains('at least 8'));
+    expect(await app.signUp('a@b.se', 'longpass1', 'longpass2', ''), isFalse);
+    expect(app.error, contains("don't match"));
+    expect(await app.signUp('a@b.se', 'longpass1', 'longpass1', 'Ann'), isTrue);
+    await app.verifySignupCode('a@b.se', '111111');
+    expect(app.error, contains('expired or is invalid'));
+    await app.verifySignupCode('a@b.se', '654321');
+    await pumpEventQueue();
+    expect(app.phase, Phase.ready);
+  });
+
   test('fullt minne under synk: synken fastnar inte, nästa synk fungerar', () async {
     final b = FakeBackend();
     final app = AppController(b);

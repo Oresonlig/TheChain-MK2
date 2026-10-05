@@ -27,6 +27,12 @@ abstract class Backend {
   /// Androids kontoväljare → Supabase. false = användaren avbröt.
   Future<bool> signInWithGoogle();
 
+  /// Nytt konto (samma som hemsidans: display_name i användardatan).
+  /// true = inloggad direkt; false = koden i bekräftelsemejlet behövs.
+  Future<bool> signUp(String email, String password, String name);
+  Future<void> verifySignupCode(String email, String code);
+  Future<void> resendSignupCode(String email);
+
   /// Glömt lösenord: mejlet bär både hemsidans länk och en kod för appen.
   Future<void> sendPasswordReset(String email);
 
@@ -278,6 +284,69 @@ class AppController extends ChangeNotifier {
     } finally {
       busy = false;
       notifyListeners();
+    }
+  }
+
+  /// Skapar konto. Returnerar true om koden ur bekräftelsemejlet behövs
+  /// (false = inloggad direkt eller fel — se [error]).
+  Future<bool> signUp(String email, String password, String confirm, String name) async {
+    final e = email.trim();
+    if (e.isEmpty || !e.contains('@')) {
+      error = 'Enter your email.';
+    } else if (password.length < kMinPassword) {
+      error = 'Password must be at least $kMinPassword characters.';
+    } else if (password != confirm) {
+      error = "Passwords don't match.";
+    } else {
+      error = null;
+    }
+    if (error != null) {
+      notifyListeners();
+      return false;
+    }
+    busy = true;
+    notifyListeners();
+    try {
+      final signedIn = await backend.signUp(e, password, name.trim().isEmpty ? e.split('@').first : name.trim());
+      return !signedIn;
+    } catch (x) {
+      error = 'Could not create the account: ${_reason(x)}';
+      return false;
+    } finally {
+      busy = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> verifySignupCode(String email, String code) async {
+    final digits = code.replaceAll(RegExp(r'\s'), '');
+    if (digits.length < 6) {
+      error = 'Enter the code from the email.';
+      notifyListeners();
+      return;
+    }
+    error = null;
+    busy = true;
+    notifyListeners();
+    try {
+      await backend.verifySignupCode(email.trim(), digits); // inloggad → appen öppnas
+    } catch (x) {
+      error = 'Code not accepted: ${_reason(x)}';
+    } finally {
+      busy = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> resendSignupCode(String email) async {
+    error = null;
+    try {
+      await backend.resendSignupCode(email.trim());
+      return true;
+    } catch (x) {
+      error = 'Could not send the email: ${_reason(x)}';
+      notifyListeners();
+      return false;
     }
   }
 
