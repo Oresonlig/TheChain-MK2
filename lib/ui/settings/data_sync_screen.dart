@@ -236,21 +236,31 @@ class DataSyncScreen extends StatelessWidget {
     messenger.showSnackBar(SnackBar(content: Text('Restored ${lines.join(', ')}')));
   }
 
+  /// Har appen redan ett eget program frågar importen om det ska behållas
+  /// (Niklas 2026-10-05: inget nybyggt schema får försvinna tyst).
   Future<void> _confirmImport(BuildContext context) async {
-    final ok = await showDialog<bool>(
+    final hasOwnProgram = app.repo!.program().sessions.isNotEmpty;
+    final choice = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Import from website?'),
-        content: const Text(
-            'Copies your history, program, records and weight from the website into the app. '
-            'Running it again replaces app data with the website data. The website is not changed.'),
+        content: Text(hasOwnProgram
+            ? 'Brings your history, records, weight and notes from the website into the app.\n\n'
+                'The app already has its own program. Keep it, or replace it with the website\'s? '
+                'The website is not changed.'
+            : 'Copies your history, program, records and weight from the website into the app. The website is not changed.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Import')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          if (hasOwnProgram) ...[
+            TextButton(onPressed: () => Navigator.pop(ctx, 'replace'), child: const Text("Use the website's")),
+            TextButton(onPressed: () => Navigator.pop(ctx, 'keep'), child: const Text('Keep my program')),
+          ] else
+            TextButton(onPressed: () => Navigator.pop(ctx, 'replace'), child: const Text('Import')),
         ],
       ),
     );
-    if (ok == true) await app.importFromWebsite();
+    if (choice == null) return;
+    await app.importFromWebsite(keepProgram: choice == 'keep');
   }
 
   Future<void> _confirmMove(BuildContext context) async {
@@ -269,7 +279,33 @@ class DataSyncScreen extends StatelessWidget {
         ],
       ),
     );
-    if (ok != true) return;
+    if (ok != true || !context.mounted) return;
+    // Aldrig importerat men hemsidan har data: efter flytten går historiken
+    // inte att hämta in längre — fråga en gång till.
+    if (!app.repo!.settings().importedFromWebsite) {
+      await app.checkWebsiteData();
+      if (app.websiteData == true && context.mounted) {
+        final next = await showDialog<String>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Bring your website history first?'),
+            content: const Text(
+                "You haven't imported your history from the website. After the move, import is off for good "
+                '— the website history stays there as a frozen backup.'),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+              TextButton(onPressed: () => Navigator.pop(ctx, 'move'), child: const Text('Move anyway')),
+              TextButton(onPressed: () => Navigator.pop(ctx, 'import'), child: const Text('Import first')),
+            ],
+          ),
+        );
+        if (next == null || !context.mounted) return;
+        if (next == 'import') {
+          await _confirmImport(context);
+          return;
+        }
+      }
+    }
     final moved = await app.moveToApp(versionLabel);
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(

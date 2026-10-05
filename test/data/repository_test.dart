@@ -106,6 +106,26 @@ void main() {
     expect(repo.chain().round, snap.mk1Round);
   });
 
+  test('import med eget program: KEEP behåller programmet, historiken kommer in; appens egna val ligger kvar', () async {
+    final repo = await device(FakeRemote(), 'phone');
+    const mine = Program(sessions: [Session(id: SessionId('X'), name: 'My push day')]);
+    await repo.saveProgram(mine, now);
+    await repo.saveSettings(const UserSettings(workoutTourSeen: true, finishNote: false), now);
+    final snap = decodeMk1(mk1());
+
+    await repo.importMk1(snap, now, keepProgram: true);
+    expect(repo.program().sessions.single.name, 'My push day', reason: 'det nybyggda schemat försvinner inte');
+    expect(repo.history().length, snap.history.length);
+    final s = repo.settings();
+    expect(s.importedFromWebsite, isTrue);
+    expect(s.workoutTourSeen, isTrue, reason: 'appens egna val skrivs inte över');
+    expect(s.finishNote, isFalse);
+    expect(s.restTimerSecs, 90, reason: 'hemsidans vilotimer följer med');
+
+    await repo.importMk1(snap, now);
+    expect(repo.program().sessions.map((x) => x.id.value), ['A', 'B', 'V'], reason: "\"Use the website's\"");
+  });
+
   test('inga dolda PR — även en äldre synkad "hiddenRecords"-lista ignoreras', () async {
     final repo = await device(FakeRemote(), 'phone');
     await repo.importMk1(decodeMk1(mk1()), now);

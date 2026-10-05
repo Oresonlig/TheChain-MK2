@@ -289,6 +289,7 @@ Json settingsToJson(UserSettings s) => {
       'restWake': s.restWakeScreen,
       if (s.workoutTourSeen) 'tourSeen': true,
       'appBuild': ?s.appBuild,
+      if (s.importedFromWebsite) 'imported': true,
     };
 
 UserSettings settingsFromJson(Json j) => UserSettings(
@@ -302,4 +303,5 @@ UserSettings settingsFromJson(Json j) => UserSettings(
       restWakeScreen: j['restWake'] != false,
       workoutTourSeen: j['tourSeen'] == true,
       appBuild: j['appBuild'] as String?,
+      importedFromWebsite: j['imported'] == true,
     );

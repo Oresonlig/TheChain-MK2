@@ -219,9 +219,14 @@ class Repository {
   /// Engångsimport från MK1. Under testfasen kan den köras om (MK2-ändringar
   /// skrivs då över). Killswitch-markeringen sätts INTE här — det görs vid den
   /// riktiga övergången efter F3.
-  Future<void> importMk1(Mk1Snapshot s, DateTime now) async {
-    await saveProgram(s.program, now,
-        meta: ChainMeta(restarts: s.manualRestarts, roundOffset: s.roundOffsetFor(s.program)));
+  /// [keepProgram]: appen har redan ett eget program som användaren vill
+  /// behålla (Niklas 2026-10-05) — då tas bara historik, PR, vikt och
+  /// anteckningar in; programmet och kedjans räknare lämnas orörda.
+  Future<void> importMk1(Mk1Snapshot s, DateTime now, {bool keepProgram = false}) async {
+    if (!keepProgram) {
+      await saveProgram(s.program, now,
+          meta: ChainMeta(restarts: s.manualRestarts, roundOffset: s.roundOffsetFor(s.program)));
+    }
     // En diskskrivning per tabell (114 pass skrev annars hela tabellen 114 gånger).
     await _w.putAll({for (final h in s.history) historyId(h): historyToJson(h)}, now);
     await engine[Tables.bodyweight].putAll({for (final b in s.bodyweight) b.date: bodyweightToJson(b)}, now);
@@ -230,7 +235,22 @@ class Repository {
       for (final e in s.custom.values) 'custom:${e.id.value}': customExerciseToJson(e),
       for (final o in s.overrides.entries) 'override:${o.key.value}': overrideToJson(o.key, o.value),
     }, now);
-    await saveSettings(s.settings, now);
+    // Bara det hemsidan själv har; appens egna val (rundturen, larmets
+    // helskärm, anteckning vid avslut, bygget) ligger kvar.
+    final w = s.settings;
+    await saveSettings(
+      settings().copyWith(
+        weightUnit: w.weightUnit,
+        tempUnit: w.tempUnit,
+        restTimerEnabled: w.restTimerEnabled,
+        restTimerSecs: w.restTimerSecs,
+        weightGoalKg: w.weightGoalKg,
+        clearGoal: w.weightGoalKg == null,
+        ambientEffects: w.ambientEffects,
+        importedFromWebsite: true,
+      ),
+      now,
+    );
   }
 }
 

@@ -562,7 +562,8 @@ class AppController extends ChangeNotifier {
   }
 
   /// Engångsimport från hemsidan (MK1). Kan köras om under testfasen.
-  Future<void> importFromWebsite() async {
+  /// [keepProgram]: behåll appens eget program (se Repository.importMk1).
+  Future<void> importFromWebsite({bool keepProgram = false}) async {
     final r = repo;
     if (r == null || busy) return;
     if (moved != false) {
@@ -583,7 +584,7 @@ class AppController extends ChangeNotifier {
         error = 'No website data found for this account';
       } else {
         final snap = decodeMk1(raw);
-        await r.importMk1(snap, _now());
+        await r.importMk1(snap, _now(), keepProgram: keepProgram);
         status = snap.warnings.isEmpty
             ? 'Imported ${snap.history.length} entries'
             : 'Imported ${snap.history.length} entries · ${snap.warnings.length} warnings';

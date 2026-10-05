@@ -27,6 +27,7 @@ class UserSettings {
     this.restWakeScreen = true,
     this.workoutTourSeen = false,
     this.appBuild,
+    this.importedFromWebsite = false,
   });
 
   final WeightUnit weightUnit;
@@ -52,6 +53,9 @@ class UserSettings {
   /// Senaste bygget som körts ("DEV · build 68") — adminsidan visar det.
   final String? appBuild;
 
+  /// Hemsidans historik är inläst (minst en gång). "Move my account" varnar annars.
+  final bool importedFromWebsite;
+
   /// [clearGoal] = ta bort viktmålet (null betyder annars "oförändrat").
   UserSettings copyWith({
     WeightUnit? weightUnit,
@@ -65,6 +69,7 @@ class UserSettings {
     bool? restWakeScreen,
     bool? workoutTourSeen,
     String? appBuild,
+    bool? importedFromWebsite,
   }) =>
       UserSettings(
         weightUnit: weightUnit ?? this.weightUnit,
@@ -77,5 +82,6 @@ class UserSettings {
         restWakeScreen: restWakeScreen ?? this.restWakeScreen,
         workoutTourSeen: workoutTourSeen ?? this.workoutTourSeen,
         appBuild: appBuild ?? this.appBuild,
+        importedFromWebsite: importedFromWebsite ?? this.importedFromWebsite,
       );
 }
