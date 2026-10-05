@@ -4,6 +4,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../app/app_controller.dart';
 import '../../app/rest_timer.dart';
@@ -237,6 +238,30 @@ Widget _choice(BuildContext context, String label, bool on, VoidCallback onTap) 
   );
 }
 
+Future<void> _askRestSecs(BuildContext context, AppController app, UserSettings s) async {
+  // Ingen dispose: dialogens stängningsanimation läser fältet efter pop.
+  final field = TextEditingController(text: '${s.restTimerSecs}');
+  final v = await showDialog<int>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Rest time'),
+      content: TextField(
+        controller: field,
+        autofocus: true,
+        keyboardType: TextInputType.number,
+        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+        decoration: const InputDecoration(suffixText: 'seconds', helperText: '$kMinRestSecs–$kMaxRestSecs seconds'),
+        onSubmitted: (t) => Navigator.pop(ctx, int.tryParse(t)),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+        TextButton(onPressed: () => Navigator.pop(ctx, int.tryParse(field.text)), child: const Text('Save')),
+      ],
+    ),
+  );
+  if (v != null) await app.updateSettings(_copy(s, timerSecs: clampRestSecs(v)));
+}
+
 class TrainingSettingsScreen extends StatelessWidget {
   const TrainingSettingsScreen({super.key, required this.app});
   final AppController app;
@@ -283,21 +308,49 @@ class TrainingSettingsScreen extends StatelessWidget {
               ]),
               if (s.restTimerEnabled) ...[
                 const SizedBox(height: 12),
-                for (final row in const [
-                  [60, 90, 120],
-                  [180, 240, 300],
-                ]) ...[
-                  Row(children: [
-                    for (final secs in row) ...[
-                      if (secs != row.first) const SizedBox(width: 8),
-                      _choice(context, fmtRestChoice(secs), s.restTimerSecs == secs,
-                          () => app.updateSettings(_copy(s, timerSecs: secs))),
-                    ],
-                  ]),
-                  const SizedBox(height: 8),
-                ],
-                Text('Starts when you log a work set. Signals with sound and vibration, '
-                    'also when the phone is locked or you are in another app.',
+                // Fri tid (Niklas 2026-10-05): korta intensiva pass vill ha t.ex. 45 s.
+                Row(children: [
+                  SizedBox(
+                    width: 64,
+                    child: GhostButton(
+                      label: '−15',
+                      semanticLabel: '15 seconds shorter',
+                      onTap: s.restTimerSecs <= kMinRestSecs
+                          ? null
+                          : () => app.updateSettings(_copy(s, timerSecs: clampRestSecs(s.restTimerSecs - 15))),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => _askRestSecs(context, app, s),
+                      child: Container(
+                        height: 48,
+                        decoration: BoxDecoration(border: Border.all(color: context.chain.borderStrong)),
+                        alignment: Alignment.center,
+                        child: Text(fmtRestChoice(s.restTimerSecs),
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleLarge!
+                                .copyWith(fontFeatures: const [FontFeature.tabularFigures()])),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  SizedBox(
+                    width: 64,
+                    child: GhostButton(
+                      label: '+15',
+                      semanticLabel: '15 seconds longer',
+                      onTap: s.restTimerSecs >= kMaxRestSecs
+                          ? null
+                          : () => app.updateSettings(_copy(s, timerSecs: clampRestSecs(s.restTimerSecs + 15))),
+                    ),
+                  ),
+                ]),
+                const SizedBox(height: 8),
+                Text('Tap the time to type exact seconds. Starts when you log a work set. Signals with sound and '
+                    'vibration, also when the phone is locked or you are in another app.',
                     style: Theme.of(context).textTheme.bodySmall!.copyWith(color: context.chain.textMuted)),
               ],
             ]),

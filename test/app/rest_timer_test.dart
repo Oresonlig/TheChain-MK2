@@ -63,6 +63,14 @@ void main() {
       expect(alarm.scheduled.length, 2);
     });
 
+    test('fri vilotid i Settings: 10 s – 10 min', () {
+      expect(clampRestSecs(45), 45);
+      expect(clampRestSecs(5), kMinRestSecs);
+      expect(clampRestSecs(900), kMaxRestSecs);
+      expect(fmtRestChoice(45), '0:45');
+      expect(fmtRestChoice(135), '2:15');
+    });
+
     test('noll → "rest over" en stund, sedan borta av sig själv', () {
       timer.start(10);
       now = now.add(const Duration(seconds: 11));

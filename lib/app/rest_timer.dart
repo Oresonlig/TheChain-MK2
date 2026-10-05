@@ -106,7 +106,12 @@ class RestTimer extends ChangeNotifier {
   }
 }
 
-/// Inställningens val: "1:00", "1:30" …
+/// Vilotidens gränser i Settings (fri tid, Niklas 2026-10-05).
+const kMinRestSecs = 10;
+const kMaxRestSecs = 600;
+int clampRestSecs(int s) => s.clamp(kMinRestSecs, kMaxRestSecs);
+
+/// Inställningens visning: "0:45", "1:30" …
 String fmtRestChoice(int secs) => '${secs ~/ 60}:${(secs % 60).toString().padLeft(2, '0')}';
 
 /// "1:45" / "45s" (som MK1).
