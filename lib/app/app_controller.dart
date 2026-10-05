@@ -52,17 +52,28 @@ abstract class Backend {
 
   /// Sätter markeringen. Hemsidan visar sedan "moved to the app" och slutar skriva.
   Future<void> markMovedToApp(String sourceVersion);
+
+  /// mk2_admin_stats() (supabase/002_admin_stats.sql) — en rad per användare.
+  Future<List<Map<String, Object?>>> adminStats();
 }
 
 enum Phase { signedOut, loading, ready }
 
 class AppController extends ChangeNotifier {
   AppController(this.backend,
-      {DateTime Function()? clock, this.updater, this.syncDelay = const Duration(seconds: 3), RestTimer? restTimer})
+      {DateTime Function()? clock,
+      this.updater,
+      this.syncDelay = const Duration(seconds: 3),
+      RestTimer? restTimer,
+      this.appBuild = ''})
       : _now = clock ?? DateTime.now,
         restTimer = restTimer ?? RestTimer(clock: clock);
 
   final Backend backend;
+
+  /// "MK2 DEV · build 68" — sparas i inställningarna en gång per nytt bygge så
+  /// att adminsidan ser vilket bygge varje användare kör.
+  final String appBuild;
 
   /// Vilotimern (en för appen — överlever att passvyn stängs).
   final RestTimer restTimer;
@@ -141,7 +152,21 @@ class AppController extends ChangeNotifier {
     if (repo == null) return;
     await syncNow(); // tar även första versionskollen
     await checkMoved();
+    await _recordBuild();
   }
+
+  /// Efter första synken (läs före skriv): bygget som körs, om det är nytt.
+  Future<void> _recordBuild() async {
+    final r = repo;
+    if (r == null || appBuild.isEmpty || lastSync == null) return;
+    final s = r.settings();
+    if (s.appBuild == appBuild) return;
+    await r.saveSettings(s.copyWith(appBuild: appBuild), _now());
+    scheduleSync();
+  }
+
+  /// Adminsidan (bara Niklas konto — servern spärrar alla andra).
+  Future<List<Map<String, Object?>>> adminStats() => backend.adminStats();
 
   /// Nollställer allt som hör till det inloggade kontot.
   void _clearSession() {

@@ -288,6 +288,7 @@ Json settingsToJson(UserSettings s) => {
       'finishNote': s.finishNote,
       'restWake': s.restWakeScreen,
       if (s.workoutTourSeen) 'tourSeen': true,
+      'appBuild': ?s.appBuild,
     };
 
 UserSettings settingsFromJson(Json j) => UserSettings(
@@ -300,4 +301,5 @@ UserSettings settingsFromJson(Json j) => UserSettings(
       finishNote: j['finishNote'] != false,
       restWakeScreen: j['restWake'] != false,
       workoutTourSeen: j['tourSeen'] == true,
+      appBuild: j['appBuild'] as String?,
     );

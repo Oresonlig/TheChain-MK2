@@ -51,6 +51,46 @@ AppController _app(FakeBackend b) => AppController(b, syncDelay: Duration.zero);
 Future<void> _tourSeen(AppController app) => app.updateSettings(app.repo!.settings().copyWith(workoutTourSeen: true));
 
 void main() {
+  testWidgets('adminsidan (påhittade användare)', (tester) async {
+    await _loadSaira();
+    final now = DateTime.now();
+    int ms(int daysAgo) => now.subtract(Duration(days: daysAgo)).millisecondsSinceEpoch;
+    String iso(int daysAgo) => now.subtract(Duration(days: daysAgo)).toUtc().toIso8601String();
+    final b = FakeBackend()
+      ..admin = [
+        {
+          'email': 'niklgron@gmail.com', 'display_name': 'Niklas', 'created_at': iso(160), 'last_sign_in_at': iso(1),
+          'providers': 'email, google', 'web_updated_at': iso(3), 'web_client_seen': {'webDesktop': ms(3), 'app': ms(20)},
+          'mk2_workouts': 121, 'mk2_last_workout': ms(0), 'mk2_last_activity': ms(0), 'mk2_devices': 2,
+          'mk2_build': 'DEV · build 70', 'moved_at': null,
+        },
+        {
+          'email': 'lt@example.com', 'display_name': 'LT', 'created_at': iso(150), 'last_sign_in_at': iso(2),
+          'providers': 'google', 'web_updated_at': iso(2), 'web_client_seen': {'app': ms(2)},
+          'mk2_workouts': 0, 'mk2_last_workout': null, 'mk2_last_activity': null, 'mk2_devices': 0, 'mk2_build': null, 'moved_at': null,
+        },
+        {
+          'email': 'johannes@example.com', 'display_name': 'Johannes', 'created_at': iso(161), 'last_sign_in_at': iso(19),
+          'providers': 'email', 'web_updated_at': iso(1), 'web_client_seen': {'webMobile': ms(1)},
+          'mk2_workouts': 0, 'mk2_last_workout': null, 'mk2_last_activity': null, 'mk2_devices': 0, 'mk2_build': null, 'moved_at': null,
+        },
+      ];
+    final app = _app(b);
+    await _phone(tester, TheChainApp(app: app, emailOf: () => 'niklgron@gmail.com'));
+    await tester.runAsync(() async {
+      await app.start();
+      await app.signIn('x', 'secret');
+      await pumpEventQueue();
+    });
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('SETTINGS'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Admin'));
+    await tester.runAsync(pumpEventQueue);
+    await tester.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/admin.png'));
+  });
+
   testWidgets('välkomstskärmen (nytt konto, tomt program)', (tester) async {
     await _loadSaira();
     final b = FakeBackend(mk1: mk1());

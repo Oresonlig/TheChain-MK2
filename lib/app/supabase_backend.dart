@@ -157,6 +157,12 @@ class SupabaseBackend implements Backend {
   }
 
   @override
+  Future<List<Map<String, Object?>>> adminStats() async {
+    final res = await _client.rpc<Object?>('mk2_admin_stats');
+    return [for (final r in (res as List? ?? const [])) (r as Map).cast<String, Object?>()];
+  }
+
+  @override
   Future<void> markMovedToApp(String sourceVersion) =>
       _client.from('mk2_migration').insert({'source_app_version': sourceVersion});
 }

@@ -24,6 +24,7 @@ Future<void> main() async {
     backend,
     updater: kChannel == 'dev' ? Updater(channel: kChannel, currentBuild: int.tryParse(kBuild) ?? 0) : null,
     restTimer: RestTimer(alarm: NativeRestAlarm(look: nanosuitThemeData().extension<ChainTheme>()!)),
+    appBuild: kBuild == '0' ? '' : '${kChannel.toUpperCase()} · build $kBuild',
   );
   runApp(TheChainApp(app: app, emailOf: () => backend.userEmail ?? ''));
   await app.start();

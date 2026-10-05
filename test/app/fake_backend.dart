@@ -66,6 +66,11 @@ class FakeBackend implements Backend {
     return true;
   }
 
+  List<Map<String, Object?>> admin = const [];
+
+  @override
+  Future<List<Map<String, Object?>>> adminStats() async => admin;
+
   /// Nytt konto: kod i mejlet (som Supabase med "Confirm email" på).
   String? signupCode;
 

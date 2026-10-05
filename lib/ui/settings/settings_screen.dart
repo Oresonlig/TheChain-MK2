@@ -14,6 +14,7 @@ import '../../theme/background_scope.dart';
 import '../../theme/surfaces.dart';
 import '../nanosuit_scaffold.dart';
 import '../program/program_screen.dart';
+import 'admin_screen.dart';
 import 'data_sync_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -91,6 +92,13 @@ class SettingsScreen extends StatelessWidget {
                 subtitle: 'Sync status · backup · import from the website · move account',
                 onTap: openData,
               ),
+              // Bara Niklas — servern spärrar ändå alla andra (supabase/002).
+              if (email.toLowerCase() == kAdminEmail)
+                SettingsRow(
+                  title: 'Admin',
+                  subtitle: 'Users · app vs website · builds',
+                  onTap: () => open(AdminScreen(app: app)),
+                ),
               const SizedBox(height: 28),
               GhostButton(
                 label: 'SIGN OUT',

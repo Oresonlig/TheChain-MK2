@@ -59,6 +59,20 @@ void main() {
     expect(app.status, 'Synced');
   });
 
+  test('bygget sparas en gång efter första synken (adminsidan visar det)', () async {
+    final b = FakeBackend();
+    final app = AppController(b, appBuild: 'DEV · build 70');
+    await app.start();
+    await app.signIn('x', 'secret');
+    await pumpEventQueue();
+    expect(app.repo!.settings().appBuild, 'DEV · build 70');
+    final v = app.repo!.engine[Tables.settings].version;
+    await app.signOut();
+    await app.signIn('x', 'secret');
+    await pumpEventQueue();
+    expect(app.repo!.engine[Tables.settings].version, lessThanOrEqualTo(v + 2), reason: 'samma bygge skrivs inte om');
+  });
+
   test('nytt konto: valideras, kod i mejlet → inloggad', () async {
     final b = FakeBackend();
     final app = AppController(b);

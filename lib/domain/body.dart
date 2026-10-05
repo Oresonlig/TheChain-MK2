@@ -26,6 +26,7 @@ class UserSettings {
     this.finishNote = true,
     this.restWakeScreen = true,
     this.workoutTourSeen = false,
+    this.appBuild,
   });
 
   final WeightUnit weightUnit;
@@ -48,6 +49,9 @@ class UserSettings {
   /// Rundturen i passvyn (LOG / DONE / ⋮) är visad — en gång, på alla enheter.
   final bool workoutTourSeen;
 
+  /// Senaste bygget som körts ("DEV · build 68") — adminsidan visar det.
+  final String? appBuild;
+
   /// [clearGoal] = ta bort viktmålet (null betyder annars "oförändrat").
   UserSettings copyWith({
     WeightUnit? weightUnit,
@@ -60,6 +64,7 @@ class UserSettings {
     bool? finishNote,
     bool? restWakeScreen,
     bool? workoutTourSeen,
+    String? appBuild,
   }) =>
       UserSettings(
         weightUnit: weightUnit ?? this.weightUnit,
@@ -71,5 +76,6 @@ class UserSettings {
         finishNote: finishNote ?? this.finishNote,
         restWakeScreen: restWakeScreen ?? this.restWakeScreen,
         workoutTourSeen: workoutTourSeen ?? this.workoutTourSeen,
+        appBuild: appBuild ?? this.appBuild,
       );
 }
