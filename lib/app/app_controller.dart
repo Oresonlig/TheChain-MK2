@@ -12,6 +12,7 @@ import '../data/repository.dart';
 import '../data/sync_engine.dart';
 import '../domain/domain.dart';
 import '../mk1/mk1_codec.dart';
+import 'rest_timer.dart';
 import 'updater.dart';
 import 'workout_controller.dart';
 
@@ -50,10 +51,15 @@ abstract class Backend {
 enum Phase { signedOut, loading, ready }
 
 class AppController extends ChangeNotifier {
-  AppController(this.backend, {DateTime Function()? clock, this.updater, this.syncDelay = const Duration(seconds: 3)})
-      : _now = clock ?? DateTime.now;
+  AppController(this.backend,
+      {DateTime Function()? clock, this.updater, this.syncDelay = const Duration(seconds: 3), RestTimer? restTimer})
+      : _now = clock ?? DateTime.now,
+        restTimer = restTimer ?? RestTimer(clock: clock);
 
   final Backend backend;
+
+  /// Vilotimern (en för appen — överlever att passvyn stängs).
+  final RestTimer restTimer;
 
   /// Väntetid efter senaste ändringen i ett pass innan synk — en serie snabba
   /// tryck blir ett anrop, inte tio.
@@ -133,6 +139,7 @@ class AppController extends ChangeNotifier {
 
   /// Nollställer allt som hör till det inloggade kontot.
   void _clearSession() {
+    restTimer.stop();
     _syncTimer?.cancel();
     _syncTimer = null;
     _syncAgain = false;
@@ -483,7 +490,12 @@ class AppController extends ChangeNotifier {
       newId: newId,
       clock: _now,
       onChanged: scheduleSync,
+      onWorkSetLogged: () {
+        final s = r.settings();
+        if (s.restTimerEnabled) restTimer.start(s.restTimerSecs);
+      },
       onFinished: () async {
+        restTimer.stop();
         if (identical(_openWorkout, wc)) _openWorkout = null;
         notifyListeners();
         await syncNow();

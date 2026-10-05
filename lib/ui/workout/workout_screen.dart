@@ -14,6 +14,7 @@ import '../../theme/surfaces.dart';
 import '../nanosuit_scaffold.dart';
 import '../units.dart';
 import 'exercise_picker.dart';
+import 'rest_timer_bar.dart';
 
 class WorkoutScreen extends StatefulWidget {
   const WorkoutScreen({super.key, required this.controller, this.now, this.app});
@@ -170,6 +171,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                 ],
               ),
             ),
+            if (widget.app case final a?) RestTimerBar(timer: a.restTimer),
           ]);
         },
       ),

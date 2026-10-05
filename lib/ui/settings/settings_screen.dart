@@ -6,6 +6,7 @@ library;
 import 'package:flutter/material.dart';
 
 import '../../app/app_controller.dart';
+import '../../app/rest_timer.dart';
 import '../../domain/domain.dart';
 import '../../theme/chain_theme.dart';
 import '../../theme/background_scope.dart';
@@ -206,11 +207,11 @@ Widget settingsSection(BuildContext context, String title, List<Widget> children
   );
 }
 
-UserSettings _copy(UserSettings s, {WeightUnit? w, TempUnit? t, bool? ambient}) => UserSettings(
+UserSettings _copy(UserSettings s, {WeightUnit? w, TempUnit? t, bool? ambient, bool? timer, int? timerSecs}) => UserSettings(
       weightUnit: w ?? s.weightUnit,
       tempUnit: t ?? s.tempUnit,
-      restTimerEnabled: s.restTimerEnabled,
-      restTimerSecs: s.restTimerSecs,
+      restTimerEnabled: timer ?? s.restTimerEnabled,
+      restTimerSecs: timerSecs ?? s.restTimerSecs,
       weightGoalKg: s.weightGoalKg,
       ambientEffects: ambient ?? s.ambientEffects,
     );
@@ -259,6 +260,35 @@ class TrainingSettingsScreen extends StatelessWidget {
                 const SizedBox(width: 8),
                 _choice(context, '°F', s.tempUnit == TempUnit.fahrenheit, () => app.updateSettings(_copy(s, t: TempUnit.fahrenheit))),
               ]),
+            ]),
+            settingsSection(context, 'REST TIMER', [
+              Row(children: [
+                _choice(context, 'ON', s.restTimerEnabled, () => app.updateSettings(_copy(s, timer: true))),
+                const SizedBox(width: 8),
+                _choice(context, 'OFF', !s.restTimerEnabled, () {
+                  app.restTimer.stop();
+                  app.updateSettings(_copy(s, timer: false));
+                }),
+              ]),
+              if (s.restTimerEnabled) ...[
+                const SizedBox(height: 12),
+                for (final row in const [
+                  [60, 90, 120],
+                  [180, 240, 300],
+                ]) ...[
+                  Row(children: [
+                    for (final secs in row) ...[
+                      if (secs != row.first) const SizedBox(width: 8),
+                      _choice(context, fmtRestChoice(secs), s.restTimerSecs == secs,
+                          () => app.updateSettings(_copy(s, timerSecs: secs))),
+                    ],
+                  ]),
+                  const SizedBox(height: 8),
+                ],
+                Text('Starts when you log a work set. Signals with sound and vibration, '
+                    'also when the phone is locked or you are in another app.',
+                    style: Theme.of(context).textTheme.bodySmall!.copyWith(color: context.chain.textMuted)),
+              ],
             ]),
           ];
         },

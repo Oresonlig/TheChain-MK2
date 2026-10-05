@@ -109,6 +109,26 @@ if (!manifest.includes('OtaUpdateFileProvider')) {
         </provider>
     </application>`);
 }
+// Vilotimern (flutter_local_notifications): exakt larm utan att användaren
+// måste godkänna (USE_EXACT_ALARM — ingen butik som granskar), omstart efter
+// omboot, och mottagarna som visar den schemalagda notisen.
+for (const perm of ['USE_EXACT_ALARM', 'RECEIVE_BOOT_COMPLETED']) {
+  if (!manifest.includes(`android.permission.${perm}`)) {
+    manifest = manifest.replace(/<application/, `<uses-permission android:name="android.permission.${perm}"/>\n    <application`);
+  }
+}
+if (!manifest.includes('ScheduledNotificationReceiver')) {
+  manifest = manifest.replace(/<\/application>/, `    <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />
+        <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED"/>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON"/>
+            </intent-filter>
+        </receiver>
+    </application>`);
+}
 writeFileSync(manifestPath, manifest);
 mkdirSync('android/app/src/main/res/xml', { recursive: true });
 writeFileSync('android/app/src/main/res/xml/filepaths.xml', `<?xml version="1.0" encoding="utf-8"?>
