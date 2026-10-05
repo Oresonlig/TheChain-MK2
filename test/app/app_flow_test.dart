@@ -59,6 +59,63 @@ void main() {
     expect(app.status, 'Synced');
   });
 
+  group('glömt lösenord', () {
+    test('kod + nytt lösenord → inloggad, gamla lösenordet ogiltigt', () async {
+      final b = FakeBackend();
+      final app = AppController(b);
+      await app.start();
+      expect(await app.sendResetCode('  '), isFalse);
+      expect(app.error, contains('email first'));
+      expect(await app.sendResetCode('niklas@example.com'), isTrue);
+      expect(app.error, isNull);
+      await app.resetPassword('niklas@example.com', '123 456', 'newpass99', 'newpass99');
+      await pumpEventQueue();
+      expect(app.error, isNull);
+      expect(app.phase, Phase.ready);
+      expect(b.password, 'newpass99');
+      expect(b.storeOpens, 1);
+    });
+
+    test('valideras före servern: kort, olika, saknad kod', () async {
+      final b = FakeBackend();
+      final app = AppController(b);
+      await app.start();
+      await app.sendResetCode('x@y.z');
+      await app.resetPassword('x@y.z', '', 'newpass99', 'newpass99');
+      expect(app.error, contains('code'));
+      await app.resetPassword('x@y.z', '123456', 'short', 'short');
+      expect(app.error, contains('at least 8'));
+      await app.resetPassword('x@y.z', '123456', 'newpass99', 'newpass98');
+      expect(app.error, contains("don't match"));
+      expect(b.sentCode, '123456', reason: 'koden ska inte förbrukas av lokala fel');
+      expect(app.phase, Phase.signedOut);
+    });
+
+    test('fel kod → kvar utloggad med besked', () async {
+      final b = FakeBackend();
+      final app = AppController(b);
+      await app.start();
+      await app.sendResetCode('x@y.z');
+      await app.resetPassword('x@y.z', '999999', 'newpass99', 'newpass99');
+      await pumpEventQueue();
+      expect(app.error, contains('expired or is invalid'));
+      expect(app.phase, Phase.signedOut);
+    });
+
+    test('appen öppnas inte medan lösenordet sätts; misslyckas det loggas man ut', () async {
+      final b = FakeBackend()..failPasswordUpdate = true;
+      final app = AppController(b);
+      await app.start();
+      await app.sendResetCode('x@y.z');
+      await app.resetPassword('x@y.z', '123456', 'samepass1', 'samepass1');
+      await pumpEventQueue();
+      expect(app.error, contains('Password not changed'));
+      expect(app.phase, Phase.signedOut);
+      expect(b.userId, isNull);
+      expect(b.storeOpens, 0);
+    });
+  });
+
   test('import från hemsidan → data i appen och på servern', () async {
     final b = FakeBackend(mk1: mk1());
     final app = AppController(b);

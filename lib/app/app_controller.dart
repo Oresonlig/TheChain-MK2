@@ -22,6 +22,13 @@ abstract class Backend {
   Stream<String?> get userChanges;
   Future<void> signIn(String email, String password);
   Future<void> signOut();
+
+  /// Glömt lösenord: mejlet bär både hemsidans länk och en kod för appen.
+  Future<void> sendPasswordReset(String email);
+
+  /// Koden ur mejlet → inloggad (återställningssession).
+  Future<void> verifyRecoveryCode(String email, String code);
+  Future<void> updatePassword(String password);
   Remote get remote;
   Future<LocalStore> localStoreFor(String userId);
   Future<String> deviceId();
@@ -85,6 +92,9 @@ class AppController extends ChangeNotifier {
   String? _openingUid;
 
   Future<void> _onUser() async {
+    // Koden loggar in innan det nya lösenordet är satt — öppna inte appen förrän
+    // resetPassword är klar (MK1:s inPasswordRecovery).
+    if (_recovering) return;
     final uid = backend.userId;
     if (uid == null) {
       if (repo != null || phase != Phase.signedOut) _clearSession();
@@ -246,6 +256,84 @@ class AppController extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  static const kMinPassword = 8;
+  bool _recovering = false;
+
+  void clearError() {
+    if (error == null) return;
+    error = null;
+    notifyListeners();
+  }
+
+  /// Skickar återställningsmejlet. true = skickat.
+  Future<bool> sendResetCode(String email) async {
+    final e = email.trim();
+    if (e.isEmpty) {
+      error = 'Enter your email first.';
+      notifyListeners();
+      return false;
+    }
+    error = null;
+    busy = true;
+    notifyListeners();
+    try {
+      await backend.sendPasswordReset(e);
+      return true;
+    } catch (x) {
+      error = 'Could not send the email: ${_reason(x)}';
+      return false;
+    } finally {
+      busy = false;
+      notifyListeners();
+    }
+  }
+
+  /// Kod + nytt lösenord i ett svep. Lyckas det öppnas appen inloggad.
+  Future<void> resetPassword(String email, String code, String password, String confirm) async {
+    final digits = code.replaceAll(RegExp(r'\s'), '');
+    if (digits.length < 6) {
+      error = 'Enter the code from the email.';
+    } else if (password.length < kMinPassword) {
+      error = 'Password must be at least $kMinPassword characters.';
+    } else if (password != confirm) {
+      error = "Passwords don't match.";
+    } else {
+      error = null;
+    }
+    if (error != null) {
+      notifyListeners();
+      return;
+    }
+    busy = true;
+    _recovering = true;
+    notifyListeners();
+    try {
+      try {
+        await backend.verifyRecoveryCode(email.trim(), digits);
+      } catch (x) {
+        error = 'Code not accepted: ${_reason(x)}';
+        return;
+      }
+      try {
+        await backend.updatePassword(password);
+      } catch (x) {
+        // Koden är förbrukad men lösenordet oförändrat: logga ut igen, aldrig
+        // inloggad med ett lösenord användaren inte vet om.
+        error = 'Password not changed: ${_reason(x)} Send a new code and try again.';
+        try {
+          await backend.signOut();
+        } catch (_) {}
+      }
+    } finally {
+      _recovering = false;
+      busy = false;
+      notifyListeners();
+    }
+    await _onUser();
+  }
+
+  static String _reason(Object x) => '$x'.replaceFirst(RegExp(r'^Exception: '), '');
 
   Future<void> signOut() async {
     try {

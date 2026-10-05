@@ -40,6 +40,27 @@ class FakeBackend implements Backend {
     _users.add(null);
   }
 
+  /// Glömt lösenord: senaste skickade koden (null = inget mejl).
+  String? sentCode;
+  bool failPasswordUpdate = false;
+
+  @override
+  Future<void> sendPasswordReset(String email) async => sentCode = '123456';
+
+  @override
+  Future<void> verifyRecoveryCode(String email, String code) async {
+    if (sentCode == null || code != sentCode) throw Exception('Token has expired or is invalid');
+    sentCode = null; // förbrukad
+    _uid = 'user-1';
+    _users.add(_uid);
+  }
+
+  @override
+  Future<void> updatePassword(String pw) async {
+    if (failPasswordUpdate) throw Exception('New password should be different from the old password.');
+    password = pw;
+  }
+
   /// Som Supabase vid appstart: sparad inloggning + "initialSession"-händelse.
   void restoreSession() => _uid = 'user-1';
   void emitAuthEvent() => _users.add(_uid);

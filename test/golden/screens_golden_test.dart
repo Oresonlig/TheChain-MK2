@@ -58,6 +58,22 @@ void main() {
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/login.png'));
   });
 
+  testWidgets('login_reset', (tester) async {
+    await _loadSaira();
+    final b = FakeBackend();
+    final app = _app(b);
+    await _phone(tester, TheChainApp(app: app, emailOf: () => ''));
+    await tester.runAsync(app.start);
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).first, 'niklas@example.com');
+    await tester.tap(find.text('Forgot password?'));
+    await tester.runAsync(pumpEventQueue);
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).first, '123456');
+    await tester.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/login_reset.png'));
+  });
+
   testWidgets('kedjevyn', (tester) async {
     await _loadSaira();
     final b = FakeBackend(mk1: {...mk1(), 'restSlots': [2], 'sessionOrder': ['A', 'B', 'C', 'D']});

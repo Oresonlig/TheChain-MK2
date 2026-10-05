@@ -44,6 +44,30 @@ class SupabaseBackend implements Backend {
   @override
   Future<void> signOut() => _client.auth.signOut();
 
+  /// Länken i mejlet går till hemsidans återställning (som i MK1); koden i
+  /// samma mejl används i appen. Mallen i Supabase bär båda.
+  @override
+  Future<void> sendPasswordReset(String email) =>
+      _auth(() => _client.auth.resetPasswordForEmail(email, redirectTo: 'https://thechain.training'));
+
+  @override
+  Future<void> verifyRecoveryCode(String email, String code) =>
+      _auth(() => _client.auth.verifyOTP(email: email, token: code, type: OtpType.recovery));
+
+  @override
+  Future<void> updatePassword(String password) =>
+      _auth(() => _client.auth.updateUser(UserAttributes(password: password)));
+
+  /// Supabase-meddelandet ("Token has expired or is invalid") i stället för
+  /// AuthException-dumpen.
+  static Future<void> _auth(Future<Object?> Function() call) async {
+    try {
+      await call();
+    } on AuthException catch (e) {
+      throw Exception(e.message);
+    }
+  }
+
   @override
   Future<LocalStore> localStoreFor(String userId) async {
     final docs = await getApplicationDocumentsDirectory();
