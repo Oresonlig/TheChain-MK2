@@ -114,21 +114,14 @@ class Repository {
         return (j == null || j.isDeleted) ? const UserSettings() : settingsFromJson(j.value!);
       });
 
-  Set<ExerciseId> hiddenRecords() => _cached('hidden', const [Tables.settings], () {
-        final j = engine[Tables.settings].items[_settingsId];
-        if (j == null || j.isDeleted) return const <ExerciseId>{};
-        return Set.unmodifiable({for (final id in (j.value!['hiddenRecords'] as List?) ?? const []) ExerciseId(id as String)});
-      });
-
   Exercise? exercise(ExerciseId id) => resolveExercise(id, custom: customExercises(), overrides: overrides());
 
-  /// PR per övning, räknat på övningens NUVARANDE mätsätt (records.dart).
-  Map<ExerciseId, PersonalRecord> records({bool includeHidden = false}) =>
-      _cached('records.$includeHidden', const [Tables.workouts, Tables.exercises, Tables.settings], () {
+  /// PR per övning, räknat på övningens NUVARANDE mätsätt (records.dart). Inga
+  /// dolda rekord (Niklas 2026-10-05: "inga PR borde vara dolda").
+  Map<ExerciseId, PersonalRecord> records() => _cached('records', const [Tables.workouts, Tables.exercises], () {
         final custom = customExercises(), over = overrides();
         return Map.unmodifiable(personalRecords(
           history(),
-          hidden: includeHidden ? const {} : hiddenRecords(),
           measureOf: (id) => resolveExercise(id, custom: custom, overrides: over)?.measure,
         ));
       });
@@ -219,14 +212,9 @@ class Repository {
   Future<void> saveOverride(ExerciseId id, ExerciseOverride o, DateTime now) =>
       engine[Tables.exercises].put('override:${id.value}', overrideToJson(id, o), now);
 
-  Future<void> saveSettings(UserSettings s, DateTime now, {Set<ExerciseId>? hidden}) => engine[Tables.settings].put(
-        _settingsId,
-        {
-          ...settingsToJson(s),
-          'hiddenRecords': [for (final id in hidden ?? hiddenRecords()) id.value],
-        },
-        now,
-      );
+  /// Äldre poster kan ha 'hiddenRecords' (MK1:s ignoredPRs, borttaget
+  /// 2026-10-05) — läses inte och skrivs inte längre.
+  Future<void> saveSettings(UserSettings s, DateTime now) => engine[Tables.settings].put(_settingsId, settingsToJson(s), now);
 
   /// Engångsimport från MK1. Under testfasen kan den köras om (MK2-ändringar
   /// skrivs då över). Killswitch-markeringen sätts INTE här — det görs vid den
@@ -242,7 +230,7 @@ class Repository {
       for (final e in s.custom.values) 'custom:${e.id.value}': customExerciseToJson(e),
       for (final o in s.overrides.entries) 'override:${o.key.value}': overrideToJson(o.key, o.value),
     }, now);
-    await saveSettings(s.settings, now, hidden: s.hiddenRecords);
+    await saveSettings(s.settings, now);
   }
 }
 

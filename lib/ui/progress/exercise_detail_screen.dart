@@ -53,7 +53,7 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> with ChartR
     // Bara pass loggade med övningens nuvarande mätsätt — som RECORDS.
     final prog = progression(history, widget.exerciseId, measure: ex?.measure);
     final measure = ex?.measure ?? (prog.isEmpty ? Measure.weight : prog.last.measure);
-    final record = repo.records(includeHidden: true)[widget.exerciseId];
+    final record = repo.records()[widget.exerciseId];
     final win = window(DateTime.now());
     final series = prSeries(prog, measure, win, s, (p) => fmtSet(p.set, p.measure, s));
     final rows = inWindow(prog, (p) => p.date, win).reversed.toList();

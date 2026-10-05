@@ -183,11 +183,12 @@ void main() {
       expect(o.keys.any((k) => k.value.startsWith('extra_')), isFalse);
     });
 
-    test('anteckningar blir nålade, dolda PR per id, egen övning', () {
+    test('anteckningar blir nålade, egen övning; ignoredPRs döljer ingenting', () {
       expect(snap.notes.single.pinned, isTrue);
       expect(snap.notes.single.text, 'seat 4');
-      expect(snap.hiddenRecords, {const ExerciseId('ex_lat_prayers')});
       expect(snap.custom[const ExerciseId('custom_99')]!.measure, Measure.timed);
+      // MK1:s "Remove PR" dolde hela övningen för gott — i MK2 döljs inga PR.
+      expect(personalRecords(snap.history).keys, isNot(isEmpty));
     });
 
     test('kroppsvikt (trasig rad hoppas över) och inställningar', () {

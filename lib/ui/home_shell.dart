@@ -12,6 +12,7 @@ import 'chain/chain_screen.dart';
 import 'progress/progress_screen.dart';
 import 'settings/settings_screen.dart';
 import 'weight/weight_screen.dart';
+import 'workout/rest_timer_bar.dart';
 import 'workout/workout_screen.dart';
 
 class HomeShell extends StatefulWidget {
@@ -58,6 +59,9 @@ class _HomeShellState extends State<HomeShell> {
         builder: (context, _) {
           final active = widget.app.repo?.activeWorkouts().firstOrNull;
           return Column(mainAxisSize: MainAxisSize.min, children: [
+            // Vilan och REST OVER syns på alla flikar — öppnas appen på kedjan
+            // medan larmet ringer ska DISMISS finnas där (Niklas 2026-10-05).
+            RestTimerBar(timer: widget.app.restTimer),
             // Förslag (a), Niklas ja 2026-10-02: pågående pass nås med ett tryck
             // från vilken flik som helst. Kedjefliken har redan CONTINUE-knappen.
             if (active != null && _tab != 0) _ContinueBar(app: widget.app, workout: active),

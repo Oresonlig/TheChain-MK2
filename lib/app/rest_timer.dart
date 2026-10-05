@@ -32,6 +32,9 @@ abstract class RestAlarm {
   /// Behörigheten att tända skärmen. true = given, false/null = inte given.
   Future<bool?> requestWakeScreen();
 
+  /// Samma behörighet, bara avläst (null = okänt, t.ex. i tester).
+  Future<bool?> canWakeScreen();
+
   /// Larmet avfärdades / fick +30 utanför appen (larmvyn, notisens knappar).
   void listen({required void Function() onStopped, required void Function(DateTime end) onSnoozed});
 }
@@ -47,6 +50,8 @@ class SilentRestAlarm implements RestAlarm {
   Future<RestAlarmState?> state() async => null;
   @override
   Future<bool?> requestWakeScreen() async => null;
+  @override
+  Future<bool?> canWakeScreen() async => null;
   @override
   void listen({required void Function() onStopped, required void Function(DateTime end) onSnoozed}) {}
 }
@@ -166,12 +171,19 @@ class RestTimer extends ChangeNotifier {
     _ticker = Timer.periodic(tick, (_) => _onTick());
   }
 
+  bool _checking = false;
+
   void _onTick() {
     final e = _end;
     if (e == null) return;
-    // Säkerhetsnät om larmmotorns besked uteblir: följ dess 60 s.
-    if (!_now().isBefore(e.add(ringMax + const Duration(seconds: 2)))) {
-      _clear();
+    // Säkerhetsnät om larmmotorns besked uteblir: efter dess 60 s frågar vi den.
+    // Ringer den fortfarande ligger REST OVER kvar — DISMISS ska gå att nå.
+    if (!_now().isBefore(e.add(ringMax + const Duration(seconds: 2))) && !_checking) {
+      _checking = true;
+      alarm.state().then((s) {
+        _checking = false;
+        if (_end == e && s?.ringing != true) _clear();
+      });
       return;
     }
     notifyListeners();

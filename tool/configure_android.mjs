@@ -123,6 +123,7 @@ for (const perm of [
   'VIBRATE',
   'FOREGROUND_SERVICE',
   'FOREGROUND_SERVICE_MEDIA_PLAYBACK',
+  'WAKE_LOCK',
 ]) {
   if (!manifest.includes(`android.permission.${perm}"`)) {
     manifest = manifest.replace(/<application/, `<uses-permission android:name="android.permission.${perm}"/>\n    <application`);

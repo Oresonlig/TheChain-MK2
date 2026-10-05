@@ -103,8 +103,19 @@ void main() {
     expect(repo.overrides()[const ExerciseId('ex_deadlift')]!.scheme, SetScheme.standard);
     expect(repo.exercise(const ExerciseId('ex_deadlift'))!.scheme, SetScheme.standard);
     expect(repo.settings().restTimerSecs, 90);
-    expect(repo.hiddenRecords(), {const ExerciseId('ex_lat_prayers')});
     expect(repo.chain().round, snap.mk1Round);
+  });
+
+  test('inga dolda PR — även en äldre synkad "hiddenRecords"-lista ignoreras', () async {
+    final repo = await device(FakeRemote(), 'phone');
+    await repo.importMk1(decodeMk1(mk1()), now);
+    const bench = ExerciseId('ex_bench_press_bb');
+    // Som Niklas data efter importen 2026-10-02: bänken stod på listan.
+    await repo.engine[Tables.settings].put('settings', {'v': 1, 'hiddenRecords': [bench.value]}, now);
+    expect(repo.records()[bench]!.value, 110);
+    await repo.saveSettings(repo.settings(), now);
+    expect(repo.engine[Tables.settings].items['settings']!.value!.containsKey('hiddenRecords'), isFalse,
+        reason: 'nästa sparning tar bort resten ur datan');
   });
 
   test('importerat på telefonen syns på en annan enhet efter synk', () async {

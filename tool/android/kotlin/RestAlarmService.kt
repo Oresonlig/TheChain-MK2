@@ -18,6 +18,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.os.PowerManager
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
@@ -29,6 +30,10 @@ class RestAlarmService : Service() {
 
     private var player: MediaPlayer? = null
     private var vibrator: Vibrator? = null
+
+    /// Håller processorn vaken medan larmet går: på ljudlöst (bara vibration)
+    /// kunde den annars somna och 60-sekunderstimeouten kom aldrig (Niklas b63).
+    private var wakeLock: PowerManager.WakeLock? = null
     private var focus: AudioFocusRequest? = null
     private val handler = Handler(Looper.getMainLooper())
     private val timeout = Runnable { RestAlarm.dismiss(this) }
@@ -43,6 +48,9 @@ class RestAlarmService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (ringing) return START_NOT_STICKY
         ringing = true
+        wakeLock = (getSystemService(Context.POWER_SERVICE) as PowerManager)
+            .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "thechain:restalarm")
+            .apply { acquire(RestAlarm.RING_MAX_MS + 5_000L) }
         RestAlarm.ensureChannels(this)
         RestAlarm.nm(this).cancel(RestAlarm.ID_COUNTDOWN)
         val n = buildNotification()
@@ -133,6 +141,8 @@ class RestAlarmService : Service() {
             focus?.let { (getSystemService(Context.AUDIO_SERVICE) as AudioManager).abandonAudioFocusRequest(it) }
         }
         ringing = false
+        wakeLock?.let { if (it.isHeld) it.release() }
+        wakeLock = null
         RestAlarmActivity.current?.finish()
         super.onDestroy()
     }

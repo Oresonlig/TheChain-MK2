@@ -23,7 +23,6 @@ class Mk1Snapshot {
     required this.custom,
     required this.overrides,
     required this.notes,
-    required this.hiddenRecords,
     required this.manualRestarts,
     required this.mk1Round,
     required this.settings,
@@ -36,7 +35,6 @@ class Mk1Snapshot {
   final Map<ExerciseId, Exercise> custom;
   final Map<ExerciseId, ExerciseOverride> overrides;
   final List<ExerciseNote> notes;
-  final Set<ExerciseId> hiddenRecords;
 
   /// Cykelstarter i MK1 (cycles[1..].id) — matas till chainState som omstarter.
   final List<DateTime> manualRestarts;
@@ -343,9 +341,8 @@ class _Decoder {
             ),
       ];
 
-  Set<ExerciseId> readHidden() => {
-        for (final n in _l(raw['ignoredPRs']).whereType<String>()) exIdForName(n),
-      };
+  // MK1:s ignoredPRs läses medvetet INTE: "Remove PR" dolde hela övningen för
+  // gott, även framtida rekord (MK1-bugg). I MK2 döljs inga PR (Niklas 2026-10-05).
 
   List<BodyweightEntry> readBodyweight() => [
         for (final w in _l(raw['weightLog']).map(_m))
@@ -375,7 +372,6 @@ Mk1Snapshot decodeMk1(Map<String, Object?> raw) {
     custom: d.custom,
     overrides: d.readOverrides(program),
     notes: d.readNotes(),
-    hiddenRecords: d.readHidden(),
     manualRestarts: [for (final c in cycles.skip(1)) ?_ts(c['id'])],
     mk1Round: cycles.isEmpty ? 1 : cycles.length,
     settings: d.readSettings(),

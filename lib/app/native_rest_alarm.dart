@@ -87,6 +87,16 @@ class NativeRestAlarm implements RestAlarm {
   }
 
   @override
+  Future<bool?> canWakeScreen() async {
+    try {
+      return await _ch.invokeMethod<bool>('canWakeScreen');
+    } catch (e) {
+      debugPrint('rest alarm canWake: $e');
+      return null;
+    }
+  }
+
+  @override
   void listen({required void Function() onStopped, required void Function(DateTime end) onSnoozed}) {
     _onStopped = onStopped;
     _onSnoozed = onSnoozed;

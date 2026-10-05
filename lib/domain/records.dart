@@ -87,19 +87,18 @@ Iterable<(DateTime, EntrySource, WorkoutExercise)> _performed(
   return best;
 }
 
-/// PR per övning. [hidden] = övningar användaren dolt (MK1 "ignore PR", nu per id).
+/// PR per övning. Inget döljs: rekordet är det som faktiskt lyftes (Niklas
+/// 2026-10-05 — MK1:s "ignore PR" dolde hela övningen för gott, även framtida PR).
 /// Vid helt lika värde och tiebreak vinner det äldsta — det sattes först.
 /// [measureOf] = övningens NUVARANDE mätsätt: bara pass loggade med det räknas,
 /// så ett bytt mätsätt startar om rekordet utan att något raderas. Byter man
 /// tillbaka kommer de gamla rekorden tillbaka (Niklas 2026-10-04).
 Map<ExerciseId, PersonalRecord> personalRecords(
   Iterable<HistoryEntry> history, {
-  Set<ExerciseId> hidden = const {},
   Measure? Function(ExerciseId id)? measureOf,
 }) {
   final out = <ExerciseId, PersonalRecord>{};
   for (final (date, source, ex) in _performed(history, null)) {
-    if (hidden.contains(ex.exerciseId)) continue;
     if (!_current(ex, measureOf?.call(ex.exerciseId))) continue;
     final b = bestSet(ex.measure, ex.sets);
     if (b == null) continue;

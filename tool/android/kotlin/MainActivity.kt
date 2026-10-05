@@ -41,6 +41,11 @@ class MainActivity : FlutterActivity() {
                         }
                         result.success(null)
                     }
+                    // Läser bara av behörigheten (Settings visar den) — öppnar ingenting.
+                    "canWakeScreen" -> {
+                        val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+                        result.success(Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE || nm.canUseFullScreenIntent())
+                    }
                     "requestWakeScreen" -> {
                         val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE && !nm.canUseFullScreenIntent()) {

@@ -98,7 +98,7 @@ class _ExerciseSheetState extends State<_ExerciseSheet> {
     final repo = widget.app.repo;
     final e = widget.exercise;
     // Bytt mätsätt nollställer rekordet för det nya mätsättet (records.dart).
-    final record = (e == null || repo == null || _measure == e.measure) ? null : repo.records(includeHidden: true)[e.id];
+    final record = (e == null || repo == null || _measure == e.measure) ? null : repo.records()[e.id];
     final unit = repo?.settings().weightUnit ?? WeightUnit.kg;
 
     Widget label(String s) => Padding(

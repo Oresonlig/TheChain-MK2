@@ -118,13 +118,6 @@ void main() {
       expect(prs[bench]!.date, d1);
     });
 
-    test('dolda övningar utesluts', () {
-      final prs = personalRecords([
-        entry(d1, [ex(bench, [work(const SetValues(weight: 100, reps: 5))])]),
-      ], hidden: {bench});
-      expect(prs.containsKey(bench), isFalse);
-    });
-
     test('importerad historik konkurrerar på lika villkor', () {
       final prs = personalRecords([
         entry(d1, [ex(bench, [work(const SetValues(weight: 140, reps: 1))])], source: EntrySource.imported),

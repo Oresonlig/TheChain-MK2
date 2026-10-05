@@ -276,9 +276,33 @@ class _WakeScreenSection extends StatefulWidget {
   State<_WakeScreenSection> createState() => _WakeScreenSectionState();
 }
 
-class _WakeScreenSectionState extends State<_WakeScreenSection> {
-  /// Svar från Android efter ON (null = inte frågat i den här vyn).
+class _WakeScreenSectionState extends State<_WakeScreenSection> with WidgetsBindingObserver {
+  /// Androids svar: given eller inte (null = okänt). Läses av när sidan öppnas
+  /// och när man kommer tillbaka från Androids inställningssida.
   bool? _granted;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _check();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _check();
+  }
+
+  Future<void> _check() async {
+    final g = await widget.app.restTimer.alarm.canWakeScreen();
+    if (mounted) setState(() => _granted = g);
+  }
 
   Future<void> _on() async {
     await widget.app.updateSettings(_copy(widget.settings, wakeScreen: true));
@@ -294,16 +318,15 @@ class _WakeScreenSectionState extends State<_WakeScreenSection> {
     final status = !s.restWakeScreen
         ? 'Off: the alert beeps and vibrates, the screen stays dark.'
         : _granted == false
-            ? 'Android has not allowed it yet. Turn on full-screen notifications for the app in the page that opened, then tap ON again.'
-            : 'The screen lights up when the rest is over. The phone stays locked.';
+            ? 'Android does not allow it yet — tap ON and turn on full-screen notifications for the app.'
+            : _granted == true
+                ? 'Allowed by Android. The screen lights up when the rest is over; the phone stays locked.'
+                : 'The screen lights up when the rest is over. The phone stays locked.';
     return settingsSection(context, 'SCREEN WAKE-UP', [
       Row(children: [
         _choice(context, 'ON', s.restWakeScreen, _on),
         const SizedBox(width: 8),
-        _choice(context, 'OFF', !s.restWakeScreen, () {
-          setState(() => _granted = null);
-          widget.app.updateSettings(_copy(s, wakeScreen: false));
-        }),
+        _choice(context, 'OFF', !s.restWakeScreen, () => widget.app.updateSettings(_copy(s, wakeScreen: false))),
       ]),
       const SizedBox(height: 8),
       Text(status, style: text.bodySmall!.copyWith(color: _granted == false && s.restWakeScreen ? c.accent : c.textMuted)),
