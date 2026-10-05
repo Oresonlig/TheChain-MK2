@@ -22,7 +22,8 @@ Future<void> main() async {
   final backend = await SupabaseBackend.init();
   final app = AppController(
     backend,
-    updater: kChannel == 'dev' ? Updater(channel: kChannel, currentBuild: int.tryParse(kBuild) ?? 0) : null,
+    // DEV och STABLE uppdaterar sig själva från var sin release; lokala byggen inte.
+    updater: kChannel == 'dev' || kChannel == 'stable' ? Updater(channel: kChannel, currentBuild: int.tryParse(kBuild) ?? 0) : null,
     restTimer: RestTimer(alarm: NativeRestAlarm(look: nanosuitThemeData().extension<ChainTheme>()!)),
     appBuild: kBuild == '0' ? '' : '${kChannel.toUpperCase()} · build $kBuild',
   );

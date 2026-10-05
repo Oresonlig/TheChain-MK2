@@ -40,7 +40,7 @@ UpdateInfo? parseVersionJson(String body, String base) {
     final j = (jsonDecode(body) as Map).cast<String, Object?>();
     final build = (j['build'] as num?)?.toInt();
     if (build == null) return null;
-    return UpdateInfo(build: build, apkUrl: '$base/${j['apk'] ?? 'thechain-dev.apk'}', sha256: j['sha256'] as String?);
+    return UpdateInfo(build: build, apkUrl: '$base/${j['apk'] ?? 'thechain.apk'}', sha256: j['sha256'] as String?);
   } catch (_) {
     return null;
   }
@@ -92,7 +92,7 @@ class Updater {
         case OtaStatus.INSTALLATION_DONE:
           yield 'Installed';
         case OtaStatus.PERMISSION_NOT_GRANTED_ERROR:
-          yield 'Allow The Chain DEV to install apps, then tap Update again';
+          yield 'Allow ${channel == 'dev' ? 'The Chain DEV' : 'The Chain'} to install apps, then tap Update again';
         case OtaStatus.CHECKSUM_ERROR:
           yield 'Download was corrupted — tap Update again';
         case OtaStatus.ALREADY_RUNNING_ERROR:

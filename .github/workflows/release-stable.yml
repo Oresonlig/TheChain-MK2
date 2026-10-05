@@ -1,0 +1,142 @@
+name: Release STABLE
+
+# Stabila kanalen (Niklas 2026-10-05): ett DEV-bygge som Niklas godkänt blir
+# "The Chain" (com.oresonlig.thechain — SAMMA paket och nyckel som MK1-appen,
+# så MK2 installeras som en uppdatering av den). Släpps BARA på Niklas ord:
+# taggen `stable-<DEV-byggnummer>` sätts på det byggets commit, t.ex. stable-71.
+#
+# 1. Bygger och publicerar `stable-latest` i det här repot (appens egen
+#    självuppdatering, lib/app/updater.dart, kanal "stable").
+# 2. BRON från MK1-appen (om secret RESISTANCE_TOKEN finns): samma APK som
+#    release `android-v2.0.<N>` i Oresonlig/Resistance + versionsfilen där
+#    (capacitor.config.json, appendUserAgent) → MK1-appens uppdaterare ser 2.0.<N>.
+#    APK FÖRST, versionsfilen SIST — den får aldrig peka på en fil som inte finns.
+# versionCode = 20000 + N: alltid över MK1 (1.2.8 = 10208), och ökar med N.
+
+on:
+  push:
+    tags: ['stable-*']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-stable
+  cancel-in-progress: false
+
+jobs:
+  release-stable:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Build number from tag
+        id: n
+        run: |
+          N="${GITHUB_REF_NAME#stable-}"
+          case "$N" in ''|*[!0-9]*) echo "::error::Tag must be stable-<number>, got $GITHUB_REF_NAME"; exit 1;; esac
+          echo "n=$N" >> "$GITHUB_OUTPUT"
+          echo "code=$((20000 + N))" >> "$GITHUB_OUTPUT"
+          echo "name=2.0.$N" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Generate Android platform
+        run: flutter create --platforms android --org com.oresonlig --project-name the_chain .
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: App icon
+        run: dart run flutter_launcher_icons
+
+      - name: Test
+        run: flutter test
+
+      # Stabila kanalen ska ALDRIG vara debug-signerad: då går den inte att
+      # installera ovanpå MK1-appen (LESSONS §1).
+      - name: Decode signing key
+        id: signing
+        run: |
+          if [ -z "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" ]; then
+            echo "::error::No signing secrets — a STABLE build must be release-signed."; exit 1
+          fi
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/release.keystore"
+          echo "path=$RUNNER_TEMP/release.keystore" >> "$GITHUB_OUTPUT"
+
+      - name: Configure STABLE channel
+        env:
+          ANDROID_KEYSTORE_PATH: ${{ steps.signing.outputs.path }}
+        run: node tool/configure_android.mjs stable
+
+      - name: Build APK
+        env:
+          ANDROID_KEYSTORE_PATH: ${{ steps.signing.outputs.path }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: >
+          flutter build apk --release
+          --target-platform android-arm64
+          --build-name ${{ steps.n.outputs.name }}
+          --build-number ${{ steps.n.outputs.code }}
+          --dart-define=CHANNEL=stable
+          --dart-define=BUILD=${{ steps.n.outputs.n }}
+
+      - name: Publish stable-latest
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp build/app/outputs/flutter-apk/app-release.apk thechain.apk
+          SHA=$(sha256sum thechain.apk | cut -d' ' -f1)
+          echo "{\"build\": ${{ steps.n.outputs.n }}, \"sha256\": \"$SHA\", \"apk\": \"thechain.apk\"}" > version.json
+          cat version.json
+          if gh release view stable-latest >/dev/null 2>&1; then
+            gh release upload stable-latest thechain.apk --clobber
+            gh release upload stable-latest version.json --clobber
+            git tag -f stable-latest "${{ github.sha }}"
+            git push -f origin stable-latest
+            gh release edit stable-latest --title "The Chain ${{ steps.n.outputs.name }}" \
+              --notes "STABLE channel (com.oresonlig.thechain). From DEV build ${{ steps.n.outputs.n }}, commit ${{ github.sha }}."
+          else
+            gh release create stable-latest thechain.apk version.json --target "${{ github.sha }}" \
+              --title "The Chain ${{ steps.n.outputs.name }}" \
+              --notes "STABLE channel (com.oresonlig.thechain). From DEV build ${{ steps.n.outputs.n }}, commit ${{ github.sha }}."
+          fi
+
+      - name: Bridge from the MK1 app (Resistance release + version file)
+        env:
+          GH_TOKEN: ${{ secrets.RESISTANCE_TOKEN }}
+          VERSION: ${{ steps.n.outputs.name }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::warning::No RESISTANCE_TOKEN — stable-latest is published, but MK1 apps will not see the update."
+            exit 0
+          fi
+          R=Oresonlig/Resistance
+          # 1. APK:n som android-v<version> (MK1-appens uppdaterare laddar ner därifrån).
+          if gh release view "android-v$VERSION" -R "$R" >/dev/null 2>&1; then
+            gh release upload "android-v$VERSION" thechain.apk -R "$R" --clobber
+          else
+            gh release create "android-v$VERSION" thechain.apk -R "$R" --latest \
+              --title "The Chain $VERSION (MK2)" \
+              --notes "MK2 — replaces the MK1 app when you tap Update. Built from TheChain-MK2 DEV build ${{ steps.n.outputs.n }}."
+          fi
+          # 2. SIST: versionsfilen som MK1-appen läser (bara appendUserAgent ändras).
+          META=$(gh api "repos/$R/contents/capacitor.config.json")
+          FILE_SHA=$(echo "$META" | jq -r .sha)
+          echo "$META" | jq -r .content | base64 -d > cap.json
+          jq --arg ua "TheChainShell/$VERSION" '.appendUserAgent = $ua' cap.json > cap.new.json
+          gh api -X PUT "repos/$R/contents/capacitor.config.json" \
+            -f message="MK2 $VERSION: MK1-appen uppdateras till MK2 (bron)" \
+            -f sha="$FILE_SHA" \
+            -f content="$(base64 -w0 cap.new.json)"
+          echo "MK1 apps now see TheChainShell/$VERSION"
