@@ -1,4 +1,5 @@
-// Genererar vilotimerns pipljud: tre korta pip (≈1,2 s), 16-bit mono WAV.
+// Genererar vilotimerns pipljud: två omgångar med tre korta pip och en kort
+// paus emellan (Niklas 2026-10-05), 16-bit mono WAV.
 // Kör: node tool/make_beep.mjs → tool/res/raw/rest_beep.wav (kopieras till
 // android/…/res/raw av configure_android.mjs).
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -8,15 +9,19 @@ import { fileURLToPath } from 'node:url';
 const out = join(dirname(fileURLToPath(import.meta.url)), 'res', 'raw', 'rest_beep.wav');
 const rate = 44100;
 const beep = 0.16, gap = 0.12, freq = 1760; // högt, kort, skär igenom gymmusik
-const total = 3 * beep + 2 * gap + 0.05;
+const rounds = 2, pause = 0.5;
+const round = 3 * beep + 2 * gap;
+const total = rounds * round + (rounds - 1) * pause + 0.05;
 const n = Math.round(total * rate);
 const pcm = Buffer.alloc(n * 2);
 for (let i = 0; i < n; i++) {
   const t = i / rate;
-  const k = Math.floor(t / (beep + gap));
-  const local = t - k * (beep + gap);
+  const r = Math.floor(t / (round + pause));
+  const inRound = t - r * (round + pause);
+  const k = Math.floor(inRound / (beep + gap));
+  const local = inRound - k * (beep + gap);
   let v = 0;
-  if (k < 3 && local < beep) {
+  if (r < rounds && inRound < round && k < 3 && local < beep) {
     const fade = Math.min(1, local / 0.005, (beep - local) / 0.005); // inga klick
     v = Math.sin(2 * Math.PI * freq * t) * 0.9 * fade;
   }
