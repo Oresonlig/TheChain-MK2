@@ -16,6 +16,7 @@ import '../units.dart';
 import 'exercise_picker.dart';
 import 'rest_timer_bar.dart';
 import 'session_note_dialog.dart';
+import 'workout_tour.dart';
 
 class WorkoutScreen extends StatefulWidget {
   const WorkoutScreen({super.key, required this.controller, this.now, this.app});
@@ -33,6 +34,10 @@ class WorkoutScreen extends StatefulWidget {
 class _WorkoutScreenState extends State<WorkoutScreen> {
   WorkoutController get controller => widget.controller;
 
+  /// Rundturen första gången (onboarding): pekar på det expanderade kortets knappar.
+  final _tourKeys = TourKeys();
+  bool _touring = false;
+
   // Versionskollen går centralt (AppController.startUpdatePolling); passvyn
   // lyssnar bara för att visa notisen.
   @override
@@ -40,6 +45,22 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     super.initState();
     controller.addListener(_showError);
     widget.app?.addListener(_onApp);
+    if (!controller.repo.settings().workoutTourSeen && controller.expandedRowId != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _touring = true);
+      });
+    }
+  }
+
+  Future<void> _tourDone() async {
+    setState(() => _touring = false);
+    final s = controller.repo.settings().copyWith(workoutTourSeen: true);
+    final app = widget.app;
+    if (app != null) {
+      await app.updateSettings(s);
+    } else {
+      await controller.repo.saveSettings(s, DateTime.now());
+    }
   }
 
   @override
@@ -77,7 +98,8 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
           final sessionName = w.sessionName ?? controller.repo.program().sessionById(w.sessionId)?.name ?? 'Session';
           final doneCount = w.exercises.where((e) => e.status != ExerciseStatus.open).length;
           final canFinish = controller.canFinish;
-          return Column(children: [
+          return Stack(children: [
+            Column(children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(4, 4, 16, 0),
               child: Row(children: [
@@ -119,6 +141,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                       row: r,
                       expanded: controller.expandedRowId == r.id,
                       now: (widget.now ?? DateTime.now)(),
+                      tour: controller.expandedRowId == r.id ? _tourKeys : null,
                     ),
                     const SizedBox(height: 10),
                   ],
@@ -178,6 +201,20 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
               ),
             ),
             if (widget.app case final a?) RestTimerBar(timer: a.restTimer),
+            ]),
+            if (_touring)
+              Positioned.fill(
+                child: WorkoutTour(
+                  onFinished: _tourDone,
+                  steps: [
+                    TourStep(_tourKeys.log, 'LOG each set',
+                        'Tap LOG after each set — tap again to unlock it. Missed reps? FAIL appears under a logged set; your record still counts what you did.'),
+                    TourStep(_tourKeys.done, 'DONE when every set is logged',
+                        'Not doing the rest? Remove sets with − or SKIP the exercise.'),
+                    TourStep(_tourKeys.menu, 'Swap or remove', 'For today only, or permanently in your program.'),
+                  ],
+                ),
+              ),
           ]);
         },
       ),
@@ -204,12 +241,15 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
 }
 
 class ExerciseCard extends StatelessWidget {
-  const ExerciseCard({super.key, required this.controller, required this.row, required this.expanded, required this.now});
+  const ExerciseCard({super.key, required this.controller, required this.row, required this.expanded, required this.now, this.tour});
 
   final WorkoutController controller;
   final WorkoutExercise row;
   final bool expanded;
   final DateTime now;
+
+  /// Rundturens mål (bara på det expanderade kortet).
+  final TourKeys? tour;
 
   @override
   Widget build(BuildContext context) {
@@ -280,10 +320,13 @@ class ExerciseCard extends StatelessWidget {
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(children: [
           Expanded(child: header),
-          IconButton(
-            tooltip: 'More',
-            onPressed: () => _menu(context),
-            icon: Icon(Icons.more_vert, color: c.textMuted),
+          KeyedSubtree(
+            key: tour?.menu,
+            child: IconButton(
+              tooltip: 'More',
+              onPressed: () => _menu(context),
+              icon: Icon(Icons.more_vert, color: c.textMuted),
+            ),
           ),
         ]),
         Padding(
@@ -334,6 +377,7 @@ class ExerciseCard extends StatelessWidget {
                 set: s,
                 label: 'W${i + 1}',
                 editable: editable,
+                logKey: i == 0 ? tour?.log : null,
                 lastGoal: _lastGoal(last, row.measure, SetKind.warmup, i)),
         ],
         const SizedBox(height: 12),
@@ -346,6 +390,7 @@ class ExerciseCard extends StatelessWidget {
               set: s,
               label: 'S${i + 1}',
               editable: editable,
+              logKey: i == 0 && warm.isEmpty ? tour?.log : null,
               lastGoal: _lastGoal(last, row.measure, SetKind.work, i)),
         if (editable) ...[
           const SizedBox(height: 16),
@@ -362,6 +407,7 @@ class ExerciseCard extends StatelessWidget {
             const SizedBox(width: 12),
             Expanded(
               flex: 2,
+              key: tour?.done,
               child: Semantics(
                 button: true,
                 enabled: canDone,
@@ -525,7 +571,11 @@ class SetRow extends StatefulWidget {
     required this.label,
     required this.editable,
     this.lastGoal,
+    this.logKey,
   });
+
+  /// Rundturens mål: LOG-knappen på passets första set.
+  final GlobalKey? logKey;
 
   /// Förra passets ej nådda mål för samma set, i fältets enhet ("4").
   final String? lastGoal;
@@ -673,6 +723,7 @@ class _SetRowState extends State<SetRow> {
         ),
       Column(children: [
         GestureDetector(
+          key: widget.logKey,
           onTap: widget.editable ? () => widget.controller.toggleLog(widget.row.id, s.id) : null,
           child: SizedBox(
             width: 72,

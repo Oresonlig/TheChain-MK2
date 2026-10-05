@@ -287,6 +287,7 @@ Json settingsToJson(UserSettings s) => {
       'ambient': s.ambientEffects,
       'finishNote': s.finishNote,
       'restWake': s.restWakeScreen,
+      if (s.workoutTourSeen) 'tourSeen': true,
     };
 
 UserSettings settingsFromJson(Json j) => UserSettings(
@@ -298,4 +299,5 @@ UserSettings settingsFromJson(Json j) => UserSettings(
       ambientEffects: j['ambient'] != false,
       finishNote: j['finishNote'] != false,
       restWakeScreen: j['restWake'] != false,
+      workoutTourSeen: j['tourSeen'] == true,
     );

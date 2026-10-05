@@ -47,7 +47,47 @@ Future<void> _phone(WidgetTester tester, Widget app) async {
 /// ligga kvar när testet slutar.
 AppController _app(FakeBackend b) => AppController(b, syncDelay: Duration.zero);
 
+/// Rundturen har sin egen bild; övriga passvyns-bilder visar vyn utan den.
+Future<void> _tourSeen(AppController app) => app.updateSettings(app.repo!.settings().copyWith(workoutTourSeen: true));
+
 void main() {
+  testWidgets('välkomstskärmen (nytt konto, tomt program)', (tester) async {
+    await _loadSaira();
+    final b = FakeBackend(mk1: mk1());
+    final app = _app(b);
+    await _phone(tester, TheChainApp(app: app, emailOf: () => ''));
+    await tester.runAsync(() async {
+      await app.start();
+      await app.signIn('x', 'secret');
+      await pumpEventQueue();
+      await app.checkWebsiteData();
+    });
+    await tester.pumpAndSettle();
+    expect(find.text('BRING MY WEBSITE DATA'), findsOneWidget);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/welcome.png'));
+  });
+
+  testWidgets('rundturen i passvyn (första gången)', (tester) async {
+    await _loadSaira();
+    final b = FakeBackend(mk1: {...mk1(), 'sessionOrder': ['A', 'B']});
+    final app = _app(b);
+    await _phone(tester, TheChainApp(app: app, emailOf: () => ''));
+    await tester.runAsync(() async {
+      await app.start();
+      await app.signIn('x', 'secret');
+      await pumpEventQueue();
+      await app.importFromWebsite();
+    });
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('START SESSION'));
+    await tester.pumpAndSettle();
+    expect(find.text('LOG each set'), findsOneWidget);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/tour_log.png'));
+    await tester.tap(find.text('NEXT'));
+    await tester.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/tour_done.png'));
+  });
+
   testWidgets('login', (tester) async {
     await _loadSaira();
     final b = FakeBackend();
@@ -84,6 +124,7 @@ void main() {
       await app.signIn('x', 'secret');
       await pumpEventQueue();
       await app.importFromWebsite();
+      await _tourSeen(app);
     });
     await tester.pumpAndSettle();
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/chain.png'));
@@ -99,6 +140,7 @@ void main() {
       await app.signIn('x', 'secret');
       await pumpEventQueue();
       await app.importFromWebsite();
+      await _tourSeen(app);
     });
     await tester.pumpAndSettle();
     await tester.tap(find.text('CHE').first); // pass A (avslutat) i slidern
@@ -117,6 +159,7 @@ void main() {
         await app.signIn('x', 'secret');
         await pumpEventQueue();
         await app.importFromWebsite();
+      await _tourSeen(app);
       });
       await tester.pumpAndSettle();
       await tester.tap(find.text(tab));
@@ -135,6 +178,7 @@ void main() {
       await app.signIn('x', 'secret');
       await pumpEventQueue();
       await app.importFromWebsite();
+      await _tourSeen(app);
     });
     app.openWorkout(const SessionId('B'));
     await tester.pumpAndSettle();
@@ -157,6 +201,7 @@ void main() {
       await app.signIn('x', 'secret');
       await pumpEventQueue();
       await app.importFromWebsite();
+      await _tourSeen(app);
     });
     await tester.pumpAndSettle();
     await tester.tap(find.text('START SESSION'));
@@ -174,6 +219,7 @@ void main() {
       await app.signIn('x', 'secret');
       await pumpEventQueue();
       await app.importFromWebsite();
+      await _tourSeen(app);
     });
     await tester.pumpAndSettle();
     await tester.tap(find.text('START SESSION'));
@@ -203,6 +249,7 @@ void main() {
       await app.signIn('x', 'secret');
       await pumpEventQueue();
       await app.importFromWebsite();
+      await _tourSeen(app);
       // Förra passet: uppvärmning + arbetsset där sista failade mot mål 5.
       final wc = app.openWorkout(const SessionId('A'));
       wc.addSet(wc.workout.exercises.first.id, SetKind.warmup);
@@ -240,6 +287,7 @@ void main() {
       await app.signIn('x', 'secret');
       await pumpEventQueue();
       await app.importFromWebsite();
+      await _tourSeen(app);
     });
     await tester.pumpAndSettle();
     await tester.tap(find.text('START SESSION'));
@@ -313,6 +361,7 @@ void main() {
       await app.signIn('x', 'secret');
       await pumpEventQueue();
       await app.importFromWebsite();
+      await _tourSeen(app);
     });
     await tester.pumpAndSettle();
     return app;
@@ -352,6 +401,7 @@ void main() {
       await app.signIn('niklas@example.com', 'secret');
       await pumpEventQueue();
       await app.importFromWebsite();
+      await _tourSeen(app);
     });
     await tester.pumpAndSettle();
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/dev_home.png'));
@@ -367,6 +417,7 @@ void main() {
       await app.signIn('niklas@example.com', 'secret');
       await pumpEventQueue();
       await app.importFromWebsite();
+      await _tourSeen(app);
     });
     await tester.pumpAndSettle();
     await tester.tap(find.text('SETTINGS'));
@@ -406,6 +457,7 @@ void main() {
       await app.signIn('niklas@example.com', 'secret');
       await pumpEventQueue();
       await app.importFromWebsite();
+      await _tourSeen(app);
     });
     await tester.pumpAndSettle();
     // Ett pågående pass: byggaren säger att ändringar gäller nästa gång.

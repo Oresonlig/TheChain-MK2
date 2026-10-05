@@ -11,9 +11,8 @@ import '../../theme/chain_theme.dart';
 import '../../theme/background_scope.dart';
 import '../../theme/surfaces.dart';
 import '../copy_text.dart';
-import '../program/program_screen.dart';
-import '../settings/data_sync_screen.dart';
 import '../nanosuit_scaffold.dart';
+import '../onboarding/welcome_panel.dart';
 import '../units.dart';
 import '../workout/workout_screen.dart';
 import 'chain_strip.dart';
@@ -85,35 +84,12 @@ class _ChainScreenState extends State<ChainScreen> {
           final history = repo.history();
           final inProgress = {for (final w in repo.activeWorkouts()) w.sessionId};
 
-          // Ny användare: den enda gången byggaren nås från kedjevyn (Niklas
-          // 2026-10-04: så lite plotter som möjligt — sedan via Settings).
+          // Ny användare (tomt program): välkomstskärmen — den enda gången
+          // byggaren nås från kedjevyn (Niklas 2026-10-04/05: så lite plotter som möjligt).
           if (program.sessions.isEmpty) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Glass(
-                  child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                    Text('No program yet', style: text.titleLarge, textAlign: TextAlign.center),
-                    const SizedBox(height: 8),
-                    Text('Build your chain of sessions — one muscle group or day per letter.',
-                        style: text.bodySmall, textAlign: TextAlign.center),
-                    const SizedBox(height: 16),
-                    GestureDetector(
-                      onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => ProgramScreen(app: widget.app))),
-                      child: Raised(
-                        material: c.raisedActive,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        child: Center(child: Text('BUILD YOUR PROGRAM', style: text.labelLarge)),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    TextButton(
-                      onPressed: () => _openDev(context),
-                      child: Text('Used the website? Import your data', style: text.bodySmall),
-                    ),
-                  ]),
-                ),
-              ),
+            return ListView(
+              padding: const EdgeInsets.fromLTRB(16, 24, 16, 32),
+              children: [WelcomePanel(app: widget.app)],
             );
           }
 
@@ -289,10 +265,6 @@ class _ChainScreenState extends State<ChainScreen> {
         ),
       );
   }
-
-  void _openDev(BuildContext context) => Navigator.of(context).push(MaterialPageRoute<void>(
-        builder: (_) => DataSyncScreen(app: widget.app, email: widget.email, versionLabel: widget.buildLabel),
-      ));
 }
 
 class _UpdateBanner extends StatelessWidget {

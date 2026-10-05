@@ -78,6 +78,7 @@ jobs:
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: >
           flutter build apk --release
+          --target-platform android-arm64
           --build-name 0.1.${{ github.run_number }}
           --build-number ${{ github.run_number }}
           --dart-define=CHANNEL=dev

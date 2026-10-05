@@ -25,6 +25,7 @@ class UserSettings {
     this.ambientEffects = true,
     this.finishNote = true,
     this.restWakeScreen = true,
+    this.workoutTourSeen = false,
   });
 
   final WeightUnit weightUnit;
@@ -44,6 +45,9 @@ class UserSettings {
   /// Vilotimerns signal tänder skärmen (helskärmsnotis).
   final bool restWakeScreen;
 
+  /// Rundturen i passvyn (LOG / DONE / ⋮) är visad — en gång, på alla enheter.
+  final bool workoutTourSeen;
+
   /// [clearGoal] = ta bort viktmålet (null betyder annars "oförändrat").
   UserSettings copyWith({
     WeightUnit? weightUnit,
@@ -55,6 +59,7 @@ class UserSettings {
     bool? ambientEffects,
     bool? finishNote,
     bool? restWakeScreen,
+    bool? workoutTourSeen,
   }) =>
       UserSettings(
         weightUnit: weightUnit ?? this.weightUnit,
@@ -65,5 +70,6 @@ class UserSettings {
         ambientEffects: ambientEffects ?? this.ambientEffects,
         finishNote: finishNote ?? this.finishNote,
         restWakeScreen: restWakeScreen ?? this.restWakeScreen,
+        workoutTourSeen: workoutTourSeen ?? this.workoutTourSeen,
       );
 }

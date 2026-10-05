@@ -220,8 +220,8 @@ UserSettings _copy(UserSettings s,
       finishNote: finishNote,
     );
 
-/// Två- eller flervalsknapp (KG / LBS).
-Widget _choice(BuildContext context, String label, bool on, VoidCallback onTap) {
+/// Två- eller flervalsknapp (KG / LBS). Delas med välkomstskärmen.
+Widget choiceButton(BuildContext context, String label, bool on, VoidCallback onTap) {
   final c = context.chain;
   final text = Theme.of(context).textTheme;
   return Expanded(
@@ -340,9 +340,9 @@ class _WakeScreenSectionState extends State<_WakeScreenSection> with WidgetsBind
             '${missing ? '\nTap ON to allow what is missing.' : ''}';
     return settingsSection(context, 'SCREEN WAKE-UP', [
       Row(children: [
-        _choice(context, 'ON', s.restWakeScreen, _on),
+        choiceButton(context, 'ON', s.restWakeScreen, _on),
         const SizedBox(width: 8),
-        _choice(context, 'OFF', !s.restWakeScreen, () => widget.app.updateSettings(_copy(s, wakeScreen: false))),
+        choiceButton(context, 'OFF', !s.restWakeScreen, () => widget.app.updateSettings(_copy(s, wakeScreen: false))),
       ]),
       const SizedBox(height: 8),
       Text(status, style: text.bodySmall!.copyWith(color: missing ? c.accent : c.textMuted)),
@@ -363,23 +363,23 @@ class TrainingSettingsScreen extends StatelessWidget {
           return [
             settingsSection(context, 'WEIGHT UNIT', [
               Row(children: [
-                _choice(context, 'KG', s.weightUnit == WeightUnit.kg, () => app.updateSettings(_copy(s, w: WeightUnit.kg))),
+                choiceButton(context, 'KG', s.weightUnit == WeightUnit.kg, () => app.updateSettings(_copy(s, w: WeightUnit.kg))),
                 const SizedBox(width: 8),
-                _choice(context, 'LBS', s.weightUnit == WeightUnit.lbs, () => app.updateSettings(_copy(s, w: WeightUnit.lbs))),
+                choiceButton(context, 'LBS', s.weightUnit == WeightUnit.lbs, () => app.updateSettings(_copy(s, w: WeightUnit.lbs))),
               ]),
             ]),
             settingsSection(context, 'TEMPERATURE UNIT', [
               Row(children: [
-                _choice(context, '°C', s.tempUnit == TempUnit.celsius, () => app.updateSettings(_copy(s, t: TempUnit.celsius))),
+                choiceButton(context, '°C', s.tempUnit == TempUnit.celsius, () => app.updateSettings(_copy(s, t: TempUnit.celsius))),
                 const SizedBox(width: 8),
-                _choice(context, '°F', s.tempUnit == TempUnit.fahrenheit, () => app.updateSettings(_copy(s, t: TempUnit.fahrenheit))),
+                choiceButton(context, '°F', s.tempUnit == TempUnit.fahrenheit, () => app.updateSettings(_copy(s, t: TempUnit.fahrenheit))),
               ]),
             ]),
             settingsSection(context, 'NOTE WHEN FINISHING', [
               Row(children: [
-                _choice(context, 'ON', s.finishNote, () => app.updateSettings(_copy(s, finishNote: true))),
+                choiceButton(context, 'ON', s.finishNote, () => app.updateSettings(_copy(s, finishNote: true))),
                 const SizedBox(width: 8),
-                _choice(context, 'OFF', !s.finishNote, () => app.updateSettings(_copy(s, finishNote: false))),
+                choiceButton(context, 'OFF', !s.finishNote, () => app.updateSettings(_copy(s, finishNote: false))),
               ]),
               const SizedBox(height: 8),
               Text('FINISH SESSION asks "How did it feel?" (optional). The note shows in History and at the end of COPY.',
@@ -387,9 +387,9 @@ class TrainingSettingsScreen extends StatelessWidget {
             ]),
             settingsSection(context, 'REST TIMER', [
               Row(children: [
-                _choice(context, 'ON', s.restTimerEnabled, () => app.updateSettings(_copy(s, timer: true))),
+                choiceButton(context, 'ON', s.restTimerEnabled, () => app.updateSettings(_copy(s, timer: true))),
                 const SizedBox(width: 8),
-                _choice(context, 'OFF', !s.restTimerEnabled, () {
+                choiceButton(context, 'OFF', !s.restTimerEnabled, () {
                   app.restTimer.stop();
                   app.updateSettings(_copy(s, timer: false));
                 }),

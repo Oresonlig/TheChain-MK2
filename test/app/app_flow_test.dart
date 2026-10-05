@@ -206,7 +206,7 @@ void main() {
       await pumpEventQueue();
     });
     await tester.pump();
-    expect(find.text('No program yet'), findsOneWidget); // före import
+    expect(find.text('Welcome'), findsOneWidget); // före import: välkomstskärmen
     await tester.runAsync(app.importFromWebsite);
     await tester.pump();
     expect(find.textContaining('Round'), findsOneWidget);
@@ -304,6 +304,14 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Bench Press (BB)'), findsOneWidget);
     expect(find.text('FINISH SESSION'), findsOneWidget);
+
+    // Rundturen första gången: pekar på LOG; SKIP stänger den för gott.
+    expect(find.text('LOG each set'), findsOneWidget);
+    await tester.tap(find.widgetWithText(TextButton, 'SKIP')); // rundturens, inte övningens SKIP
+    await tester.runAsync(() => pumpEventQueue());
+    await tester.pumpAndSettle();
+    expect(find.text('LOG each set'), findsNothing);
+    expect(app.repo!.settings().workoutTourSeen, isTrue);
 
     // Första övningen är expanderad: skriv vikt + reps i sista arbetssetet och logga.
     final fields = find.byType(TextField);

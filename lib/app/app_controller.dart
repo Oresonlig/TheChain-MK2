@@ -152,6 +152,7 @@ class AppController extends ChangeNotifier {
     _openWorkout = null;
     moved = null;
     movedAt = null;
+    websiteData = null;
     repo = null;
     status = null;
     lastSync = null;
@@ -505,6 +506,25 @@ class AppController extends ChangeNotifier {
 
   /// Appen kommer tillbaka från bakgrunden: hämta det andra enheter ändrat.
   Future<void> onResume() => syncNow();
+
+  /// Finns data på hemsidan för kontot? (Välkomstskärmen erbjuder bara importen
+  /// då.) null = inte kollat eller nätfel.
+  bool? websiteData;
+  bool _checkingWebsite = false;
+
+  Future<void> checkWebsiteData() async {
+    if (_checkingWebsite || websiteData != null) return;
+    _checkingWebsite = true;
+    try {
+      final raw = await backend.fetchMk1State();
+      websiteData = raw != null && (raw['log'] is List && (raw['log'] as List).isNotEmpty || raw['sessionOrder'] is List);
+    } catch (_) {
+      // Nätfel: frågas om nästa gång välkomstskärmen visas.
+    } finally {
+      _checkingWebsite = false;
+      notifyListeners();
+    }
+  }
 
   /// Engångsimport från hemsidan (MK1). Kan köras om under testfasen.
   Future<void> importFromWebsite() async {
