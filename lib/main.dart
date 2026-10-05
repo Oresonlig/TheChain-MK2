@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 
 import 'app/app_controller.dart';
-import 'app/notification_rest_alarm.dart';
+import 'app/native_rest_alarm.dart';
 import 'app/rest_timer.dart';
+import 'theme/chain_theme.dart';
 import 'app/supabase_backend.dart';
 import 'app/updater.dart';
 import 'theme/nanosuit.dart';
@@ -22,7 +23,7 @@ Future<void> main() async {
   final app = AppController(
     backend,
     updater: kChannel == 'dev' ? Updater(channel: kChannel, currentBuild: int.tryParse(kBuild) ?? 0) : null,
-    restTimer: RestTimer(alarm: NotificationRestAlarm()),
+    restTimer: RestTimer(alarm: NativeRestAlarm(look: nanosuitThemeData().extension<ChainTheme>()!)),
   );
   runApp(TheChainApp(app: app, emailOf: () => backend.userEmail ?? ''));
   await app.start();
@@ -53,7 +54,7 @@ class _TheChainAppState extends State<TheChainApp> {
     super.initState();
     app.addListener(_onPhase);
     app.startUpdatePolling();
-    app.restTimer.appResumed(); // gammal signalnotis bort vid start
+    app.restTimer.appResumed(); // larm som ringer / vila som pågår när appen startar
     _lifecycle = AppLifecycleListener(
       onShow: () {
         app.startUpdatePolling();

@@ -90,13 +90,9 @@ manifest = manifest.replace(/android:label="[^"]*"/, `android:label="${cfg.label
 if (!/android:launchMode="[^"]*"/.test(manifest)) { console.error('android:launchMode not found'); process.exit(1); }
 manifest = manifest.replace(/android:launchMode="[^"]*"/, 'android:launchMode="singleTask"');
 manifest = manifest.replace(/\s*android:taskAffinity=""/, '');
-// Vilotimerns full-screen-notis får tända skärmen — men appen visas ALDRIG över
-// låsskärmen (showWhenLocked gav hela appen utan upplåsning: säkerhetshål,
-// Niklas 2026-10-05). Vill vi ha en vy över låsskärmen blir det en egen
-// minimal larmvy, inte appen.
-if (!manifest.includes('android:turnScreenOn')) {
-  manifest = manifest.replace(/android:launchMode="singleTask"/, 'android:launchMode="singleTask"\n            android:turnScreenOn="true"');
-}
+// Appen (MainActivity) visas ALDRIG över låsskärmen — showWhenLocked gav hela
+// appen utan upplåsning (säkerhetshål, Niklas 2026-10-05). Bara larmvyn
+// (RestAlarmActivity, nedan) får det.
 // Flutters mall ger bara debug-byggen INTERNET — release behöver den för Supabase.
 if (!manifest.includes('android.permission.INTERNET')) {
   manifest = manifest.replace(/<application/, '<uses-permission android:name="android.permission.INTERNET"/>\n    <application');
@@ -116,29 +112,47 @@ if (!manifest.includes('OtaUpdateFileProvider')) {
         </provider>
     </application>`);
 }
-// Vilotimern (flutter_local_notifications): exakt larm utan att användaren
-// måste godkänna (USE_EXACT_ALARM — ingen butik som granskar), omstart efter
-// omboot, och mottagarna som visar den schemalagda notisen.
-// Full-screen intent: skärmen tänds och appen visas över låsskärmen när vilan
-// är slut (Niklas 2026-10-05). Beviljas som standard utanför Play Store.
-for (const perm of ['USE_EXACT_ALARM', 'RECEIVE_BOOT_COMPLETED', 'USE_FULL_SCREEN_INTENT']) {
-  if (!manifest.includes(`android.permission.${perm}`)) {
+// Vilotimerns larmmotor (tool/android/kotlin, "som klockans larm"): exakt larm
+// utan fråga (USE_EXACT_ALARM — ingen butik granskar), notiser, helskärm
+// (skärmen tänds), vibration och förgrundstjänst som spelar pipet med
+// tillfällig ljudfokus (musiken pausas och fortsätter sedan).
+for (const perm of [
+  'USE_EXACT_ALARM',
+  'USE_FULL_SCREEN_INTENT',
+  'POST_NOTIFICATIONS',
+  'VIBRATE',
+  'FOREGROUND_SERVICE',
+  'FOREGROUND_SERVICE_MEDIA_PLAYBACK',
+]) {
+  if (!manifest.includes(`android.permission.${perm}"`)) {
     manifest = manifest.replace(/<application/, `<uses-permission android:name="android.permission.${perm}"/>\n    <application`);
   }
 }
-if (!manifest.includes('ScheduledNotificationReceiver')) {
-  manifest = manifest.replace(/<\/application>/, `    <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />
-        <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver">
-            <intent-filter>
-                <action android:name="android.intent.action.BOOT_COMPLETED"/>
-                <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
-                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
-                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON"/>
-            </intent-filter>
-        </receiver>
+if (!manifest.includes('RestAlarmService')) {
+  manifest = manifest.replace(/<\/application>/, `    <receiver android:name=".RestAlarmReceiver" android:exported="false" />
+        <service
+            android:name=".RestAlarmService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
+        <activity
+            android:name=".RestAlarmActivity"
+            android:exported="false"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:excludeFromRecents="true"
+            android:launchMode="singleInstance"
+            android:taskAffinity="\${applicationId}.restalarm"
+            android:theme="@android:style/Theme.DeviceDefault.NoActionBar" />
     </application>`);
 }
 writeFileSync(manifestPath, manifest);
+
+// Larmmotorns Kotlin-filer; MainActivity ersätts (samma FlutterActivity + kanalen).
+const ktDir = 'android/app/src/main/kotlin/com/oresonlig/the_chain';
+mkdirSync(ktDir, { recursive: true });
+for (const f of ['MainActivity.kt', 'RestAlarm.kt', 'RestAlarmReceiver.kt', 'RestAlarmService.kt', 'RestAlarmActivity.kt']) {
+  copyFileSync(`tool/android/kotlin/${f}`, `${ktDir}/${f}`);
+}
 mkdirSync('android/app/src/main/res/xml', { recursive: true });
 writeFileSync('android/app/src/main/res/xml/filepaths.xml', `<?xml version="1.0" encoding="utf-8"?>
 <paths xmlns:android="http://schemas.android.com/apk/res/android">
@@ -146,12 +160,9 @@ writeFileSync('android/app/src/main/res/xml/filepaths.xml', `<?xml version="1.0"
 </paths>
 `);
 
-// Vilotimerns pipljud (tool/make_beep.mjs) + keep-fil: resursen nås bara via
-// namn från notisen, så release-byggets resurskrympning skulle annars ta bort den.
+// Vilotimerns pipljud (tool/make_beep.mjs). RestAlarmService refererar R.raw.rest_beep,
+// så resurskrympningen behåller den.
 mkdirSync('android/app/src/main/res/raw', { recursive: true });
 copyFileSync('tool/res/raw/rest_beep.wav', 'android/app/src/main/res/raw/rest_beep.wav');
-writeFileSync('android/app/src/main/res/raw/keep.xml', `<?xml version="1.0" encoding="utf-8"?>
-<resources xmlns:tools="http://schemas.android.com/tools" tools:keep="@raw/rest_beep" />
-`);
 
 console.log(`Configured ${channel}: ${cfg.appId} "${cfg.label}" · ${signed ? 'release-signed' : 'DEBUG-signed (no keystore secret)'}`);

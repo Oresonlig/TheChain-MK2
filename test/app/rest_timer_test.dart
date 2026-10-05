@@ -17,11 +17,21 @@ class RecordingAlarm implements RestAlarm {
   }
   @override
   Future<void> cancel() async => cancels++;
-  int clears = 0;
-  @override
-  Future<void> clearDone() async => clears++;
   @override
   Future<bool?> requestWakeScreen() async => true;
+
+  /// Larmmotorns läge som appResumed läser.
+  RestAlarmState? native;
+  @override
+  Future<RestAlarmState?> state() async => native;
+
+  late void Function() stopped;
+  late void Function(DateTime) snoozed;
+  @override
+  void listen({required void Function() onStopped, required void Function(DateTime end) onSnoozed}) {
+    stopped = onStopped;
+    snoozed = onSnoozed;
+  }
 }
 
 void main() {
@@ -72,15 +82,48 @@ void main() {
       expect(alarm.scheduled.length, 2);
     });
 
-    test('tillbaka i appen: signalen rensas — men inte mitt i en vila', () {
-      timer.appResumed();
-      expect(alarm.clears, 1);
+    test('larmet ringer: +30 S = ny vila på 30 s från nu, DISMISS tystar', () {
       timer.start(60);
-      timer.appResumed();
-      expect(alarm.clears, 1, reason: 'den schemalagda signalen får inte försvinna');
+      now = now.add(const Duration(seconds: 65));
+      expect(timer.done, isTrue);
+      timer.adjust(RestTimer.step);
+      expect(timer.done, isFalse);
+      expect(timer.remainingSecs, 30);
+      expect(alarm.scheduled.last, now.add(const Duration(seconds: 30)));
+      now = now.add(const Duration(seconds: 31));
+      timer.adjust(-RestTimer.step); // −30 finns inte i larmläget
+      expect(timer.done, isTrue);
+      timer.stop();
+      expect(timer.running, isFalse);
+      expect(alarm.cancels, 1);
+    });
+
+    test('larmvyn utanför appen: DISMISS och +30 S följer med in i appen', () {
+      timer.start(60);
       now = now.add(const Duration(seconds: 61));
-      timer.appResumed();
-      expect(alarm.clears, 2);
+      final end = now.add(const Duration(seconds: 30));
+      alarm.snoozed(end);
+      expect(timer.remainingSecs, 30);
+      expect(alarm.scheduled.length, 1, reason: 'larmmotorn har redan schemalagt — inte en gång till');
+      alarm.stopped();
+      expect(timer.running, isFalse);
+      expect(alarm.cancels, 0);
+    });
+
+    test('appen syns igen: synkar mot larmmotorn', () async {
+      timer.start(60);
+      // Avfärdat medan appen låg i bakgrunden.
+      alarm.native = const RestAlarmState(ringing: false);
+      await timer.appResumed();
+      expect(timer.running, isFalse);
+      // Ringer när appen startar om → REST OVER.
+      alarm.native = RestAlarmState(ringing: true, end: now.subtract(const Duration(seconds: 2)));
+      await timer.appResumed();
+      expect(timer.done, isTrue);
+      // +30 från larmvyn medan Flutter inte lyssnade.
+      alarm.native = RestAlarmState(ringing: false, end: now.add(const Duration(seconds: 30)));
+      await timer.appResumed();
+      expect(timer.remainingSecs, 30);
     });
 
     test('fri vilotid i Settings: 10 s – 10 min', () {
@@ -91,7 +134,7 @@ void main() {
       expect(fmtRestChoice(135), '2:15');
     });
 
-    test('noll → "rest over" en stund, sedan borta av sig själv', () {
+    test('noll → REST OVER medan larmet ringer', () {
       timer.start(10);
       now = now.add(const Duration(seconds: 11));
       expect(timer.done, isTrue);

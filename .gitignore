@@ -10,14 +10,15 @@ build/
 .idea/
 .vscode/
 
-# F0: plattformsmappar genereras i CI (`flutter create`). Tas in i git den dag
-# vi behöver egen native-kod (t.ex. självuppdateringen).
-android/
-ios/
-web/
-linux/
-macos/
-windows/
+# F0: plattformsmappar genereras i CI (`flutter create`). Egen native-kod ligger
+# i tool/android/ och kopieras in av configure_android.mjs — därför ankrat till
+# roten (`android/` utan / matchade även tool/android/).
+/android/
+/ios/
+/web/
+/linux/
+/macos/
+/windows/
 .metadata
 
 # Signering — får ALDRIG in i git

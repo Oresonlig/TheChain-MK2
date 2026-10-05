@@ -53,11 +53,22 @@ class RestTimerBar extends StatelessWidget {
                   child: GhostButton(label: '+30', semanticLabel: 'Rest 30 seconds more', onTap: () => timer.adjust(RestTimer.step)),
                 ),
                 const SizedBox(width: 6),
+                SizedBox(
+                  width: 48,
+                  child: GhostButton(label: '', icon: Icons.close, semanticLabel: 'Stop rest timer', onTap: timer.stop, color: c.textMuted),
+                ),
+              ] else ...[
+                // Larmet ringer: samma val som larmvyn över låsskärmen.
+                SizedBox(
+                  width: 72,
+                  child: GhostButton(label: '+30 S', semanticLabel: 'Rest 30 seconds more', onTap: () => timer.adjust(RestTimer.step)),
+                ),
+                const SizedBox(width: 6),
+                SizedBox(
+                  width: 104,
+                  child: GhostButton(label: 'DISMISS', onTap: timer.stop, color: c.accent),
+                ),
               ],
-              SizedBox(
-                width: 48,
-                child: GhostButton(label: '', icon: Icons.close, semanticLabel: 'Stop rest timer', onTap: timer.stop, color: c.textMuted),
-              ),
             ]),
           ),
         );
