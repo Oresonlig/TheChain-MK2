@@ -46,7 +46,7 @@ class NotificationRestAlarm implements RestAlarm {
       _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
 
   @override
-  Future<void> schedule(DateTime end) async {
+  Future<void> schedule(DateTime end, {bool wakeScreen = true}) async {
     if (!await _init()) return;
     try {
       // Android 13+: fråga om notiser första gången timern används.
@@ -103,9 +103,9 @@ class NotificationRestAlarm implements RestAlarm {
             vibrationPattern: Int64List.fromList([0, 500, 200, 500, 200, 500]),
             category: AndroidNotificationCategory.alarm,
             channelShowBadge: false,
-            // Tänder skärmen och visar appen över låsskärmen (kräver att
-            // behörigheten är given, se requestWakeScreen); annars stor notis.
-            fullScreenIntent: true,
+            // Tänder skärmen (kräver behörigheten, se requestWakeScreen). Appen
+            // visas aldrig över låsskärmen — telefonen förblir låst.
+            fullScreenIntent: wakeScreen, // Settings → SCREEN WAKE-UP
             visibility: NotificationVisibility.public,
             timeoutAfter: const Duration(minutes: 2).inMilliseconds,
           ),

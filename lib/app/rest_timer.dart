@@ -11,8 +11,8 @@ import 'package:flutter/foundation.dart';
 /// Signalen utanför appen (notiser i appen, fake i tester).
 abstract class RestAlarm {
   /// Visar nedräkningen i notisfältet och schemalägger signalen vid [end].
-  /// Ersätter en tidigare schemaläggning.
-  Future<void> schedule(DateTime end);
+  /// Ersätter en tidigare schemaläggning. [wakeScreen] = helskärmsnotis.
+  Future<void> schedule(DateTime end, {bool wakeScreen = true});
   Future<void> cancel();
 
   /// Tar bort den avklarade signalen (man är tillbaka i appen).
@@ -26,7 +26,7 @@ abstract class RestAlarm {
 class SilentRestAlarm implements RestAlarm {
   const SilentRestAlarm();
   @override
-  Future<void> schedule(DateTime end) async {}
+  Future<void> schedule(DateTime end, {bool wakeScreen = true}) async {}
   @override
   Future<void> cancel() async {}
   @override
@@ -50,6 +50,7 @@ class RestTimer extends ChangeNotifier {
 
   DateTime? _end;
   Timer? _ticker;
+  bool _wakeScreen = true;
 
   bool get running => _end != null;
 
@@ -63,7 +64,8 @@ class RestTimer extends ChangeNotifier {
 
   bool get done => running && remainingSecs <= 0;
 
-  void start(int secs) {
+  void start(int secs, {bool wakeScreen = true}) {
+    _wakeScreen = wakeScreen;
     _end = _now().add(Duration(seconds: secs));
     _arm();
   }
@@ -97,7 +99,7 @@ class RestTimer extends ChangeNotifier {
   }
 
   void _arm() {
-    unawaited(alarm.schedule(_end!));
+    unawaited(alarm.schedule(_end!, wakeScreen: _wakeScreen));
     _ticker?.cancel();
     _ticker = Timer.periodic(tick, (_) => _onTick());
     notifyListeners();

@@ -90,9 +90,12 @@ manifest = manifest.replace(/android:label="[^"]*"/, `android:label="${cfg.label
 if (!/android:launchMode="[^"]*"/.test(manifest)) { console.error('android:launchMode not found'); process.exit(1); }
 manifest = manifest.replace(/android:launchMode="[^"]*"/, 'android:launchMode="singleTask"');
 manifest = manifest.replace(/\s*android:taskAffinity=""/, '');
-// Vilotimerns full-screen-notis får tända skärmen och visa appen över låsskärmen.
-if (!manifest.includes('android:showWhenLocked')) {
-  manifest = manifest.replace(/android:launchMode="singleTask"/, 'android:launchMode="singleTask"\n            android:showWhenLocked="true"\n            android:turnScreenOn="true"');
+// Vilotimerns full-screen-notis får tända skärmen — men appen visas ALDRIG över
+// låsskärmen (showWhenLocked gav hela appen utan upplåsning: säkerhetshål,
+// Niklas 2026-10-05). Vill vi ha en vy över låsskärmen blir det en egen
+// minimal larmvy, inte appen.
+if (!manifest.includes('android:turnScreenOn')) {
+  manifest = manifest.replace(/android:launchMode="singleTask"/, 'android:launchMode="singleTask"\n            android:turnScreenOn="true"');
 }
 // Flutters mall ger bara debug-byggen INTERNET — release behöver den för Supabase.
 if (!manifest.includes('android.permission.INTERNET')) {

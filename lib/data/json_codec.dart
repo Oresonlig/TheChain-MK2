@@ -271,6 +271,7 @@ Json settingsToJson(UserSettings s) => {
       if (s.weightGoalKg != null) 'goalKg': s.weightGoalKg,
       'ambient': s.ambientEffects,
       'finishNote': s.finishNote,
+      'restWake': s.restWakeScreen,
     };
 
 UserSettings settingsFromJson(Json j) => UserSettings(
@@ -281,4 +282,5 @@ UserSettings settingsFromJson(Json j) => UserSettings(
       weightGoalKg: _d(j['goalKg']),
       ambientEffects: j['ambient'] != false,
       finishNote: j['finishNote'] != false,
+      restWakeScreen: j['restWake'] != false,
     );

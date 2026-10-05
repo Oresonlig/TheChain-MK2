@@ -78,12 +78,12 @@ class SettingsScreen extends StatelessWidget {
               ),
               SettingsRow(
                 title: 'Training',
-                subtitle: 'Units',
+                subtitle: 'Units · finish note · rest timer',
                 onTap: () => open(TrainingSettingsScreen(app: app)),
               ),
               SettingsRow(
                 title: 'Appearance',
-                subtitle: 'Moving background',
+                subtitle: 'Theme · moving background',
                 onTap: () => open(AppearanceSettingsScreen(app: app)),
               ),
               SettingsRow(
@@ -208,8 +208,10 @@ Widget settingsSection(BuildContext context, String title, List<Widget> children
   );
 }
 
-UserSettings _copy(UserSettings s, {WeightUnit? w, TempUnit? t, bool? ambient, bool? timer, int? timerSecs, bool? finishNote}) =>
+UserSettings _copy(UserSettings s,
+        {WeightUnit? w, TempUnit? t, bool? ambient, bool? timer, int? timerSecs, bool? finishNote, bool? wakeScreen}) =>
     s.copyWith(
+      restWakeScreen: wakeScreen,
       weightUnit: w,
       tempUnit: t,
       restTimerEnabled: timer,
@@ -262,46 +264,49 @@ Future<void> _askRestSecs(BuildContext context, AppController app, UserSettings 
   if (v != null) await app.updateSettings(_copy(s, timerSecs: clampRestSecs(v)));
 }
 
-/// Behörigheten att tända skärmen när vilan är slut. Samsung kan ha den
-/// avstängd — då blir signalen en liten notis (Niklas 2026-10-05).
-class _WakeScreenRow extends StatefulWidget {
-  const _WakeScreenRow({required this.app});
+/// Vilotimerns signal tänder skärmen. ON kräver en behörighet som Samsung kan
+/// ha stängt av — då öppnas Androids sida för den (Niklas 2026-10-05: knappen
+/// var för subtil, ska se ut som resten).
+class _WakeScreenSection extends StatefulWidget {
+  const _WakeScreenSection({required this.app, required this.settings});
   final AppController app;
+  final UserSettings settings;
 
   @override
-  State<_WakeScreenRow> createState() => _WakeScreenRowState();
+  State<_WakeScreenSection> createState() => _WakeScreenSectionState();
 }
 
-class _WakeScreenRowState extends State<_WakeScreenRow> {
+class _WakeScreenSectionState extends State<_WakeScreenSection> {
+  /// Svar från Android efter ON (null = inte frågat i den här vyn).
   bool? _granted;
-  bool _asked = false;
 
-  Future<void> _ask() async {
+  Future<void> _on() async {
+    await widget.app.updateSettings(_copy(widget.settings, wakeScreen: true));
     final g = await widget.app.restTimer.alarm.requestWakeScreen();
-    if (!mounted) return;
-    setState(() {
-      _granted = g;
-      _asked = true;
-    });
+    if (mounted) setState(() => _granted = g == true);
   }
 
   @override
   Widget build(BuildContext context) {
+    final s = widget.settings;
     final c = context.chain;
     final text = Theme.of(context).textTheme;
-    final status = !_asked
-        ? 'Lets the alert light up the screen and show over the lock screen.'
-        : _granted == true
-            ? 'Allowed — the screen lights up when the rest is over.'
-            : 'Not allowed. Turn on full-screen notifications for the app in the page that opened, then come back.';
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      GhostButton(
-        label: _granted == true ? 'SCREEN WAKE-UP · ALLOWED' : 'ALLOW SCREEN WAKE-UP',
-        onTap: _ask,
-        color: _granted == true ? c.success : null,
-      ),
-      const SizedBox(height: 6),
-      Text(status, style: text.bodySmall!.copyWith(color: c.textMuted)),
+    final status = !s.restWakeScreen
+        ? 'Off: the alert beeps and vibrates, the screen stays dark.'
+        : _granted == false
+            ? 'Android has not allowed it yet. Turn on full-screen notifications for the app in the page that opened, then tap ON again.'
+            : 'The screen lights up when the rest is over. The phone stays locked.';
+    return settingsSection(context, 'SCREEN WAKE-UP', [
+      Row(children: [
+        _choice(context, 'ON', s.restWakeScreen, _on),
+        const SizedBox(width: 8),
+        _choice(context, 'OFF', !s.restWakeScreen, () {
+          setState(() => _granted = null);
+          widget.app.updateSettings(_copy(s, wakeScreen: false));
+        }),
+      ]),
+      const SizedBox(height: 8),
+      Text(status, style: text.bodySmall!.copyWith(color: _granted == false && s.restWakeScreen ? c.accent : c.textMuted)),
     ]);
   }
 }
@@ -396,10 +401,9 @@ class TrainingSettingsScreen extends StatelessWidget {
                 Text('Tap the time to type exact seconds. Starts when you log a work set. Signals with sound and '
                     'vibration, also when the phone is locked or you are in another app.',
                     style: Theme.of(context).textTheme.bodySmall!.copyWith(color: context.chain.textMuted)),
-                const SizedBox(height: 12),
-                _WakeScreenRow(app: app),
               ],
             ]),
+            if (s.restTimerEnabled) _WakeScreenSection(app: app, settings: s),
           ];
         },
       );

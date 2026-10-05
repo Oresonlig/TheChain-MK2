@@ -24,6 +24,7 @@ class UserSettings {
     this.weightGoalKg,
     this.ambientEffects = true,
     this.finishNote = true,
+    this.restWakeScreen = true,
   });
 
   final WeightUnit weightUnit;
@@ -40,6 +41,9 @@ class UserSettings {
   /// "How did it feel?" vid FINISH SESSION (Settings → Training).
   final bool finishNote;
 
+  /// Vilotimerns signal tänder skärmen (helskärmsnotis).
+  final bool restWakeScreen;
+
   /// [clearGoal] = ta bort viktmålet (null betyder annars "oförändrat").
   UserSettings copyWith({
     WeightUnit? weightUnit,
@@ -50,6 +54,7 @@ class UserSettings {
     bool clearGoal = false,
     bool? ambientEffects,
     bool? finishNote,
+    bool? restWakeScreen,
   }) =>
       UserSettings(
         weightUnit: weightUnit ?? this.weightUnit,
@@ -59,5 +64,6 @@ class UserSettings {
         weightGoalKg: clearGoal ? null : (weightGoalKg ?? this.weightGoalKg),
         ambientEffects: ambientEffects ?? this.ambientEffects,
         finishNote: finishNote ?? this.finishNote,
+        restWakeScreen: restWakeScreen ?? this.restWakeScreen,
       );
 }

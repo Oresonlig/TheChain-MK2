@@ -8,9 +8,13 @@ import 'workout_controller_test.dart' show mk1;
 
 class RecordingAlarm implements RestAlarm {
   final scheduled = <DateTime>[];
+  final wakes = <bool>[];
   int cancels = 0;
   @override
-  Future<void> schedule(DateTime end) async => scheduled.add(end);
+  Future<void> schedule(DateTime end, {bool wakeScreen = true}) async {
+    scheduled.add(end);
+    wakes.add(wakeScreen);
+  }
   @override
   Future<void> cancel() async => cancels++;
   int clears = 0;
@@ -108,7 +112,7 @@ void main() {
       await app.signIn('x', 'secret');
       await pumpEventQueue();
       await app.importFromWebsite();
-      await app.updateSettings(UserSettings(restTimerEnabled: enabled, restTimerSecs: 90));
+      await app.updateSettings(UserSettings(restTimerEnabled: enabled, restTimerSecs: 90, restWakeScreen: false));
       return (app, alarm);
     }
 
@@ -125,6 +129,7 @@ void main() {
       wc.toggleLog(row.id, work.id);
       expect(app.restTimer.running, isTrue);
       expect(alarm.scheduled.length, 1);
+      expect(alarm.wakes.single, isFalse, reason: 'SCREEN WAKE-UP av i Settings');
       // Låsa upp ett set startar inte om timern.
       wc.toggleLog(row.id, work.id);
       expect(alarm.scheduled.length, 1);
