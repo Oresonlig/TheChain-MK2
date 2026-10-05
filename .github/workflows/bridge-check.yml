@@ -1,9 +1,11 @@
 name: Bridge check (dry run)
 
 # Torrtest av bron till Resistance (2026-10-05): kan RESISTANCE_TOKEN läsa
-# versionsfilen och SKRIVA releaser? Skapar och raderar ett UTKAST — syns inte
-# för någon (varken hemsidan, /releases/latest eller MK1-appens uppdaterare).
-# Rör inte capacitor.config.json. Start: tagg bridge-check-<något>.
+# versionsfilen och SKRIVA releaser? Skapar och raderar ett UTKAST via API:t —
+# syns inte för någon (varken hemsidan, /releases/latest eller MK1-appens
+# uppdaterare). Städar kvarlämnade utkast från tidigare körningar. Rör inte
+# capacitor.config.json. Fel skrivs som annotering (läsbar utan inloggning).
+# Start: tagg bridge-check-<något>.
 
 on:
   push:
@@ -16,12 +18,13 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - name: Token present
+      - name: Token present and valid
         env:
-          T: ${{ secrets.RESISTANCE_TOKEN }}
+          GH_TOKEN: ${{ secrets.RESISTANCE_TOKEN }}
         run: |
-          if [ -z "$T" ]; then echo "::error::RESISTANCE_TOKEN is missing"; exit 1; fi
-          echo "RESISTANCE_TOKEN is set"
+          if [ -z "$GH_TOKEN" ]; then echo "::error::RESISTANCE_TOKEN is missing"; exit 1; fi
+          OUT=$(gh api repos/Oresonlig/Resistance --jq .full_name 2>&1) || { echo "::error::Token rejected: $OUT"; exit 1; }
+          echo "Token works for $OUT"
 
       - name: Read the version file
         env:
@@ -33,14 +36,20 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.RESISTANCE_TOKEN }}
         run: |
-          R=Oresonlig/Resistance
-          TAG="bridge-check-${{ github.run_number }}"
-          gh release create "$TAG" -R "$R" --draft --title "Bridge check (delete me)" --notes "Dry run from TheChain-MK2." --target main
-          echo "Draft created"
-          gh release delete "$TAG" -R "$R" --yes --cleanup-tag
+          R=repos/Oresonlig/Resistance
+          # Kvarlämnade utkast från tidigare torrtest bort först.
+          for id in $(gh api "$R/releases?per_page=50" --jq '.[] | select(.draft and .name == "Bridge check (delete me)") | .id'); do
+            gh api -X DELETE "$R/releases/$id" && echo "Removed leftover draft $id"
+          done
+          OUT=$(gh api -X POST "$R/releases" -f tag_name="bridge-check-${{ github.run_number }}" -f target_commitish=main \
+                -f name="Bridge check (delete me)" -f body="Dry run from TheChain-MK2." -F draft=true --jq .id 2>&1) \
+            || { echo "::error::Cannot create a release in Resistance: $OUT"; exit 1; }
+          echo "Draft $OUT created"
+          gh api -X DELETE "$R/releases/$OUT" || { echo "::error::Draft $OUT created but could not be deleted"; exit 1; }
           echo "Draft deleted — the token can write releases"
 
       - name: Remove this repo's trigger tag
+        if: always()
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh api -X DELETE "repos/${{ github.repository }}/git/refs/tags/${{ github.ref_name }}" || true
