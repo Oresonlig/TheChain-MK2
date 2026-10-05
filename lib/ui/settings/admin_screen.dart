@@ -165,7 +165,9 @@ class _AdminScreenState extends State<AdminScreen> {
                   style: text.bodySmall!.copyWith(color: u.webActivity == null ? c.textFaint : c.textBody),
                 ),
                 Text(
-                  'Signed in ${ago(u.lastSignIn)}${u.providers.isEmpty ? '' : ' · ${u.providers}'}'
+                  // last_sign_in_at = senaste RIKTIGA inloggningen; man förblir
+                  // inloggad mellan besöken — aktiviteten står på raderna ovan.
+                  'Last login ${ago(u.lastSignIn)}${u.providers.isEmpty ? '' : ' · ${u.providers}'}'
                   '${u.created == null ? '' : ' · joined ${fmtDate(u.created!)}'}',
                   style: text.labelSmall,
                 ),
