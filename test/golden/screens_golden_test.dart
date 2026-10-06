@@ -23,6 +23,10 @@ Future<void> _loadSaira() async {
   final loader = FontLoader('Saira')
     ..addFont(Future.value(ByteData.sublistView(File('assets/fonts/Saira-Variable.ttf').readAsBytesSync())));
   await loader.load();
+  for (final (family, file) in const [('Cinzel', 'Cinzel-Variable.ttf'), ('Martian Mono', 'MartianMono-Variable.ttf')]) {
+    await (FontLoader(family)..addFont(Future.value(ByteData.sublistView(File('assets/fonts/$file').readAsBytesSync()))))
+        .load();
+  }
   // Ikontypsnittet ur den lokala SDK:n, så att ikoner syns i bilderna.
   final icons = File('../.flutter-sdk/bin/cache/artifacts/material_fonts/MaterialIcons-Regular.otf');
   if (icons.existsSync()) {
@@ -213,6 +217,55 @@ void main() {
     });
     await tester.pumpAndSettle();
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/chain.png'));
+  });
+
+  testWidgets('Cosmic Horror: kedjan (pågående, avklarat, överhoppat), passvyn, settings', (tester) async {
+    await _loadSaira();
+    final b = FakeBackend(mk1: {...mk1(), 'restSlots': [2], 'sessionOrder': ['A', 'B', 'C', 'D']});
+    final app = _app(b);
+    tester.view.physicalSize = const Size(1080, 2340);
+    tester.view.devicePixelRatio = 2.625;
+    addTearDown(tester.view.reset);
+    // Animationer PÅ: ådrornas pulser och hjärtslaget ska synas mitt i rörelsen.
+    await tester.pumpWidget(MediaQuery(
+      data: const MediaQueryData(size: Size(411.4, 891.4), devicePixelRatio: 2.625, padding: EdgeInsets.only(top: 36, bottom: 24)),
+      child: TheChainApp(app: app, emailOf: () => ''),
+    ));
+    await tester.runAsync(() async {
+      await app.start();
+      await app.signIn('x', 'secret');
+      await pumpEventQueue();
+      await app.importFromWebsite();
+      await _tourSeen(app);
+      await app.updateSettings(app.repo!.settings().copyWith(theme: 'cosmic'));
+      await app.skipSession(const SessionId('C'), 'Travel');
+    });
+    app.openWorkout(const SessionId('D'));
+    Future<void> frames(int n) async {
+      for (var i = 0; i < n; i++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+    }
+
+    await frames(41); // mitt i ett hjärtslag (lub)
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/cosmic_chain.png'));
+    Future<void> pick(String label) async {
+      await tester.ensureVisible(find.text(label).first);
+      await frames(6);
+      await tester.tap(find.text(label).first);
+      await frames(12);
+    }
+
+    await pick('B');
+    await pick('CHE'); // avklarade A: ärret
+    await frames(8);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/cosmic_done.png'));
+    await pick('V');
+    await pick('D');
+    await tester.tap(find.text('CONTINUE SESSION'));
+    await frames(20);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/cosmic_workout.png'));
+    await tester.pumpWidget(const SizedBox());
   });
 
   testWidgets('avslutat pass: låst, COPY + UNDO', (tester) async {

@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:the_chain/theme/cosmic_horror.dart';
 import 'package:the_chain/theme/hex_field.dart';
 import 'package:the_chain/theme/nanosuit.dart';
 
 void main() {
-  testWidgets('ambient av → på: vågen rör sig igen (fryste 2026-10-03)', (tester) async {
+  for (final theme in [nanosuit, cosmicHorror]) {
+  testWidgets('${theme.name}: ambient av → på: bakgrunden rör sig igen (fryste 2026-10-03)', (tester) async {
     final model = HexFieldModel();
     Widget bg(bool on) => Directionality(
           textDirection: TextDirection.ltr,
-          child: HexFieldBackground(theme: nanosuit, enabled: on, model: model),
+          child: HexFieldBackground(theme: theme, enabled: on, model: model),
         );
 
     await tester.pumpWidget(bg(true));
@@ -28,4 +30,5 @@ void main() {
     }
     expect(model.frame, greaterThan(stopped + 10), reason: 'på igen = rör sig');
   });
+  }
 }

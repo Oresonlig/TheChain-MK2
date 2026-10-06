@@ -45,3 +45,10 @@ flutter:
         - asset: assets/fonts/Saira-Variable.ttf
         - asset: assets/fonts/Saira-Italic-Variable.ttf
           style: italic
+    # Cosmic Horror (Niklas 2026-10-06): Cinzel stort, Martian Mono smått.
+    - family: Cinzel
+      fonts:
+        - asset: assets/fonts/Cinzel-Variable.ttf
+    - family: Martian Mono
+      fonts:
+        - asset: assets/fonts/MartianMono-Variable.ttf

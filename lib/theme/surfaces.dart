@@ -142,19 +142,77 @@ class ChevronBorder extends OutlinedBorder {
   ShapeBorder scale(double t) => ChevronBorder(inset: inset * t, side: side.scale(t));
 }
 
-/// Upphöjd yta i chevron-form: gradient topp→botten, ljus överkant, kant, glöd.
+/// Stabilt frö ur en sträng (String.hashCode är inte stabilt mellan körningar).
+int shapeSeed(String s) {
+  var h = 0x811C9DC5;
+  for (final u in s.codeUnits) {
+    h = ((h ^ u) * 0x01000193) & 0x7FFFFFFF;
+  }
+  return h;
+}
+
+/// Cosmic Horrors organiska blob: fyra hörn med olika elliptiska radier, dragna
+/// ur ett frö — varje flik har sin egen asymmetri, samma flik alltid samma.
+/// Radierna följer höjden, så en knapp och en flik är samma "art".
+class BlobBorder extends OutlinedBorder {
+  const BlobBorder({this.seed = 7, super.side});
+
+  final int seed;
+
+  RRect _rrect(Rect r) {
+    var s = seed;
+    double next() {
+      s = (s * 1103515245 + 12345) & 0x7FFFFFFF;
+      return s / 0x7FFFFFFF;
+    }
+
+    final h = r.height;
+    Radius corner() => Radius.elliptical(h * (.34 + next() * .3), h * (.3 + next() * .32));
+    return RRect.fromRectAndCorners(r, topLeft: corner(), topRight: corner(), bottomRight: corner(), bottomLeft: corner());
+  }
+
+  @override
+  Path getOuterPath(Rect rect, {TextDirection? textDirection}) => Path()..addRRect(_rrect(rect));
+  @override
+  Path getInnerPath(Rect rect, {TextDirection? textDirection}) => Path()..addRRect(_rrect(rect.deflate(side.width)));
+  @override
+  void paint(Canvas canvas, Rect rect, {TextDirection? textDirection}) {
+    if (side.style == BorderStyle.none) return;
+    canvas.drawRRect(_rrect(rect.deflate(side.width / 2)), side.toPaint());
+  }
+
+  @override
+  BlobBorder copyWith({BorderSide? side}) => BlobBorder(seed: seed, side: side ?? this.side);
+  @override
+  EdgeInsetsGeometry get dimensions => EdgeInsets.all(side.width);
+  @override
+  ShapeBorder scale(double t) => BlobBorder(seed: seed, side: side.scale(t));
+}
+
+/// Temats form för en upphöjd yta ([TabShape]).
+OutlinedBorder raisedShape(ChainTheme c, {double inset = 8, int? seed, BorderSide side = BorderSide.none}) =>
+    switch (c.tabShape) {
+      TabShape.chevron => ChevronBorder(inset: inset, side: side),
+      TabShape.blob => BlobBorder(seed: seed ?? 7, side: side),
+    };
+
+/// Upphöjd yta i temats form: gradient topp→botten, ljus överkant, kant, glöd.
 class Raised extends StatelessWidget {
-  const Raised({super.key, required this.material, required this.child, this.padding, this.inset = 8});
+  const Raised({super.key, required this.material, required this.child, this.padding, this.inset = 8, this.seed});
 
   final RaisedMaterial material;
   final Widget child;
   final EdgeInsetsGeometry? padding;
   final double inset;
 
+  /// Blobbens asymmetri ([shapeSeed]); null = knapparnas gemensamma.
+  final int? seed;
+
   @override
   Widget build(BuildContext context) {
     final m = material;
-    final shape = ChevronBorder(inset: inset, side: BorderSide(color: m.edge));
+    final c = context.chain;
+    final shape = raisedShape(c, inset: inset, seed: seed, side: BorderSide(color: m.edge));
     return DecoratedBox(
       decoration: ShapeDecoration(
         shape: shape,
@@ -164,11 +222,12 @@ class Raised extends StatelessWidget {
       child: DecoratedBox(
         // inset-highlight: en tunn ljus linje i överkant
         decoration: ShapeDecoration(
-          shape: ChevronBorder(inset: inset),
+          shape: raisedShape(c, inset: inset, seed: seed),
+          // Chevron: en skarp linje. Blob: ett mjukt membranljus.
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            stops: const [0, .08, .08],
+            stops: c.tabShape == TabShape.blob ? const [0, .35, .35] : const [0, .08, .08],
             colors: [m.highlight, m.highlight.withValues(alpha: 0), m.highlight.withValues(alpha: 0)],
           ),
         ),

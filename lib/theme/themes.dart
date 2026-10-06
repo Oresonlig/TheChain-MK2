@@ -5,6 +5,7 @@ library;
 import 'package:flutter/material.dart';
 
 import 'chain_theme.dart';
+import 'cosmic_horror.dart';
 import 'nanosuit.dart';
 
 class ThemeChoice {
@@ -17,6 +18,7 @@ class ThemeChoice {
 
 const themeChoices = [
   ThemeChoice('nanosuit', 'NANOSUIT', nanosuit),
+  ThemeChoice('cosmic', 'COSMIC HORROR', cosmicHorror, devOnly: true),
   // Arctic: borttaget 2026-10-06 (Niklas: för likt Nanosuit) — görs om i Claude Design.
 ];
 

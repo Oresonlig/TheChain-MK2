@@ -1,7 +1,8 @@
 /// Pågående pass i kedjan: temats [ActiveMark] runt fliken (pricken står kvar).
 /// Nanosuit (Niklas 2026-10-03): ett kort blått ljusspår som löper runt
-/// chevron-konturen — sticker ut men tar inte över. Rörlig bakgrund av eller
-/// systemets "minska rörelse" → stillastående kant i samma färg.
+/// chevron-konturen — sticker ut men tar inte över. Cosmic Horror: ett
+/// hjärtslag. Rörlig bakgrund av eller systemets "minska rörelse" →
+/// stillastående kant/sken i samma färg.
 library;
 
 import 'dart:math' as math;
@@ -19,6 +20,7 @@ class ActiveMarkFrame extends StatefulWidget {
     required this.child,
     this.animate = true,
     this.inset = 8,
+    this.seed,
   });
 
   /// Passet pågår.
@@ -31,6 +33,9 @@ class ActiveMarkFrame extends StatefulWidget {
   /// Samma avfasning som [Raised] runt barnet.
   final double inset;
 
+  /// Samma blob-frö som [Raised] runt barnet.
+  final int? seed;
+
   @override
   State<ActiveMarkFrame> createState() => _ActiveMarkFrameState();
 }
@@ -38,16 +43,22 @@ class ActiveMarkFrame extends StatefulWidget {
 class _ActiveMarkFrameState extends State<ActiveMarkFrame> with SingleTickerProviderStateMixin {
   /// Ett varv: lugnt nog att märkas i ögonvrån utan att dra blicken.
   static const lap = Duration(milliseconds: 4000);
+
+  /// Ett hjärtslag (lub-dub + vila): vilopuls, inte stress.
+  static const beat = Duration(milliseconds: 1700);
   late final AnimationController _ctl = AnimationController(vsync: this, duration: lap);
 
   bool _moving(ActiveMark mark) =>
       widget.active &&
-      mark == ActiveMark.tracePulse &&
+      mark != ActiveMark.none &&
       widget.animate &&
       !(MediaQuery.maybeDisableAnimationsOf(context) ?? false);
 
   void _sync() {
-    if (_moving(context.chain.activeMark)) {
+    final mark = context.chain.activeMark;
+    final d = mark == ActiveMark.heartbeat ? beat : lap;
+    if (_ctl.duration != d) _ctl.duration = d;
+    if (_moving(mark)) {
       if (!_ctl.isAnimating) _ctl.repeat();
     } else if (_ctl.isAnimating) {
       _ctl.stop();
@@ -77,6 +88,26 @@ class _ActiveMarkFrameState extends State<ActiveMarkFrame> with SingleTickerProv
     final c = context.chain;
     if (!widget.active || c.activeMark == ActiveMark.none) return widget.child;
     final moving = _moving(c.activeMark);
+    if (c.activeMark == ActiveMark.heartbeat) {
+      final shape = raisedShape(c, inset: widget.inset, seed: widget.seed);
+      return RepaintBoundary(
+        child: AnimatedBuilder(
+          animation: _ctl,
+          child: widget.child,
+          builder: (context, child) {
+            final beat = moving ? heartbeat(_ctl.value) : .5;
+            // Membranet andas: knappt synligt, men fliken lever.
+            return Transform.scale(
+              scale: 1 + .025 * beat,
+              child: CustomPaint(
+                painter: _HeartbeatPainter(shape: shape, color: c.accentBright, beat: beat),
+                child: child,
+              ),
+            );
+          },
+        ),
+      );
+    }
     return RepaintBoundary(
       child: AnimatedBuilder(
         animation: _ctl,
@@ -92,6 +123,33 @@ class _ActiveMarkFrameState extends State<ActiveMarkFrame> with SingleTickerProv
       ),
     );
   }
+}
+
+/// Hjärtslagets styrka 0–1 över ett slag (t 0–1): lub, dub, vila.
+double heartbeat(double t) {
+  double pulse(double center, double width) => math.exp(-math.pow((t - center) / width, 2).toDouble());
+  return math.min(1.0, pulse(.08, .05) + .7 * pulse(.26, .055));
+}
+
+/// Cosmic Horror: ett sken som slår ut från fliken i hjärtats takt.
+class _HeartbeatPainter extends CustomPainter {
+  _HeartbeatPainter({required this.shape, required this.color, required this.beat});
+  final ShapeBorder shape;
+  final Color color;
+  final double beat;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final path = shape.getOuterPath(Offset.zero & size);
+    canvas.drawPath(path, Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2 + 4 * beat
+      ..color = color.withValues(alpha: .15 + .45 * beat)
+      ..maskFilter = MaskFilter.blur(BlurStyle.normal, 3 + 6 * beat));
+  }
+
+  @override
+  bool shouldRepaint(_HeartbeatPainter old) => old.beat != beat || old.color != color;
 }
 
 class _TracePainter extends CustomPainter {

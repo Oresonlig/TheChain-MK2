@@ -56,6 +56,10 @@ const nanosuit = ChainTheme(
   ambient: Ambient.hexField,
   activeMark: ActiveMark.tracePulse,
   skippedMark: SkippedMark.cross,
+  doneMark: DoneMark.none,
+  tabShape: TabShape.chevron,
+  navMark: NavMark.raised,
+  fonts: ThemeType(display: 'Saira', text: 'Saira'),
 );
 
 ThemeData nanosuitThemeData() => buildThemeData(nanosuit);

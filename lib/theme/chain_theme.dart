@@ -54,6 +54,10 @@ enum ActiveMark {
 
   /// Nanosuit: ett kort ljusspår som löper runt flikens chevron-kontur.
   tracePulse,
+
+  /// Cosmic Horror: fliken pulserar inifrån i dubbelslag (lub-dub) och
+  /// membranet andas.
+  heartbeat,
 }
 
 /// Hur temat markerar ett ÖVERHOPPAT pass på bokstaven (status-kanalen).
@@ -62,6 +66,37 @@ enum ActiveMark {
 enum SkippedMark {
   /// Bokstaven dämpad som avklarad + ett X över.
   cross,
+
+  /// Cosmic Horror: tre klösmärken i temats [ChainTheme.fail] (blodrött).
+  claw,
+}
+
+/// Hur temat markerar ett AVKLARAT pass på bokstaven (status-kanalen). Fliken
+/// själv bär närheten och rörs inte (Niklas 2026-10-06).
+enum DoneMark {
+  /// Bara dämpad färg.
+  none,
+
+  /// Cosmic Horror: förseglat — en läkt ärrlinje med stygn över bokstaven.
+  scar,
+}
+
+/// Formen på upphöjda ytor (kedjans flikar, LOG, DONE, menyraden …).
+enum TabShape {
+  /// Nanosuit: avfasade spetsar i vänster/höger kant.
+  chevron,
+
+  /// Cosmic Horror: organisk, asymmetrisk blob — egen per flik (frö).
+  blob,
+}
+
+/// Hur menyraden visar aktiv flik.
+enum NavMark {
+  /// Upphöjd yta under ikon + text (Nanosuit).
+  raised,
+
+  /// Cosmic Horror: en pulserande huggtand ner från menyradens kant.
+  fang,
 }
 
 /// Temats rörliga bakgrund.
@@ -70,6 +105,26 @@ enum Ambient {
 
   /// Nanosuit: hex-väv med energivågor.
   hexField,
+
+  /// Cosmic Horror: ådror från kanterna, bioluminiscenta pulser längs
+  /// stammarna, ett svagt hjärtslag genom nätet ibland.
+  veins,
+}
+
+/// Temats typsnitt: [display] för det stora (rubriker, kedjebokstäver,
+/// knappar), [text] för det lilla (data, brödtext, etiketter).
+@immutable
+class ThemeType {
+  const ThemeType({required this.display, required this.text, this.textWidth = 100, this.textScale = 1});
+
+  final String display;
+  final String text;
+
+  /// Bredd-axeln för [text] (variabla typsnitt; ignoreras annars).
+  final double textWidth;
+
+  /// Storlek för [text] relativt Sairas skala (breda typsnitt behöver mindre).
+  final double textScale;
 }
 
 @immutable
@@ -101,8 +156,18 @@ class ChainTheme extends ThemeExtension<ChainTheme> {
     required this.ambient,
     required this.activeMark,
     required this.skippedMark,
+    required this.doneMark,
+    required this.tabShape,
+    required this.navMark,
+    required this.fonts,
     Color? fail,
   }) : fail = fail ?? restGold;
+
+  /// Avklarat pass i kedjan — obligatoriskt.
+  final DoneMark doneMark;
+  final TabShape tabShape;
+  final NavMark navMark;
+  final ThemeType fonts;
 
   /// Pågående pass i kedjan — obligatoriskt: varje tema tar ställning.
   final ActiveMark activeMark;
@@ -197,15 +262,17 @@ class ChainTheme extends ThemeExtension<ChainTheme> {
       ambient: t < 0.5 ? ambient : other.ambient,
       activeMark: t < 0.5 ? activeMark : other.activeMark,
       skippedMark: t < 0.5 ? skippedMark : other.skippedMark,
+      doneMark: t < 0.5 ? doneMark : other.doneMark,
+      tabShape: t < 0.5 ? tabShape : other.tabShape,
+      navMark: t < 0.5 ? navMark : other.navMark,
+      fonts: t < 0.5 ? fonts : other.fonts,
       fail: c(fail, other.fail),
     );
   }
 }
 
-const _font = 'Saira';
-
-TextStyle _t(double size, double weight, Color color, {double spacing = 0, double width = 100}) => TextStyle(
-      fontFamily: _font,
+TextStyle _t(String family, double size, double weight, Color color, {double spacing = 0, double width = 100}) => TextStyle(
+      fontFamily: family,
       fontSize: size,
       color: color,
       letterSpacing: spacing,
@@ -213,30 +280,34 @@ TextStyle _t(double size, double weight, Color color, {double spacing = 0, doubl
       fontFeatures: const [FontFeature.tabularFigures()],
     );
 
-/// Flutters ThemeData för ett tema: samma typskala för alla (Saira, beslut
-/// 2026-10-02), färgerna ur [c].
-ThemeData buildThemeData(ChainTheme c) => ThemeData(
-      brightness: Brightness.dark,
-      scaffoldBackgroundColor: c.background,
-      fontFamily: _font,
-      colorScheme: ColorScheme.dark(
-        primary: c.accent,
-        secondary: c.accentBright,
-        surface: c.surface,
-        onPrimary: c.background,
-        onSurface: c.textStrong,
-      ),
-      textTheme: TextTheme(
-        displaySmall: _t(34, 800, c.textStrong, spacing: 6, width: 110),
-        titleLarge: _t(20, 600, c.textStrong, spacing: 1.5),
-        titleMedium: _t(16, 600, c.textStrong, spacing: 1),
-        bodyMedium: _t(15, 400, c.textBody),
-        bodySmall: _t(12, 400, c.textMuted, spacing: .5),
-        labelLarge: _t(14, 700, c.textStrong, spacing: 2, width: 105),
-        labelSmall: _t(11, 600, c.textFaint, spacing: 1.5),
-      ),
-      extensions: [c],
-    );
+/// Flutters ThemeData för ett tema: samma typskala för alla (beslut
+/// 2026-10-02), typsnitten ur [ChainTheme.fonts] — det stora (rubriker,
+/// knappar, kedjan) och det lilla (data, brödtext, etiketter) — färgerna ur [c].
+ThemeData buildThemeData(ChainTheme c) {
+  final d = c.fonts.display, x = c.fonts.text, w = c.fonts.textWidth, k = c.fonts.textScale;
+  return ThemeData(
+    brightness: Brightness.dark,
+    scaffoldBackgroundColor: c.background,
+    fontFamily: x,
+    colorScheme: ColorScheme.dark(
+      primary: c.accent,
+      secondary: c.accentBright,
+      surface: c.surface,
+      onPrimary: c.background,
+      onSurface: c.textStrong,
+    ),
+    textTheme: TextTheme(
+      displaySmall: _t(d, 34, 800, c.textStrong, spacing: 6, width: 110),
+      titleLarge: _t(d, 20, 600, c.textStrong, spacing: 1.5),
+      titleMedium: _t(d, 16, 600, c.textStrong, spacing: 1),
+      bodyMedium: _t(x, 15 * k, 400, c.textBody, width: w),
+      bodySmall: _t(x, 12 * k, 400, c.textMuted, spacing: .5, width: w),
+      labelLarge: _t(d, 14, 700, c.textStrong, spacing: 2, width: 105),
+      labelSmall: _t(x, 11 * k, 600, c.textFaint, spacing: 1.5 * k, width: w),
+    ),
+    extensions: [c],
+  );
+}
 
 extension ChainThemeX on BuildContext {
   ChainTheme get chain => Theme.of(this).extension<ChainTheme>()!;

@@ -30,6 +30,10 @@ ChainTheme _withFail(Color? fail) => ChainTheme(
       ambient: Ambient.hexField,
       activeMark: ActiveMark.none,
       skippedMark: SkippedMark.cross,
+      doneMark: DoneMark.none,
+      tabShape: TabShape.chevron,
+      navMark: NavMark.raised,
+      fonts: nanosuit.fonts,
       fail: fail,
     );
 

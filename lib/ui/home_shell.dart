@@ -2,6 +2,8 @@
 /// navigera med tummen"). Aktiv flik bär den upphöjda Nanosuit-ytan.
 library;
 
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../app/app_controller.dart';
@@ -173,7 +175,12 @@ class _NavBar extends StatelessWidget {
                     onTap: () => onTap(i),
                     child: SizedBox(
                       height: 58, // stor träffyta för tummen
-                      child: i == index
+                      child: i == index && c.navMark == NavMark.fang
+                          ? Stack(clipBehavior: Clip.none, children: [
+                              Positioned.fill(child: _content(icon, label, c.textStrong, text)),
+                              const Positioned(top: -7, left: 0, right: 0, child: Center(child: _Fang())),
+                            ])
+                          : i == index
                           ? Padding(
                               padding: const EdgeInsets.symmetric(horizontal: 2),
                               child: Raised(
@@ -194,11 +201,78 @@ class _NavBar extends StatelessWidget {
     );
   }
 
-  Widget _content(IconData icon, String label, Color color, TextTheme text) => Center(
+  static Widget _content(IconData icon, String label, Color color, TextTheme text) => Center(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Icon(icon, color: color, size: 22),
           const SizedBox(height: 2),
           Text(label, style: text.labelSmall!.copyWith(color: color, fontSize: 10, letterSpacing: 1)),
         ]),
       );
+}
+
+/// Cosmic Horror: aktiv flik = en huggtand ner från menyradens kant som
+/// pulserar långsamt (MK1 chTabPulse 4,2 s). Stilla = full styrka.
+class _Fang extends StatefulWidget {
+  const _Fang();
+
+  @override
+  State<_Fang> createState() => _FangState();
+}
+
+class _FangState extends State<_Fang> with SingleTickerProviderStateMixin {
+  late final _ctl = AnimationController(vsync: this, duration: const Duration(milliseconds: 4200));
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final still = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    if (still) {
+      _ctl.stop();
+    } else if (!_ctl.isAnimating) {
+      _ctl.repeat();
+    }
+  }
+
+  @override
+  void dispose() {
+    _ctl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.chain;
+    return AnimatedBuilder(
+      animation: _ctl,
+      builder: (context, _) {
+        final still = !_ctl.isAnimating;
+        final a = still ? 1.0 : .7 + .3 * (.5 + .5 * math.sin(_ctl.value * 2 * math.pi));
+        return CustomPaint(size: const Size(16, 11), painter: _FangPainter(c.accent.withValues(alpha: a)));
+      },
+    );
+  }
+}
+
+class _FangPainter extends CustomPainter {
+  const _FangPainter(this.color);
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // Lätt böjd tand, inte en rak triangel.
+    final p = Path()
+      ..moveTo(0, 0)
+      ..lineTo(size.width, 0)
+      ..quadraticBezierTo(size.width * .62, size.height * .45, size.width * .5, size.height)
+      ..quadraticBezierTo(size.width * .38, size.height * .45, 0, 0)
+      ..close();
+    canvas
+      ..drawPath(p, Paint()
+        ..color = color.withValues(alpha: color.a * .6)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4))
+      ..drawPath(p, Paint()..color = color);
+  }
+
+  @override
+  bool shouldRepaint(_FangPainter old) => old.color != color;
 }

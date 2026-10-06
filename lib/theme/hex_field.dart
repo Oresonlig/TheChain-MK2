@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 
 import 'chain_theme.dart';
+import 'veins.dart';
 
 class _Wave {
   _Wave.ring(this.x, this.y, this.maxR, this.speed, this.width, this.strength)
@@ -178,6 +179,8 @@ void paintAmbient(Canvas canvas, Size size, HexFieldModel model, ChainTheme them
       return;
     case Ambient.hexField:
       if (model.hexes.isNotEmpty) paintHexField(canvas, model, line: theme.hexLine, animated: animated);
+    case Ambient.veins:
+      paintVeins(canvas, size, model.frame, theme, animated: animated);
   }
 }
 
