@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 
 import '../../app/app_controller.dart';
 import '../../domain/domain.dart';
+import '../../theme/active_mark.dart';
 import '../../theme/chain_theme.dart';
 import '../../theme/background_scope.dart';
 import '../../theme/surfaces.dart';
@@ -290,6 +291,15 @@ class _ChainScreenState extends State<ChainScreen> {
                         skipped: 0,
                       )),
                 ),
+                // Cosmic Horrors två ögonvarianter (slumpas 50/50 per appstart).
+                if (c.activeMark == ActiveMark.eye) ...[
+                  const SizedBox(height: 8),
+                  GhostButton(
+                    label: 'DEV · EYES: ${EyeChoice.current == EyeVariant.many ? 'MANY' : 'SLIT'}',
+                    color: c.textFaint,
+                    onTap: () => setState(EyeChoice.toggle),
+                  ),
+                ],
               ],
             ],
           );

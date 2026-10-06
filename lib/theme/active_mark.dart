@@ -102,99 +102,176 @@ class _ActiveMarkFrameState extends State<ActiveMarkFrame> with SingleTickerProv
 /// alltid var 3:e sekund"). Ibland en dubbelblinkning direkt efter.
 Duration nextBlink(math.Random r) => Duration(milliseconds: 2500 + r.nextInt(6500));
 
-/// Cosmic Horror: det pågående passets HELA flik är ett öga (Niklas
-/// 2026-10-06: den lilla pricken-ögat var för litet). Mandelform, blodsprängt
-/// vitöga, grön iris — och passets bokstav är pupillen. Passnamnet står i
-/// kortet under kedjan. Blinkar med slumpad takt och flyttar blicken.
-/// NÄRHET bor fortfarande på behållaren: vald = större öga, ljusare kant.
-/// Stilla (minska rörelse / ambient av) = öppet, rakt fram.
-class Eye extends StatefulWidget {
-  const Eye({super.key, required this.letter, required this.selected, this.animate = true, this.random});
-  final String letter;
-  final bool selected;
+/// Cosmic Horrors två ögonvarianter (Niklas 2026-10-06: helflik-ögat blev ett
+/// grodöga — "både 2 och 3, slumpmässigt vilket man får när man startar").
+/// Fliken är en vanlig blob med bokstav och namn; ögonen sitter i flikens
+/// slut, där den gröna pricken annars står. Smala pupiller, sjuk färg.
+enum EyeVariant {
+  /// Tre ögon i olika storlek som blinkar och tittar var för sig.
+  many,
+
+  /// En springa i membranet som öppnar sig ibland; ett öga tittar runt och
+  /// sluter sig igen.
+  slit,
+}
+
+/// Slumpas 50/50 en gång per appstart (byter aldrig mitt i ett pass).
+/// DEV-knappen i kedjevyn växlar.
+class EyeChoice {
+  EyeChoice._();
+  static EyeVariant current = math.Random().nextBool() ? EyeVariant.many : EyeVariant.slit;
+  static void toggle() => current = current == EyeVariant.many ? EyeVariant.slit : EyeVariant.many;
+}
+
+/// Det pågående passets markering i Cosmic Horror. Ge en ny [key] per
+/// variant (ValueKey) så börjar animationen om när DEV-knappen växlar.
+/// Stilla (minska rörelse / ambient av) = ögonen öppna, rakt fram.
+class EyeMark extends StatefulWidget {
+  const EyeMark({super.key, required this.variant, this.animate = true, this.random});
+  final EyeVariant variant;
   final bool animate;
   final math.Random? random;
 
-  static const height = 52.0;
-  static double widthFor({required bool selected}) => selected ? 132 : 96;
+  /// Ritas i en 40×30-ruta och skalas upp hit (ryms i flikens höjd).
+  static const size = Size(44, 33);
 
   @override
-  State<Eye> createState() => _EyeState();
+  State<EyeMark> createState() => _EyeMarkState();
 }
 
-class _EyeState extends State<Eye> with SingleTickerProviderStateMixin {
+class _EyeMarkState extends State<EyeMark> with TickerProviderStateMixin {
   late final math.Random _r = widget.random ?? math.Random();
-  late final AnimationController _blink = AnimationController(vsync: this, duration: const Duration(milliseconds: 220));
-  Timer? _timer;
-  double _gaze = 0; // -1 vänster … 1 höger
+
+  /// Ett lock per öga: 0 = öppet, 1 = stängt (en blinkning = 0 → 1 → 0).
+  late final List<AnimationController> _blinks = [
+    for (var i = 0; i < 3; i++) AnimationController(vsync: this, duration: const Duration(milliseconds: 220)),
+  ];
+
+  /// Springans öppning: 0 = sluten söm, 1 = öppen.
+  late final AnimationController _slit = AnimationController(vsync: this, duration: const Duration(milliseconds: 520));
+  final _gaze = [0.0, 0.0, 0.0];
+  int _gen = 0; // avbryter gamla slingor
 
   bool get _moving => widget.animate && !(MediaQuery.maybeDisableAnimationsOf(context) ?? false);
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _sync();
+    _restart();
   }
 
   @override
-  void didUpdateWidget(Eye old) {
+  void didUpdateWidget(EyeMark old) {
     super.didUpdateWidget(old);
-    _sync();
+    if (old.animate != widget.animate || old.variant != widget.variant) _restart();
   }
 
-  void _sync() {
-    if (_moving && _timer == null) {
-      _schedule();
-    } else if (!_moving) {
-      _timer?.cancel();
-      _timer = null;
-      _blink.value = 0;
-      _gaze = 0;
+  void _restart() {
+    _cancelWaits();
+    final gen = ++_gen;
+    for (final b in _blinks) {
+      b.value = 0;
+    }
+    _gaze.fillRange(0, 3, 0);
+    if (!_moving) {
+      _slit.value = 1; // stilla: ögat syns
+      return;
+    }
+    if (widget.variant == EyeVariant.many) {
+      for (var i = 0; i < 3; i++) {
+        _blinkLoop(i, gen);
+      }
+    } else {
+      _slit.value = 0;
+      _slitLoop(gen);
     }
   }
 
-  void _schedule() {
-    _timer = Timer(nextBlink(_r), () async {
-      if (!mounted) return;
-      await _blink.forward(from: 0);
-      if (!mounted) return;
-      // Ögat tittar någon annanstans när det öppnas igen.
-      setState(() => _gaze = _r.nextDouble() < .5 ? 0 : (_r.nextDouble() * 2 - 1));
-      if (_r.nextDouble() < .2) await _blink.forward(from: 0); // dubbelblink
-      if (mounted && _moving) _schedule();
+  bool _alive(int gen) => mounted && gen == _gen && _moving;
+
+  /// Väntan som avbryts vid omstart/dispose (inga hängande timers).
+  final _timers = <Timer>{};
+  Future<void> _wait(Duration d) {
+    final done = Completer<void>();
+    late final Timer t;
+    t = Timer(d, () {
+      _timers.remove(t);
+      done.complete();
     });
+    _timers.add(t);
+    return done.future;
+  }
+
+  void _cancelWaits() {
+    for (final t in _timers) {
+      t.cancel();
+    }
+    _timers.clear();
+  }
+
+  Future<void> _blinkLoop(int i, int gen) async {
+    while (true) {
+      await _wait(nextBlink(_r));
+      if (!_alive(gen)) return;
+      await _blinks[i].forward(from: 0);
+      if (!_alive(gen)) return;
+      _blinks[i].value = 0;
+      setState(() => _gaze[i] = _r.nextDouble() < .4 ? 0 : _r.nextDouble() * 2 - 1);
+      if (_r.nextDouble() < .2) {
+        await _blinks[i].forward(from: 0); // dubbelblink
+        if (!_alive(gen)) return;
+        _blinks[i].value = 0;
+      }
+    }
+  }
+
+  Future<void> _slitLoop(int gen) async {
+    while (true) {
+      await _wait(Duration(milliseconds: 1800 + _r.nextInt(3500))); // sluten
+      if (!_alive(gen)) return;
+      await _slit.forward();
+      if (!_alive(gen)) return;
+      for (var k = 0, n = 2 + _r.nextInt(3); k < n; k++) {
+        await _wait(Duration(milliseconds: 600 + _r.nextInt(900)));
+        if (!_alive(gen)) return;
+        setState(() => _gaze[0] = _r.nextDouble() * 2 - 1); // tittar runt
+      }
+      await _wait(Duration(milliseconds: 500 + _r.nextInt(700)));
+      if (!_alive(gen)) return;
+      setState(() => _gaze[0] = 0);
+      await _slit.reverse();
+      if (!_alive(gen)) return;
+    }
   }
 
   @override
   void dispose() {
-    _timer?.cancel();
-    _blink.dispose();
+    _gen++;
+    _cancelWaits();
+    for (final b in _blinks) {
+      b.dispose();
+    }
+    _slit.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final c = context.chain;
-    final letter = Theme.of(context).textTheme.labelLarge!.copyWith(
-          fontSize: 24,
-          color: c.background,
-          fontVariations: const [FontVariation.weight(900)],
-        );
-    final size = Size(Eye.widthFor(selected: widget.selected), Eye.height);
     return AnimatedBuilder(
-      animation: _blink,
+      animation: Listenable.merge([..._blinks, _slit]),
       builder: (context, _) {
-        // Stäng snabbt, öppna lite långsammare.
-        final t = _blink.value;
-        final open = t < .4 ? 1 - t / .4 : (t - .4) / .6;
+        // En blinkning: stäng snabbt, öppna lite långsammare.
+        double lid(double t) => (t < .4 ? 1 - t / .4 : (t - .4) / .6).clamp(0.0, 1.0);
         return CustomPaint(
-          size: size,
-          painter: _EyePainter(
-            open: open.clamp(.04, 1.0),
-            gaze: _gaze,
-            letter: widget.letter,
-            letterStyle: letter,
-            selected: widget.selected,
+          size: EyeMark.size,
+          painter: _EyeMarkPainter(
+            variant: widget.variant,
+            open: [
+              for (final b in _blinks) lid(b.value),
+            ],
+            slit: Curves.easeInOut.transform(_slit.value),
+            gaze: List.of(_gaze),
             theme: c,
           ),
         );
@@ -203,101 +280,106 @@ class _EyeState extends State<Eye> with SingleTickerProviderStateMixin {
   }
 }
 
-class _EyePainter extends CustomPainter {
-  _EyePainter({
-    required this.open,
-    required this.gaze,
-    required this.letter,
-    required this.letterStyle,
-    required this.selected,
-    required this.theme,
-  });
-  final double open, gaze;
-  final String letter;
-  final TextStyle letterStyle;
-  final bool selected;
+class _EyeMarkPainter extends CustomPainter {
+  _EyeMarkPainter({required this.variant, required this.open, required this.slit, required this.gaze, required this.theme});
+  final EyeVariant variant;
+  final List<double> open;
+  final double slit;
+  final List<double> gaze;
   final ChainTheme theme;
-
-  /// Blodkärl i vitögat: från ögonvrårna inåt (x, y, vinkel, längd).
-  static const _vessels = [
-    (.06, .5, -.35, .2), (.07, .52, .3, .17), (.1, .48, -.05, .14),
-    (.94, .5, math.pi + .35, .2), (.93, .5, math.pi - .3, .16), (.9, .52, math.pi + .05, .13),
-  ];
 
   @override
   void paint(Canvas canvas, Size size) {
-    final c = theme;
-    final w = size.width, h = size.height, cy = h / 2;
+    canvas.scale(size.width / 40);
+    switch (variant) {
+      case EyeVariant.many:
+        // Tre ögon som växt fram ur membranet, ett stort och två små.
+        _eye(canvas, const Offset(25, 15), 24, 13, open[0], gaze[0]);
+        _eye(canvas, const Offset(8, 7), 12, 7, open[1], gaze[1]);
+        _eye(canvas, const Offset(10, 24), 11, 6, open[2], gaze[2]);
+      case EyeVariant.slit:
+        // Sömmen syns alltid — markeringen försvinner aldrig helt.
+        final seam = Path()
+          ..moveTo(1, 15)
+          ..quadraticBezierTo(20, 12.5, 39, 15);
+        canvas.drawPath(seam, Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 3
+          ..color = theme.success.withValues(alpha: .25 + .25 * (1 - slit))
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3));
+        canvas.drawPath(seam, Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.3
+          ..strokeCap = StrokeCap.round
+          ..color = Color.lerp(theme.background, theme.success, .55)!);
+        if (slit > .02) _eye(canvas, const Offset(20, 14.5), 38, 22, slit, gaze[0]);
+    }
+  }
+
+  /// Ett öga: mandel, mörkt sjukt vitöga med blodkärl, gulgrön iris och en
+  /// smal lodrät pupill. [open] 0 = stängt, 1 = öppet.
+  void _eye(Canvas canvas, Offset c, double w, double h, double open, double gaze) {
+    final t = theme;
     final lid = h / 2 * open;
     final almond = Path()
-      ..moveTo(0, cy)
-      ..quadraticBezierTo(w / 2, cy - lid * 2, w, cy)
-      ..quadraticBezierTo(w / 2, cy + lid * 2, 0, cy)
+      ..moveTo(c.dx - w / 2, c.dy)
+      ..quadraticBezierTo(c.dx, c.dy - lid * 2, c.dx + w / 2, c.dy)
+      ..quadraticBezierTo(c.dx, c.dy + lid * 2, c.dx - w / 2, c.dy)
       ..close();
-
-    // Ögat lyser svagt ut i mörkret.
+    final iris = Color.lerp(t.success, t.restGold, .45)!; // sjuk gulgrön
+    if (open < .08) {
+      // Stängt: bara lockets linje.
+      canvas.drawLine(Offset(c.dx - w / 2, c.dy), Offset(c.dx + w / 2, c.dy), Paint()
+        ..strokeWidth = 1
+        ..strokeCap = StrokeCap.round
+        ..color = t.accent.withValues(alpha: .7));
+      return;
+    }
     canvas.drawPath(almond, Paint()
-      ..color = c.success.withValues(alpha: selected ? .4 : .25)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6));
-
+      ..color = iris.withValues(alpha: .35)
+      ..maskFilter = MaskFilter.blur(BlurStyle.normal, w * .15));
     canvas.save();
     canvas.clipPath(almond);
-    // Vitögat: ett blekt, sjukt grönt membran, mörkare mot vrårna.
-    final area = Offset.zero & size;
+    final box = Rect.fromCenter(center: c, width: w, height: h);
     canvas.drawRect(
-      area,
+      box,
       Paint()
-        ..shader = RadialGradient(colors: [
-          Color.lerp(c.accentBright, c.surface, .25)!,
-          Color.lerp(c.accent, c.surface, .55)!,
-        ]).createShader(area),
+        ..shader = const RadialGradient(colors: [Color(0xFF3A4A30), Color(0xFF101810)]).createShader(box),
     );
     final vessel = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = .9
-      ..strokeCap = StrokeCap.round
-      ..color = c.fail.withValues(alpha: .55);
-    for (final (x, y, a, l) in _vessels) {
-      final p0 = Offset(w * x, h * y);
-      final p1 = p0 + Offset.fromDirection(a, w * l);
-      final mid = Offset.lerp(p0, p1, .5)! + Offset(0, (a.isNegative ? -1 : 1) * 2.5);
-      canvas.drawPath(Path()..moveTo(p0.dx, p0.dy)..quadraticBezierTo(mid.dx, mid.dy, p1.dx, p1.dy), vessel);
+      ..strokeWidth = math.max(.5, w * .03)
+      ..color = t.fail.withValues(alpha: .6);
+    for (final s in const [-1.0, 1.0]) {
+      final corner = Offset(c.dx + s * w * .46, c.dy);
+      canvas
+        ..drawLine(corner, corner + Offset(-s * w * .2, -h * .18), vessel)
+        ..drawLine(corner, corner + Offset(-s * w * .16, h * .2), vessel);
     }
-
-    // Irisen följer blicken; bokstaven är pupillen.
-    final ic = Offset(w / 2 + gaze * w * .14, cy);
-    final ir = h * .4;
-    final irisRect = Rect.fromCircle(center: ic, radius: ir);
+    final ic = c + Offset(gaze * w * .2, 0);
+    final ir = h * .44;
     canvas.drawCircle(
       ic,
       ir,
       Paint()
         ..shader = RadialGradient(colors: [
-          c.accentBright,
-          c.success,
-          Color.lerp(c.success, c.background, .55)!,
-        ], stops: const [0, .55, 1]).createShader(irisRect),
+          Color.lerp(iris, Colors.white, .3)!,
+          iris,
+          Color.lerp(iris, t.background, .6)!,
+        ], stops: const [0, .5, 1]).createShader(Rect.fromCircle(center: ic, radius: ir)),
     );
-    canvas.drawCircle(ic, ir, Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.4
-      ..color = Color.lerp(c.success, c.background, .7)!);
-    final tp = TextPainter(text: TextSpan(text: letter, style: letterStyle), textDirection: TextDirection.ltr)..layout();
-    tp.paint(canvas, ic - Offset(tp.width / 2, tp.height / 2));
-    // Ögats glans.
-    canvas.drawCircle(ic + Offset(-ir * .45, -ir * .45), ir * .16, Paint()..color = Colors.white.withValues(alpha: .55));
+    // Smal lodrät pupill — reptil, inte groda.
+    canvas.drawOval(Rect.fromCenter(center: ic, width: math.max(1.4, h * .14), height: h * .82), Paint()..color = t.background);
+    canvas.drawCircle(ic + Offset(-ir * .4, -ir * .45), math.max(.8, ir * .14), Paint()..color = Colors.white.withValues(alpha: .5));
     canvas.restore();
-
-    // Ögonlockens kant: ljusare på det valda ögat (närhet).
     canvas.drawPath(almond, Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = selected ? 1.6 : 1
-      ..color = selected ? c.accentBright : c.accent.withValues(alpha: .7));
+      ..strokeWidth = .9
+      ..color = t.accent.withValues(alpha: .8));
   }
 
   @override
-  bool shouldRepaint(_EyePainter old) =>
-      old.open != open || old.gaze != gaze || old.letter != letter || old.selected != selected || old.theme != theme;
+  bool shouldRepaint(_EyeMarkPainter old) => true;
 }
 
 class _TracePainter extends CustomPainter {

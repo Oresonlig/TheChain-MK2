@@ -263,12 +263,20 @@ void main() {
     await frames(8);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/cosmic_done.png'));
     await pick('V');
-    // D pågår: hela fliken är ett öga (målat, ingen Text att hitta).
-    await tester.ensureVisible(find.byType(Eye));
-    await frames(6);
-    await tester.tap(find.byType(Eye));
-    await frames(12);
-    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/cosmic_eye.png'));
+    // D pågår: ögonen i flikens slut — båda varianterna (DEV-knappen växlar).
+    await pick('D');
+    final eyesButton = find.textContaining('DEV · EYES');
+    for (final v in EyeVariant.values) {
+      if (EyeChoice.current != v) {
+        await tester.ensureVisible(eyesButton);
+        await frames(4);
+        await tester.tap(eyesButton);
+        await tester.ensureVisible(find.text('D').first);
+      }
+      // Springan är sluten 1,8–5,3 s innan den öppnar sig (slumpat).
+      await frames(v == EyeVariant.slit ? 120 : 20);
+      await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/cosmic_eyes_${v.name}.png'));
+    }
     await tester.ensureVisible(find.text('CONTINUE SESSION'));
     await frames(4);
     await tester.tap(find.text('CONTINUE SESSION'));
