@@ -32,20 +32,16 @@ void main() {
     expect(gaps.toSet().length, greaterThan(40), reason: 'inte "var 3:e sekund"');
   });
 
-  test('ådrorna: växer med rundan, LOG ger groddar, ny runda börjar om', () {
+  test('ådrorna: alltid fullvuxna; LOG sträcker ut dem och de drar sig tillbaka', () {
     AmbientLife.reset();
-    AmbientLife.roundProgress = 0;
-    expect(AmbientLife.target, closeTo(.35, .001));
-    AmbientLife.roundProgress = .5;
-    final half = AmbientLife.target;
-    expect(half, greaterThan(.35));
+    expect(AmbientLife.growth(animated: true), AmbientLife.rest);
+    expect(AmbientLife.reach(0), 0);
+    expect(AmbientLife.reach(1000), 1, reason: 'utsträckt en stund');
+    expect(AmbientLife.reach(3500), allOf(greaterThan(0), lessThan(1)), reason: 'på väg tillbaka');
+    expect(AmbientLife.reach(AmbientLife.burstLife), 0, reason: 'tillbaka i vila');
     AmbientLife.burst();
-    expect(AmbientLife.target, greaterThan(half));
     expect(AmbientLife.burstAges, isNotEmpty);
-    AmbientLife.roundProgress = 1;
-    expect(AmbientLife.target, 1);
-    AmbientLife.roundProgress = 0; // ny runda
-    expect(AmbientLife.target, closeTo(.35, .001), reason: 'groddarna följer inte med');
+    expect(AmbientLife.growth(animated: false), AmbientLife.rest, reason: 'minska rörelse: ingen utsträckning');
     AmbientLife.reset();
   });
 }

@@ -269,22 +269,13 @@ void main() {
     await tester.tap(find.byType(Eye));
     await frames(12);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/cosmic_eye.png'));
-    // DEV: nätet fullvuxet (växer fram på ~2 s).
-    final full = find.textContaining('BACKGROUND FULL GROWN');
-    await tester.ensureVisible(full);
-    await frames(4);
-    await tester.tap(full);
-    await frames(60);
-    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/cosmic_full.png'));
-    await tester.tap(full);
-    await frames(4);
     await tester.ensureVisible(find.text('CONTINUE SESSION'));
     await frames(4);
     await tester.tap(find.text('CONTINUE SESSION'));
     await frames(20);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/cosmic_workout.png'));
-    await tester.tap(find.text('LOG').first); // ljusvåg genom ådrorna
-    await frames(14);
+    await tester.tap(find.text('LOG').first); // ljusvåg + ådrorna sträcker ut sig
+    await frames(20);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/cosmic_burst.png'));
     await tester.pumpWidget(const SizedBox());
     AmbientLife.reset();

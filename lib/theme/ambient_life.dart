@@ -1,10 +1,8 @@
-/// Det som får temats bakgrund att leva med användaren (Niklas 2026-10-06,
-/// Cosmic Horrors ådror):
-///   * [roundProgress] — ådrorna växer med rundan: korta i början, fullvuxna
-///     när rundan är klar, och drar sig tillbaka när en ny börjar. Räknas ur
-///     kedjan (chain_screen) — samma på alla enheter, inget sparas.
-///   * [burst] — LOG skickar en puls ut genom nätet och en liten gren spirar.
-///     Bara den här körningen; en ny runda börjar om.
+/// Det som får temats bakgrund att svara på användaren (Niklas 2026-10-06,
+/// Cosmic Horrors ådror): nätet är alltid fullvuxet ("jämfört med Nanosuit
+/// jäkligt low key"), och varje LOG ([burst]) skickar en ljusvåg ut genom
+/// det medan ådrorna sträcker ut sig en bit extra — och drar sig tillbaka
+/// några sekunder senare. Inget sparas.
 /// Teman som inte läser det här (Nanosuit) påverkas inte.
 library;
 
@@ -14,67 +12,49 @@ class AmbientLife {
   AmbientLife._();
 
   static final Stopwatch _clock = Stopwatch()..start();
-  static double _progress = 0;
-  static int _sprouts = 0;
-  static double? _shown;
-  static int _lastMs = 0;
   static final List<int> _bursts = [];
 
-  /// Rundans andel klar, 0–1. Ny runda (lägre värde) = groddarna nollställs.
-  static set roundProgress(double p) {
-    final v = p.clamp(0.0, 1.0);
-    if (v < _progress) _sprouts = 0;
-    _progress = v;
-  }
-
-  static double get roundProgress => _progress;
-
-  /// Ett loggat set: en puls ut genom nätet + en liten tillväxt.
+  /// Ett loggat set.
   static void burst() {
     final now = _clock.elapsedMilliseconds;
     _bursts.add(now);
     _bursts.removeWhere((t) => now - t > burstLife);
-    if (_sprouts < maxSprouts) _sprouts++;
   }
 
-  static const burstLife = 3200;
-  static const maxSprouts = 14;
+  /// Hur länge en LOG syns: vågen + utsträckningen och tillbakadragningen.
+  static const burstLife = 5000;
 
-  /// DEV: visa nätet fullvuxet oavsett runda (Niklas 2026-10-06: "måste
-  /// gissa mig till hur slutresultatet ser ut"). Sparas inte.
-  static bool devFull = false;
+  /// Nätets vanliga storlek (andel av hela nätet) — resten är LOG:ens räckvidd.
+  static const rest = .82;
 
-  /// Var nätet ska vara: 35 % vid rundans start, fullt när den är klar,
-  /// plus groddarna från dagens LOG.
-  static double get target => devFull ? 1 : math.min(1.0, .35 + .65 * _progress + _sprouts * .012);
+  /// Utsträckningen efter en LOG, 0–1: snabbt ut (~0,6 s), kvar en stund,
+  /// sedan långsamt tillbaka.
+  static double reach(int ageMs) {
+    if (ageMs < 0 || ageMs >= burstLife) return 0;
+    final t = ageMs / 1000;
+    if (t < .6) return math.sin(t / .6 * math.pi / 2);
+    if (t < 1.6) return 1;
+    final back = (t - 1.6) / (burstLife / 1000 - 1.6);
+    return .5 + .5 * math.cos(back * math.pi);
+  }
 
-  /// Visad tillväxt — glider mot [target] (~2 s), så växten syns ske.
-  /// [animated] false = hoppar direkt dit (minska rörelse).
+  /// Visad storlek: [rest] plus den starkaste pågående utsträckningen.
+  /// [animated] false (minska rörelse) = alltid [rest].
   static double growth({required bool animated}) {
-    final now = _clock.elapsedMilliseconds;
-    final t = target;
-    final s = _shown;
-    if (!animated || s == null) {
-      _lastMs = now;
-      return _shown = t;
+    if (!animated) return rest;
+    var extra = 0.0;
+    for (final a in burstAges) {
+      extra = math.max(extra, reach(a));
     }
-    final dt = (now - _lastMs).clamp(0, 200) / 1000;
-    _lastMs = now;
-    return _shown = s + (t - s) * (1 - math.exp(-dt / .7));
+    return rest + (1 - rest) * extra;
   }
 
-  /// Pågående pulser: ålder i ms (0 – [burstLife]).
+  /// Pågående LOG:ar: ålder i ms (0 – [burstLife]).
   static Iterable<int> get burstAges {
     final now = _clock.elapsedMilliseconds;
     return _bursts.map((t) => now - t).where((a) => a >= 0 && a < burstLife);
   }
 
   /// Tester: börja om.
-  static void reset() {
-    _progress = 0;
-    _sprouts = 0;
-    _shown = null;
-    _bursts.clear();
-    devFull = false;
-  }
+  static void reset() => _bursts.clear();
 }

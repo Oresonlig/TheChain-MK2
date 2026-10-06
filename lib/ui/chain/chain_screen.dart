@@ -7,7 +7,6 @@ import 'package:flutter/services.dart';
 
 import '../../app/app_controller.dart';
 import '../../domain/domain.dart';
-import '../../theme/ambient_life.dart';
 import '../../theme/chain_theme.dart';
 import '../../theme/background_scope.dart';
 import '../../theme/surfaces.dart';
@@ -161,10 +160,6 @@ class _ChainScreenState extends State<ChainScreen> {
           final selected = _selected ?? inProgress.firstOrNull ?? chain.next ?? program.sessions.first.id;
           final session = program.sessionById(selected) ?? program.sessions.first;
           final trainingCount = program.sessions.length;
-          // Bakgrunden växer med rundan (Cosmic Horrors ådror). Hanterat =
-          // avklarat eller överhoppat, så nätet är fullvuxet när rundan är klar.
-          AmbientLife.roundProgress =
-              program.sessions.where((s) => chain.isDone(s.id) || chain.isSkipped(s.id)).length / trainingCount;
 
           return ListView(
             addRepaintBoundaries: glassListRepaintBoundaries,
@@ -295,16 +290,6 @@ class _ChainScreenState extends State<ChainScreen> {
                         skipped: 0,
                       )),
                 ),
-                // Temats bakgrund fullvuxen (Cosmic Horrors ådror), på/av.
-                // Bara visning — inget skrivs eller synkas.
-                if (c.ambient == Ambient.veins) ...[
-                  const SizedBox(height: 8),
-                  GhostButton(
-                    label: 'DEV · BACKGROUND FULL GROWN: ${AmbientLife.devFull ? 'ON' : 'OFF'}',
-                    color: c.textFaint,
-                    onTap: () => setState(() => AmbientLife.devFull = !AmbientLife.devFull),
-                  ),
-                ],
               ],
             ],
           );

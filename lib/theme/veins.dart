@@ -4,10 +4,10 @@
 /// Bioluminiscenta pulser vandrar längs stammarna, och ibland går ett svagt
 /// hjärtslag genom hela nätet.
 ///
-/// Nätet LEVER med användaren ([AmbientLife], Niklas 2026-10-06): det växer
-/// ut från rötterna med rundan, och varje LOG skickar en ljusvåg ut genom
-/// det. Drivs av samma ~30 fps-takt som Nanosuits väv (HexFieldModel.frame);
-/// stilla = nätet i rätt storlek, inga pulser.
+/// Nätet SVARAR på användaren ([AmbientLife], Niklas 2026-10-06): alltid
+/// fullvuxet, och varje LOG skickar en ljusvåg ut genom det medan ådrorna
+/// sträcker ut sig och sedan drar sig tillbaka. Drivs av samma ~30 fps-takt
+/// som Nanosuits väv (HexFieldModel.frame); stilla = vilande nät, inga pulser.
 library;
 
 import 'dart:math' as math;
@@ -75,15 +75,15 @@ class _Network {
     }
 
     final w = s.width, h = s.height;
-    // Fullvuxet (rundan klar) ska synas tydligt större än i början
-    // (Niklas 2026-10-06, DEV-knappen): långa stammar, rundans början visar 35 %.
+    // Nätet visas till [AmbientLife.rest] (82 %) — de sista 18 % är vad en
+    // LOG sträcker ut det till innan det drar sig tillbaka.
     final roots = [
-      (Offset(w + 6, -8), 2.35, 26, 1.15), // övre högra hörnet
-      (Offset(-6, h + 8), -.78, 26, 1.15), // nedre vänstra hörnet
-      (Offset(w + 4, h * .42), math.pi - .25, 17, 1.0), // höger kant
-      (Offset(-4, h * .66), .2, 17, 1.0), // vänster kant
-      (Offset(w * .7, h + 6), -1.9, 16, 1.0), // nederkant
-      (Offset(w * .3, -6), 1.75, 14, .95), // överkant
+      (Offset(w + 6, -8), 2.35, 32, 1.15), // övre högra hörnet
+      (Offset(-6, h + 8), -.78, 32, 1.15), // nedre vänstra hörnet
+      (Offset(w + 4, h * .42), math.pi - .25, 21, 1.0), // höger kant
+      (Offset(-4, h * .66), .2, 21, 1.0), // vänster kant
+      (Offset(w * .7, h + 6), -1.9, 20, 1.0), // nederkant
+      (Offset(w * .3, -6), 1.75, 17, .95), // överkant
     ];
     reachOf = List.filled(roots.length, 0);
     for (final (i, (start, angle, segs, reach)) in roots.indexed) {
@@ -165,7 +165,8 @@ void paintVeins(Canvas canvas, Size size, int frame, ChainTheme theme, {required
     // LOG: en ljusvåg från rötterna ut genom hela det vuxna nätet.
     for (final age in AmbientLife.burstAges) {
       final front = age / 1000 * 260; // px/s
-      final fade = 1 - age / AmbientLife.burstLife;
+      final fade = 1 - age / 3200; // vågen är kortare än utsträckningen
+      if (fade <= 0) continue;
       glow.color = theme.hexEnergy.withValues(alpha: .55 * fade);
       core.color = theme.hexEnergy.withValues(alpha: .9 * fade);
       for (final v in net.veins) {
