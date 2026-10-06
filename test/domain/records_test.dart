@@ -185,4 +185,43 @@ void main() {
       expect(lastPerformance(const [], bench), isNull);
     });
   });
+
+  group('radera felaktig data (Niklas 2026-10-06)', () {
+    test('withoutSet: 1000 kg av misstag bort → näst bästa blir PR, passet står kvar', () {
+      final oops = work(const SetValues(weight: 1000, reps: 1000));
+      final real = work(const SetValues(weight: 100, reps: 5));
+      final e2 = entry(d2, [ex(bench, [real, oops]), ex(chins, [work(const SetValues(extra: 0, reps: 8))], m: Measure.bodyweight)]);
+      final h = [entry(d1, [ex(bench, [work(const SetValues(weight: 90, reps: 5))])]), e2];
+      expect(personalRecords(h)[bench]!.value, 1000);
+
+      final p = progression(h, bench).last;
+      expect((p.entry, p.set.id), (e2, oops.id));
+      final next = withoutSet(p.entry, p.rowId, p.set.id)!;
+      expect(next.workout.id, e2.workout.id);
+      expect(next.workout.exercises.length, 2);
+      expect(personalRecords([h.first, next])[bench]!.value, 100);
+      expect(withoutSet(e2, p.rowId, const SetId('finns_inte')), isNull);
+    });
+
+    test('withoutSet: sista settet bort → övningen försvinner ur passet, inte passet', () {
+      final only = work(const SetValues(weight: 1000, reps: 1));
+      final e = entry(d1, [ex(bench, [only]), ex(chins, [work(const SetValues(extra: 0, reps: 8))], m: Measure.bodyweight)]);
+      final next = withoutSet(e, e.workout.exercises.first.id, only.id)!;
+      expect(next.workout.exercises.map((x) => x.exerciseId), [chins]);
+      expect(next.workout.isFinished, isTrue);
+      expect(personalRecords([next])[bench], isNull);
+    });
+
+    test('withoutExercise: alla förekomster bort, övrigt orört; null om den inte fanns', () {
+      final e = entry(d1, [
+        ex(bench, [work(const SetValues(weight: 100, reps: 5))]),
+        ex(chins, [work(const SetValues(extra: 0, reps: 8))], m: Measure.bodyweight),
+        ex(bench, [work(const SetValues(weight: 80, reps: 10))]),
+      ]);
+      final next = withoutExercise(e, bench)!;
+      expect(next.workout.exercises.map((x) => x.exerciseId), [chins]);
+      expect(next.source, e.source);
+      expect(withoutExercise(next, bench), isNull);
+    });
+  });
 }

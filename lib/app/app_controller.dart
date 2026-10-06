@@ -668,10 +668,43 @@ class AppController extends ChangeNotifier {
   }
 
   /// UNDO efter radering: samma post tillbaka (nyare stämpel vinner över tombstonen).
-  Future<void> restoreHistoryEntry(HistoryEntry e) async {
-    await repo!.saveHistory(e, _now());
+  Future<void> restoreHistoryEntry(HistoryEntry e) => restoreHistoryEntries([e]);
+
+  /// UNDO efter radering eller omskrivning: originalposterna tillbaka med ny stämpel.
+  Future<void> restoreHistoryEntries(List<HistoryEntry> entries) async {
+    final now = _now();
+    for (final e in entries) {
+      await repo!.saveHistory(e, now);
+    }
     notifyListeners();
     await syncNow();
+  }
+
+  /// Raderar ett felloggat set ur ett avslutat pass (Niklas 2026-10-06: "1000 kg
+  /// av misstag ska inte sparas"). Posten skrivs om med ny stämpel — passet
+  /// står kvar i kedjan. UNDO = [restoreHistoryEntry] med originalet.
+  Future<void> deleteLoggedSet(WorkoutEntry e, String rowId, SetId setId) async {
+    final next = withoutSet(e, rowId, setId);
+    if (next == null) return;
+    await repo!.saveHistory(next, _now());
+    notifyListeners();
+    await syncNow();
+  }
+
+  /// Tar bort övningen ur alla avslutade pass. Returnerar originalen (för UNDO).
+  Future<List<WorkoutEntry>> deleteExerciseHistory(ExerciseId id) async {
+    final r = repo!;
+    final now = _now();
+    final before = <WorkoutEntry>[];
+    for (final e in r.history().whereType<WorkoutEntry>()) {
+      final next = withoutExercise(e, id);
+      if (next == null) continue;
+      before.add(e);
+      await r.saveHistory(next, now);
+    }
+    notifyListeners();
+    await syncNow();
+    return before;
   }
 
   /// Ändrar anteckningen på ett avslutat pass (tom = ta bort). Seten rörs inte.

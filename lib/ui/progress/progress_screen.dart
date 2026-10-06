@@ -11,6 +11,7 @@ import '../../theme/chain_theme.dart';
 import '../../theme/background_scope.dart';
 import '../../theme/surfaces.dart';
 import '../copy_text.dart';
+import '../delete_ux.dart';
 import '../format.dart';
 import '../nanosuit_scaffold.dart';
 import '../units.dart';
@@ -259,27 +260,11 @@ class _ProgressScreenState extends State<ProgressScreen> {
 
   /// Bekräftelse (ett helt pass är mer än en vägning) + UNDO i 2,5 s.
   Future<void> _delete(BuildContext context, HistoryEntry e, String label) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('Delete $label?'),
-        content: const Text('It is removed from history, records and the chain on all your devices.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Keep')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete')),
-        ],
-      ),
-    );
-    if (ok != true || !context.mounted) return;
+    final ok = await confirmDelete(context,
+        title: 'Delete $label?', body: 'It is removed from history, records and the chain on all your devices.');
+    if (!ok || !context.mounted) return;
     final messenger = ScaffoldMessenger.of(context);
     await widget.app.deleteHistoryEntry(e);
-    messenger
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(
-        content: Text('Deleted $label'),
-        action: SnackBarAction(label: 'UNDO', onPressed: () => widget.app.restoreHistoryEntry(e)),
-        persist: false,
-        duration: const Duration(milliseconds: 2500),
-      ));
+    showUndo(messenger, 'Deleted $label', () => widget.app.restoreHistoryEntry(e));
   }
 }

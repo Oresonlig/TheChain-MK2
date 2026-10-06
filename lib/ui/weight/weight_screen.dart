@@ -11,6 +11,7 @@ import '../../theme/background_scope.dart';
 import '../../theme/surfaces.dart';
 import '../charts/chain_chart.dart';
 import '../charts/series.dart';
+import '../delete_ux.dart';
 import '../nanosuit_scaffold.dart';
 
 const _lbsPerKg = 2.20462;
@@ -90,19 +91,14 @@ class _WeightScreenState extends State<WeightScreen> with ChartRangeState {
     return '${v.toStringAsFixed(v == v.roundToDouble() ? 0 : 1)} ${u == WeightUnit.lbs ? 'lbs' : 'kg'}';
   }
 
-  /// Raderar direkt (ett tryck på gymmet) men med UNDO — ett feltryck ska
-  /// aldrig kosta en vägning (Niklas 2026-10-04).
+  /// Bekräftelse + UNDO, som all radering av historik (Niklas 2026-10-06).
   Future<void> _delete(BodyweightEntry e, UserSettings s) async {
+    final label = '${e.date} · ${_fmt(e.kg, s.weightUnit)}';
+    final ok = await confirmDelete(context, title: 'Delete weigh-in?', body: label);
+    if (!ok || !mounted) return;
     final messenger = ScaffoldMessenger.of(context);
     await widget.app.deleteBodyweight(e.date);
-    messenger
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(
-        content: Text('Deleted ${e.date} · ${_fmt(e.kg, s.weightUnit)}'),
-        action: SnackBarAction(label: 'UNDO', onPressed: () => widget.app.restoreBodyweight(e)),
-        persist: false, // annars ligger UNDO kvar tills den dras bort
-        duration: const Duration(milliseconds: 2500),
-      ));
+    showUndo(messenger, 'Deleted $label', () => widget.app.restoreBodyweight(e));
   }
 
   Future<void> _log(UserSettings s) async {

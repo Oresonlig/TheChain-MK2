@@ -11,6 +11,7 @@ import '../../theme/chain_theme.dart';
 import '../../theme/background_scope.dart';
 import '../../theme/surfaces.dart';
 import '../copy_text.dart';
+import '../delete_ux.dart';
 import '../nanosuit_scaffold.dart';
 import '../onboarding/welcome_panel.dart';
 import '../units.dart';
@@ -203,7 +204,10 @@ class _ChainScreenState extends State<ChainScreen> {
                     final last = (history.whereType<RestEntry>().where((e) => e.sessionId == session.id).toList()
                           ..sort((a, b) => b.date.compareTo(a.date)))
                         .firstOrNull;
-                    if (last != null && await _confirmUndo(context, rest: true)) await widget.app.undoRest(last);
+                    if (last == null || !await _confirmUndo(context, rest: true) || !context.mounted) return;
+                    final messenger = ScaffoldMessenger.of(context);
+                    await widget.app.undoRest(last);
+                    showUndo(messenger, 'Forced rest day not done', () => widget.app.restoreHistoryEntry(last));
                   },
                 )
               else
@@ -244,7 +248,10 @@ class _ChainScreenState extends State<ChainScreen> {
                     if (reason != null) await widget.app.skipSession(session.id, reason);
                   },
                   onUndoSkip: (entry) async {
-                    if (await _confirmUndo(context, skip: true)) await widget.app.undoSkip(entry);
+                    if (!await _confirmUndo(context, skip: true) || !context.mounted) return;
+                    final messenger = ScaffoldMessenger.of(context);
+                    await widget.app.undoSkip(entry);
+                    showUndo(messenger, 'Skip undone', () => widget.app.restoreHistoryEntry(entry));
                   },
                 ),
             ],

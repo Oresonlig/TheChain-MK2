@@ -11,6 +11,7 @@ import '../../domain/domain.dart';
 import '../../theme/chain_theme.dart';
 import '../../theme/background_scope.dart';
 import '../../theme/surfaces.dart';
+import '../delete_ux.dart';
 import '../nanosuit_scaffold.dart';
 import '../units.dart';
 import 'exercise_picker.dart';
@@ -355,7 +356,12 @@ class ExerciseCard extends StatelessWidget {
                   IconButton(
                     tooltip: 'Remove note',
                     visualDensity: VisualDensity.compact,
-                    onPressed: () => controller.deleteNote(n),
+                    // Trivialt: ingen bekräftelse, bara UNDO (Niklas 2026-10-06).
+                    onPressed: () async {
+                      final messenger = ScaffoldMessenger.of(context);
+                      await controller.deleteNote(n);
+                      showUndo(messenger, 'Note removed', () => controller.restoreNote(n));
+                    },
                     icon: Icon(Icons.close, size: 18, color: c.textFaint),
                   ),
                 ]),

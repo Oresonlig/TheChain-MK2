@@ -32,7 +32,15 @@ class PersonalRecord {
 }
 
 class ProgressionPoint {
-  const ProgressionPoint({required this.date, required this.value, required this.isPr, required this.set, required this.measure});
+  const ProgressionPoint({
+    required this.date,
+    required this.value,
+    required this.isPr,
+    required this.set,
+    required this.measure,
+    required this.entry,
+    required this.rowId,
+  });
 
   final DateTime date;
   final double value;
@@ -43,6 +51,10 @@ class ProgressionPoint {
   /// Passets bästa set (för etiketten "130 kg × 1") och mätsättet det loggades i.
   final SetEntry set;
   final Measure measure;
+
+  /// Passet och övningsraden settet ligger i — för "Delete this set".
+  final WorkoutEntry entry;
+  final String rowId;
 }
 
 class LastPerformance {
@@ -58,7 +70,7 @@ class LastPerformance {
 }
 
 /// Övningar i avslutade pass som räknas: ej överhoppade, nyast först.
-Iterable<(DateTime, EntrySource, WorkoutExercise)> _performed(
+Iterable<(DateTime, EntrySource, WorkoutExercise, WorkoutEntry)> _performed(
   Iterable<HistoryEntry> history,
   ExerciseId? only,
 ) sync* {
@@ -68,7 +80,7 @@ Iterable<(DateTime, EntrySource, WorkoutExercise)> _performed(
     for (final ex in e.workout.exercises) {
       if (ex.status == ExerciseStatus.skipped) continue;
       if (only != null && ex.exerciseId != only) continue;
-      yield (e.date, e.source, ex);
+      yield (e.date, e.source, ex, e);
     }
   }
 }
@@ -98,7 +110,7 @@ Map<ExerciseId, PersonalRecord> personalRecords(
   Measure? Function(ExerciseId id)? measureOf,
 }) {
   final out = <ExerciseId, PersonalRecord>{};
-  for (final (date, source, ex) in _performed(history, null)) {
+  for (final (date, source, ex, _) in _performed(history, null)) {
     if (!_current(ex, measureOf?.call(ex.exerciseId))) continue;
     final b = bestSet(ex.measure, ex.sets);
     if (b == null) continue;
@@ -141,21 +153,21 @@ List<ProgressionPoint> progression(Iterable<HistoryEntry> history, ExerciseId id
   final rows = _performed(history, id).toList().reversed;
   final out = <ProgressionPoint>[];
   (double, double)? high;
-  for (final (date, _, ex) in rows) {
+  for (final (date, _, ex, entry) in rows) {
     if (!_current(ex, measure)) continue;
     final b = bestSet(ex.measure, ex.sets, valueOf: (s) => progressionValue(ex.measure, s));
     if (b == null) continue;
     final (set, v, tb) = b;
     final isPr = high == null || v > high.$1 || (v == high.$1 && tb > high.$2);
     if (isPr) high = (v, tb);
-    out.add(ProgressionPoint(date: date, value: v, isPr: isPr, set: set, measure: ex.measure));
+    out.add(ProgressionPoint(date: date, value: v, isPr: isPr, set: set, measure: ex.measure, entry: entry, rowId: ex.id));
   }
   return out;
 }
 
 /// Senaste passet där övningen har minst ett loggat arbetsset.
 LastPerformance? lastPerformance(Iterable<HistoryEntry> history, ExerciseId id) {
-  for (final (date, _, ex) in _performed(history, id)) {
+  for (final (date, _, ex, _) in _performed(history, id)) {
     final hasWork = ex.sets.any((s) => s.kind == SetKind.work && s.isLogged);
     if (hasWork) return LastPerformance(date: date, exercise: ex);
   }

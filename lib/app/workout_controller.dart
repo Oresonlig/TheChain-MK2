@@ -241,6 +241,13 @@ class WorkoutController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// UNDO efter borttagen anteckning (nyare stämpel vinner över tombstonen).
+  Future<void> restoreNote(ExerciseNote n) async {
+    await repo.saveNote(n, _now());
+    onChanged?.call();
+    notifyListeners();
+  }
+
   // ── avsluta ──
   bool get canFinish => workout.canFinish;
 

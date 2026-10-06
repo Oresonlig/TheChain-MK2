@@ -13,6 +13,7 @@ import '../../theme/surfaces.dart';
 import '../charts/chain_chart.dart';
 import '../charts/chart_data.dart';
 import '../charts/series.dart';
+import '../delete_ux.dart';
 import '../format.dart';
 import '../nanosuit_scaffold.dart';
 import '../units.dart';
@@ -101,20 +102,84 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> with ChartR
                 Text('SESSIONS · BEST SET', style: text.labelSmall),
                 if (rows.isEmpty) Padding(padding: const EdgeInsets.only(top: 8), child: Text('Nothing in this period', style: text.bodySmall)),
                 for (final p in rows)
-                  Container(
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    decoration: BoxDecoration(border: Border(top: BorderSide(color: c.border))),
-                    child: Row(children: [
-                      SizedBox(width: 104, child: Text(fmtDate(p.date), style: text.bodySmall)),
-                      Expanded(child: Text(fmtSet(p.set, p.measure, s), style: text.titleMedium)),
-                      if (p.isPr) Text('PR', style: text.labelSmall!.copyWith(color: c.accentBright)),
-                    ]),
+                  // Tryck = radera felloggat set (Niklas 2026-10-06).
+                  InkWell(
+                    onTap: () => _deleteSet(context, p, record, ex?.measure, name),
+                    child: Container(
+                      constraints: const BoxConstraints(minHeight: 48),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      decoration: BoxDecoration(border: Border(top: BorderSide(color: c.border))),
+                      child: Row(children: [
+                        SizedBox(width: 104, child: Text(fmtDate(p.date), style: text.bodySmall)),
+                        Expanded(child: Text(fmtSet(p.set, p.measure, s), style: text.titleMedium)),
+                        if (p.isPr) Text('PR', style: text.labelSmall!.copyWith(color: c.accentBright)),
+                      ]),
+                    ),
                   ),
               ]),
             ),
+            if (history.whereType<WorkoutEntry>().any((e) => withoutExercise(e, widget.exerciseId) != null))
+              Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: TextButton(
+                  onPressed: () => _deleteAll(context, name),
+                  child: Text('Delete all history', style: TextStyle(color: c.textMuted)),
+                ),
+              ),
           ]),
         ),
       ]),
     );
+  }
+
+  /// Ett felloggat set bort. Bekräftelsen säger vad PR blir efteråt.
+  Future<void> _deleteSet(BuildContext context, ProgressionPoint p, PersonalRecord? record, Measure? measure, String name) async {
+    final s = widget.app.repo!.settings();
+    final next = withoutSet(p.entry, p.rowId, p.set.id);
+    if (next == null) return;
+    final setLabel = '${fmtSet(p.set, p.measure, s)} · ${fmtDate(p.date)}';
+    String prLine;
+    if (record != null && record.set.id == p.set.id && record.date == p.date) {
+      final history = [
+        for (final h in widget.app.repo!.history())
+          if (h is WorkoutEntry && h.workout.id == p.entry.workout.id) next else h,
+      ];
+      final after = personalRecords(history, measureOf: (_) => measure)[widget.exerciseId];
+      prLine = after == null ? 'You will have no PR for $name.' : 'Your PR becomes ${fmtRecord(after, s.weightUnit)}.';
+    } else {
+      prLine = record == null ? '' : 'Your PR stays ${fmtRecord(record, s.weightUnit)}.';
+    }
+    final ok = await confirmDelete(
+      context,
+      title: 'Delete this set?',
+      body: '$setLabel\n\nIt is removed from history on all your devices. The session stays in the chain. $prLine'.trim(),
+    );
+    if (!ok || !context.mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    await widget.app.deleteLoggedSet(p.entry, p.rowId, p.set.id);
+    showUndo(messenger, 'Deleted $setLabel', () => widget.app.restoreHistoryEntry(p.entry));
+  }
+
+  /// Hela övningens historik bort (t.ex. loggad på fel övning). Passen står kvar.
+  Future<void> _deleteAll(BuildContext context, String name) async {
+    final affected = [
+      for (final e in widget.app.repo!.history().whereType<WorkoutEntry>())
+        if (withoutExercise(e, widget.exerciseId) != null) e,
+    ];
+    final sets = affected
+        .expand((e) => e.workout.exercises)
+        .where((x) => x.exerciseId == widget.exerciseId)
+        .fold<int>(0, (n, x) => n + x.sets.where((st) => st.isLogged).length);
+    final ok = await confirmDelete(
+      context,
+      title: 'Delete all history for $name?',
+      body: '${affected.length} ${affected.length == 1 ? 'session' : 'sessions'} · $sets ${sets == 1 ? 'set' : 'sets'}. '
+          'Records, graph and "Last" start over. The sessions stay in the chain.',
+      action: 'Delete all',
+    );
+    if (!ok || !context.mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    final before = await widget.app.deleteExerciseHistory(widget.exerciseId);
+    showUndo(messenger, 'Deleted all history for $name', () => widget.app.restoreHistoryEntries(before));
   }
 }
