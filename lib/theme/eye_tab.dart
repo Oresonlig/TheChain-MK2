@@ -1,14 +1,14 @@
 /// Cosmic Horrors pågående pass (Niklas 2026-10-06, efter build 94): ögonen
 /// tar hela markören, och kanten lever i stället för att glöda.
 ///
-///   * [EyeVariant.slit] — fliken delar sig som ögonlock: övre halvan (yta
-///     OCH text) glider upp, nedre ner, och ett stort öga i springan tittar
-///     runt innan fliken sluter sig igen.
+///   * [EyeVariant.slit] — en springa öppnar sig INNANFÖR fliken (2026-10-07):
+///     texten delas, ett stort öga i springan tittar runt, och den sluter sig
+///     igen. Fliken själv rör sig aldrig utanför sina linjer.
 ///   * [EyeVariant.many] — ögon utspridda runt flikens kant, grensle över den,
 ///     som blinkar och tittar var för sig.
-///   * Kanten (båda): ådror växer ut ur flikens kontur och pulserar — fliken
-///     sitter fast i bakgrundens nät. Syns alltid, så markeringen finns kvar
-///     även när springan är sluten. Ingen grön prick.
+///   * Kanten (båda): konturen darrar, som något som mullrar under ytan.
+///     Syns alltid, så markeringen finns kvar även när springan är sluten.
+///     Ingen grön prick.
 ///
 /// Varianten slumpas 50/50 per appstart ([EyeChoice]); DEV-knappen växlar.
 /// Stilla (minska rörelse / ambient av): springan halvöppen, ögonen öppna.
@@ -34,9 +34,9 @@ class EyeChoice {
   static void toggle() => current = current == EyeVariant.many ? EyeVariant.slit : EyeVariant.many;
 }
 
-/// Plats som behövs utanför fliken (ögonlock, kantögon, ådror) — kedjeremsan
-/// lägger den innanför sin scroll, annars klipps allt vid flikens kant.
-const eyeTabRoom = 16.0;
+/// Plats som behövs utanför fliken (kantögonen, darret) — kedjeremsan
+/// lägger den innanför sin scroll, annars klipps de vid flikens kant.
+const eyeTabRoom = 8.0;
 
 class EyeTab extends StatefulWidget {
   const EyeTab({
@@ -60,8 +60,8 @@ class EyeTab extends StatefulWidget {
   final bool animate;
   final math.Random? random;
 
-  /// Hur långt ögonlocken glider isär (var för sig).
-  static const maxLift = 13.0;
+  /// Hur långt halvorna glider isär (var för sig) — inom flikens höjd.
+  static const maxLift = 11.0;
 
   @override
   State<EyeTab> createState() => _EyeTabState();
@@ -71,7 +71,7 @@ class _EyeTabState extends State<EyeTab> with TickerProviderStateMixin {
   late final math.Random _r = widget.random ?? math.Random();
   static const _eyes = 5;
 
-  /// Ådrornas puls — ett långsamt varv.
+  /// Klocka för darret (6 s per varv).
   late final AnimationController _life = AnimationController(vsync: this, duration: const Duration(seconds: 6));
   late final List<AnimationController> _blinks = [
     for (var i = 0; i < _eyes; i++) AnimationController(vsync: this, duration: const Duration(milliseconds: 220)),
@@ -196,31 +196,48 @@ class _EyeTabState extends State<EyeTab> with TickerProviderStateMixin {
         final lift = widget.variant == EyeVariant.slit ? Curves.easeInOut.transform(_slit.value) * EyeTab.maxLift : 0.0;
         double lid(double t) => (t < .4 ? 1 - t / .4 : (t - .4) / .6).clamp(0.0, 1.0);
         return Stack(clipBehavior: Clip.none, children: [
+          child,
+          // Springan öppnar sig INNANFÖR fliken (Niklas 2026-10-07: "inte röra
+          // sig utanför linjerna"): fliken står still, och halvorna + ögat
+          // klipps till flikens kontur.
+          if (lift > .3)
+            Positioned.fill(
+              child: ClipPath(
+                clipper: ShapeBorderClipper(shape: widget.shape),
+                child: Stack(children: [
+                  Positioned.fill(
+                    child: CustomPaint(
+                      painter: _SlitPainter(shape: widget.shape, membrane: widget.membrane, lift: lift, gaze: _gaze[0], theme: c),
+                    ),
+                  ),
+                  // Ögonlocken: flikens två halvor, text och allt.
+                  Positioned.fill(
+                    child: Transform.translate(
+                      offset: Offset(0, -lift),
+                      child: ClipRect(clipper: const _Half(upper: true), child: child),
+                    ),
+                  ),
+                  Positioned.fill(
+                    child: Transform.translate(
+                      offset: Offset(0, lift),
+                      child: ClipRect(clipper: const _Half(upper: false), child: child),
+                    ),
+                  ),
+                ]),
+              ),
+            ),
+          // Kanten mullrar: konturen darrar svagt, ibland lite mer.
           Positioned.fill(
-            child: CustomPaint(painter: _EdgeVeinsPainter(shape: widget.shape, t: _life.value, theme: c)),
-          ),
-          if (lift > .3) ...[
-            Positioned.fill(
+            child: IgnorePointer(
               child: CustomPaint(
-                painter: _SlitPainter(shape: widget.shape, membrane: widget.membrane, lift: lift, gaze: _gaze[0], theme: c),
+                painter: _TremorPainter(
+                  shape: widget.shape,
+                  seconds: _life.isAnimating ? _life.value * 6 : null,
+                  color: widget.membrane.edge,
+                ),
               ),
             ),
-            // Ögonlocken: flikens två halvor, text och allt.
-            Opacity(opacity: 0, child: child),
-            Positioned.fill(
-              child: Transform.translate(
-                offset: Offset(0, -lift),
-                child: ClipRect(clipper: const _Half(upper: true), child: child),
-              ),
-            ),
-            Positioned.fill(
-              child: Transform.translate(
-                offset: Offset(0, lift),
-                child: ClipRect(clipper: const _Half(upper: false), child: child),
-              ),
-            ),
-          ] else
-            child,
+          ),
           if (widget.variant == EyeVariant.many)
             Positioned.fill(
               child: IgnorePointer(
@@ -372,56 +389,50 @@ class _RimEyesPainter extends CustomPainter {
   bool shouldRepaint(_RimEyesPainter old) => true;
 }
 
-/// Ådror som växer ut ur flikens kontur och pulserar (ersätter glöden).
-class _EdgeVeinsPainter extends CustomPainter {
-  _EdgeVeinsPainter({required this.shape, required this.t, required this.theme});
+/// Kanten mullrar (Niklas 2026-10-07: "linjerna skulle bara typ kunna
+/// vibrera, lite som något mullrande under ytan"): flikens kontur darrar
+/// svagt hela tiden och ibland lite kraftigare, som en stöt underifrån.
+/// Max ~1,5 px — inget som tar över. Stilla ([seconds] null) = lugn kontur.
+class _TremorPainter extends CustomPainter {
+  _TremorPainter({required this.shape, required this.seconds, required this.color});
   final ShapeBorder shape;
-  final double t;
-  final ChainTheme theme;
+  final double? seconds;
+  final Color color;
 
-  /// (andel av konturen, längd, böj)
-  static const _veins = [
-    (.02, 11.0, .5), (.12, 8.0, -.4), (.22, 10.0, .3), (.36, 9.0, -.5),
-    (.52, 11.0, .4), (.66, 8.0, -.3), (.76, 10.0, .5), (.9, 9.0, -.4),
-  ];
+  /// Mullrets styrka 0–1: ett lågt grundmuller och glesa stötar.
+  static double rumble(double s) {
+    double surge(double v) => math.pow(.5 + .5 * math.sin(v), 10).toDouble();
+    return math.min(1.0, .25 + surge(s * 1.05) + .7 * surge(s * .41 + 2));
+  }
 
   @override
   void paint(Canvas canvas, Size size) {
     final path = shape.getOuterPath(Offset.zero & size);
-    final metric = path.computeMetrics().first;
-    final center = size.center(Offset.zero);
-    final p = Paint()
+    final paint = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-    for (final (i, (at, len, bend)) in _veins.indexed) {
-      final start = metric.getTangentForOffset(metric.length * at)?.position;
-      if (start == null) continue;
-      // Utåt från flikens mitt, plattat så att de mest går upp/ner.
-      final out = Offset((start.dx - center.dx) / size.width * .8, (start.dy - center.dy) / size.height * 2);
-      final dir = out / math.max(out.distance, .001);
-      final pulse = .5 + .5 * math.sin((t + i * .13) * 2 * math.pi);
-      final end = start + dir * len * (.85 + .25 * pulse);
-      final mid = Offset.lerp(start, end, .5)! + Offset(-dir.dy, dir.dx) * bend * 4;
-      final fork = end + Offset(-dir.dy, dir.dx) * bend * 5 + dir * 2;
-      p
-        ..strokeWidth = 1.3
-        ..color = Color.lerp(theme.hexLine, theme.hexEnergy, pulse)!.withValues(alpha: .35 + .45 * pulse);
-      canvas.drawPath(
-        Path()
-          ..moveTo(start.dx, start.dy)
-          ..quadraticBezierTo(mid.dx, mid.dy, end.dx, end.dy)
-          ..moveTo(Offset.lerp(start, end, .6)!.dx, Offset.lerp(start, end, .6)!.dy)
-          ..lineTo(fork.dx, fork.dy),
-        p,
-      );
+      ..strokeWidth = 1.3
+      ..strokeJoin = StrokeJoin.round
+      ..color = color;
+    final s = seconds;
+    if (s == null) {
+      canvas.drawPath(path, paint);
+      return;
     }
-    // Konturen själv: ett tunt levande membran som andas.
-    canvas.drawPath(path, Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.2 + .8 * (.5 + .5 * math.sin(t * 2 * math.pi))
-      ..color = theme.hexEnergy.withValues(alpha: .35));
+    final amp = 1.5 * rumble(s);
+    final metric = path.computeMetrics().first;
+    final shaky = Path();
+    for (var d = 0.0; d <= metric.length; d += 3) {
+      final tan = metric.getTangentForOffset(d);
+      if (tan == null) continue;
+      final n = Offset(-tan.vector.dy, tan.vector.dx);
+      final j = (math.sin(d * .9 + s * 47) * .6 + math.sin(d * .31 - s * 29) * .4) * amp;
+      final p = tan.position + n * j;
+      d == 0 ? shaky.moveTo(p.dx, p.dy) : shaky.lineTo(p.dx, p.dy);
+    }
+    shaky.close();
+    canvas.drawPath(shaky, paint);
   }
 
   @override
-  bool shouldRepaint(_EdgeVeinsPainter old) => old.t != t || old.theme != theme;
+  bool shouldRepaint(_TremorPainter old) => old.seconds != seconds || old.color != color;
 }
