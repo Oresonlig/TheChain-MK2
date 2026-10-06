@@ -167,8 +167,9 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                             ? () async {
                                 String? note;
                                 if (controller.repo.settings().finishNote) {
-                                  note = await askSessionNote(context, title: 'Finish session', confirmLabel: 'Finish');
-                                  if (note == null) return; // avbrutet: passet pågår
+                                  note = await askSessionNote(context,
+                                      title: 'Finish session', confirmLabel: 'Finish', skipLabel: 'Skip note');
+                                  if (note == null) return; // Cancel: ett steg bakåt, passet pågår
                                 }
                                 final ok = await controller.finish(note: note);
                                 if (ok) HapticFeedback.mediumImpact();
