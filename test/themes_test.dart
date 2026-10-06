@@ -1,5 +1,8 @@
+import 'dart:math' as math;
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:the_chain/theme/active_mark.dart';
+import 'package:the_chain/theme/ambient_life.dart';
 import 'package:the_chain/theme/cosmic_horror.dart';
 import 'package:the_chain/theme/nanosuit.dart';
 import 'package:the_chain/theme/surfaces.dart';
@@ -22,10 +25,27 @@ void main() {
     expect(shapeSeed('A'), isNot(shapeSeed('B')));
   });
 
-  test('hjärtslaget: två slag (lub starkast), sedan vila', () {
-    expect(heartbeat(.08), closeTo(1, .01));
-    expect(heartbeat(.26), greaterThan(.6));
-    expect(heartbeat(.17), lessThan(heartbeat(.26)));
-    expect(heartbeat(.7), lessThan(.01));
+  test('ögat blinkar med slumpad takt, 2,5–9 s, aldrig i jämn rytm', () {
+    final r = math.Random(1);
+    final gaps = [for (var i = 0; i < 50; i++) nextBlink(r).inMilliseconds];
+    expect(gaps.every((g) => g >= 2500 && g <= 9000), isTrue);
+    expect(gaps.toSet().length, greaterThan(40), reason: 'inte "var 3:e sekund"');
+  });
+
+  test('ådrorna: växer med rundan, LOG ger groddar, ny runda börjar om', () {
+    AmbientLife.reset();
+    AmbientLife.roundProgress = 0;
+    expect(AmbientLife.target, closeTo(.35, .001));
+    AmbientLife.roundProgress = .5;
+    final half = AmbientLife.target;
+    expect(half, greaterThan(.35));
+    AmbientLife.burst();
+    expect(AmbientLife.target, greaterThan(half));
+    expect(AmbientLife.burstAges, isNotEmpty);
+    AmbientLife.roundProgress = 1;
+    expect(AmbientLife.target, 1);
+    AmbientLife.roundProgress = 0; // ny runda
+    expect(AmbientLife.target, closeTo(.35, .001), reason: 'groddarna följer inte med');
+    AmbientLife.reset();
   });
 }

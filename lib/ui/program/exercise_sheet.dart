@@ -108,8 +108,8 @@ class _ExerciseSheetState extends State<_ExerciseSheet> {
     InputDecoration field(String hint) => InputDecoration(
           hintText: hint,
           hintStyle: text.bodySmall,
-          enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: c.borderStrong), borderRadius: BorderRadius.zero),
-          focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: c.accent), borderRadius: BorderRadius.zero),
+          enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: c.borderStrong), borderRadius: c.fieldRadius),
+          focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: c.accent), borderRadius: c.fieldRadius),
         );
 
     return Padding(

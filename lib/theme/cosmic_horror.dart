@@ -59,7 +59,8 @@ const cosmicHorror = ChainTheme(
   hexLine: Color(0xFF3A6A5A), // ådrornas färg
   hexEnergy: Color(0xFFC8F5DA), // pulserna
   ambient: Ambient.veins,
-  activeMark: ActiveMark.heartbeat,
+  activeMark: ActiveMark.eye,
+  cardShape: CardShape.leaf,
   skippedMark: SkippedMark.claw,
   doneMark: DoneMark.scar,
   tabShape: TabShape.blob,

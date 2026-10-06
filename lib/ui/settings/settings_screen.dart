@@ -243,15 +243,22 @@ Widget choiceButton(BuildContext context, String label, bool on, VoidCallback on
       child: SizedBox(
         height: 48,
         child: on
-            ? Raised(material: c.raisedActive, padding: EdgeInsets.zero, child: Center(child: Text(label, style: text.labelLarge)))
+            ? Raised(material: c.raisedActive, padding: EdgeInsets.zero, child: _fit(Text(label, style: text.labelLarge)))
             : DecoratedBox(
-                decoration: BoxDecoration(border: Border.all(color: c.borderStrong)),
-                child: Center(child: Text(label, style: text.labelLarge!.copyWith(color: c.textMuted))),
+                decoration: BoxDecoration(border: Border.all(color: c.borderStrong), borderRadius: c.buttonRadius),
+                child: _fit(Text(label, style: text.labelLarge!.copyWith(color: c.textMuted))),
               ),
       ),
     ),
   );
 }
+
+/// Etiketten krymper hellre än bryts (Cinzel är bredare än Saira:
+/// "COSMIC HORROR" bröts mot vänsterkanten, build 90).
+Widget _fit(Widget label) => Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      child: Center(child: FittedBox(fit: BoxFit.scaleDown, child: label)),
+    );
 
 Future<void> _askRestSecs(BuildContext context, AppController app, UserSettings s) async {
   // Ingen dispose: dialogens stängningsanimation läser fältet efter pop.

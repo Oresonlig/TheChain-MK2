@@ -16,18 +16,21 @@ class Glass extends StatelessWidget {
     super.key,
     required this.child,
     this.padding = const EdgeInsets.all(16),
-    this.radius = 6,
+    this.radius,
     this.border = true,
   });
 
   final Widget child;
   final EdgeInsetsGeometry padding;
-  final double radius;
+
+  /// Null = temats kortform ([ChainTheme.cardRadius]).
+  final BorderRadius? radius;
   final bool border;
 
   @override
   Widget build(BuildContext context) {
     final c = context.chain;
+    final r = radius ?? c.cardRadius;
     final surface = DecoratedBox(
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -35,7 +38,7 @@ class Glass extends StatelessWidget {
           end: Alignment.bottomCenter,
           colors: [c.glassTop, c.glassBottom],
         ),
-        borderRadius: BorderRadius.circular(radius),
+        borderRadius: r,
         border: border ? Border.all(color: c.border) : null,
       ),
       child: Padding(padding: padding, child: child),
@@ -44,7 +47,7 @@ class Glass extends StatelessWidget {
     final scope = BackgroundScope.of(context);
     if (scope == null) return surface;
     return ClipRRect(
-      borderRadius: BorderRadius.circular(radius),
+      borderRadius: r,
       // passthrough: glaset får samma mått som utan Stack (annars krymper t.ex. kedjeremsan).
       child: Stack(fit: StackFit.passthrough, children: [
         Positioned.fill(child: PaintedBackdrop(scope: scope, theme: c)),
@@ -93,7 +96,7 @@ class GhostButton extends StatelessWidget {
       side: BorderSide(color: onTap == null ? c.border : borderColor ?? col.withValues(alpha: .5)),
       minimumSize: Size(0, height), // stora träffytor
       padding: const EdgeInsets.symmetric(horizontal: 8),
-      shape: const RoundedRectangleBorder(),
+      shape: RoundedRectangleBorder(borderRadius: c.buttonRadius),
       textStyle: Theme.of(context).textTheme.labelSmall,
     );
     final Widget button = icon != null
@@ -104,7 +107,7 @@ class GhostButton extends StatelessWidget {
     return Semantics(
       label: semanticLabel,
       // Konturen är kanten — glaset ritar ingen egen.
-      child: Glass(padding: EdgeInsets.zero, radius: 0, border: false, child: button),
+      child: Glass(padding: EdgeInsets.zero, radius: c.buttonRadius, border: false, child: button),
     );
   }
 }
@@ -166,8 +169,10 @@ class BlobBorder extends OutlinedBorder {
       return s / 0x7FFFFFFF;
     }
 
+    // MK1-bönor, inte piller: radierna summerar alltid under höjden, så
+    // ändarna blir aldrig helt runda.
     final h = r.height;
-    Radius corner() => Radius.elliptical(h * (.34 + next() * .3), h * (.3 + next() * .32));
+    Radius corner() => Radius.elliptical(h * (.24 + next() * .2), h * (.2 + next() * .2));
     return RRect.fromRectAndCorners(r, topLeft: corner(), topRight: corner(), bottomRight: corner(), bottomLeft: corner());
   }
 
@@ -189,11 +194,13 @@ class BlobBorder extends OutlinedBorder {
   ShapeBorder scale(double t) => BlobBorder(seed: seed, side: side.scale(t));
 }
 
-/// Temats form för en upphöjd yta ([TabShape]).
+/// Temats form för en upphöjd yta: kedjans flikar ([seed] satt) följer
+/// [TabShape], knapparna temats knappform ([CardShape]).
 OutlinedBorder raisedShape(ChainTheme c, {double inset = 8, int? seed, BorderSide side = BorderSide.none}) =>
     switch (c.tabShape) {
       TabShape.chevron => ChevronBorder(inset: inset, side: side),
-      TabShape.blob => BlobBorder(seed: seed ?? 7, side: side),
+      TabShape.blob when seed != null => BlobBorder(seed: seed, side: side),
+      TabShape.blob => RoundedRectangleBorder(borderRadius: c.buttonRadius, side: side),
     };
 
 /// Upphöjd yta i temats form: gradient topp→botten, ljus överkant, kant, glöd.
@@ -205,7 +212,7 @@ class Raised extends StatelessWidget {
   final EdgeInsetsGeometry? padding;
   final double inset;
 
-  /// Blobbens asymmetri ([shapeSeed]); null = knapparnas gemensamma.
+  /// Blobbens asymmetri ([shapeSeed]) för kedjans flikar; null = en knapp.
   final int? seed;
 
   @override

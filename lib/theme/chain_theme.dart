@@ -55,9 +55,19 @@ enum ActiveMark {
   /// Nanosuit: ett kort ljusspår som löper runt flikens chevron-kontur.
   tracePulse,
 
-  /// Cosmic Horror: fliken pulserar inifrån i dubbelslag (lub-dub) och
-  /// membranet andas.
-  heartbeat,
+  /// Cosmic Horror: pricken blir ett smalt öga som tittar och blinkar med
+  /// slumpad takt (Niklas 2026-10-06). Ingen ram — inget att klippa.
+  eye,
+}
+
+/// Formen på kort, fält och knappar.
+enum CardShape {
+  /// Nanosuit: raka hörn (kort lätt rundade).
+  square,
+
+  /// Cosmic Horror: blad-form (MK1) — diagonalt motsatta hörn rundade, de
+  /// andra nästan skarpa: vänstersidan dippar, högersidan stiger.
+  leaf,
 }
 
 /// Hur temat markerar ett ÖVERHOPPAT pass på bokstaven (status-kanalen).
@@ -160,8 +170,44 @@ class ChainTheme extends ThemeExtension<ChainTheme> {
     required this.tabShape,
     required this.navMark,
     required this.fonts,
+    required this.cardShape,
     Color? fail,
   }) : fail = fail ?? restGold;
+
+  final CardShape cardShape;
+
+  /// Glaskort. Blad: MK1 `24px 6px 28px 8px / 16px 22px 12px 24px`.
+  BorderRadius get cardRadius => switch (cardShape) {
+        CardShape.square => BorderRadius.circular(6),
+        CardShape.leaf => const BorderRadius.only(
+            topLeft: Radius.elliptical(24, 16),
+            topRight: Radius.elliptical(6, 22),
+            bottomRight: Radius.elliptical(28, 12),
+            bottomLeft: Radius.elliptical(8, 24),
+          ),
+      };
+
+  /// Inmatningsfält. Blad: MK1 `8px 2px 8px 2px`.
+  BorderRadius get fieldRadius => switch (cardShape) {
+        CardShape.square => BorderRadius.zero,
+        CardShape.leaf => const BorderRadius.only(
+            topLeft: Radius.circular(9),
+            topRight: Radius.circular(2),
+            bottomRight: Radius.circular(9),
+            bottomLeft: Radius.circular(2),
+          ),
+      };
+
+  /// Knappar (LOG, DONE, GhostButton …). Blad: MK1 `16px 4px 18px 4px / 14px 6px 16px 4px`.
+  BorderRadius get buttonRadius => switch (cardShape) {
+        CardShape.square => BorderRadius.zero,
+        CardShape.leaf => const BorderRadius.only(
+            topLeft: Radius.elliptical(16, 14),
+            topRight: Radius.elliptical(4, 6),
+            bottomRight: Radius.elliptical(18, 16),
+            bottomLeft: Radius.elliptical(4, 4),
+          ),
+      };
 
   /// Avklarat pass i kedjan — obligatoriskt.
   final DoneMark doneMark;
@@ -266,6 +312,7 @@ class ChainTheme extends ThemeExtension<ChainTheme> {
       tabShape: t < 0.5 ? tabShape : other.tabShape,
       navMark: t < 0.5 ? navMark : other.navMark,
       fonts: t < 0.5 ? fonts : other.fonts,
+      cardShape: t < 0.5 ? cardShape : other.cardShape,
       fail: c(fail, other.fail),
     );
   }

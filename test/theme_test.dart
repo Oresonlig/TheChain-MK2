@@ -34,6 +34,7 @@ ChainTheme _withFail(Color? fail) => ChainTheme(
       tabShape: TabShape.chevron,
       navMark: NavMark.raised,
       fonts: nanosuit.fonts,
+      cardShape: CardShape.square,
       fail: fail,
     );
 

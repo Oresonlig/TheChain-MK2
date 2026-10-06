@@ -9,6 +9,7 @@ import '../../app/app_controller.dart';
 import '../../app/haptics.dart';
 import '../../app/workout_controller.dart';
 import '../../domain/domain.dart';
+import '../../theme/ambient_life.dart';
 import '../../theme/chain_theme.dart';
 import '../../theme/background_scope.dart';
 import '../../theme/surfaces.dart';
@@ -663,9 +664,9 @@ class _SetRowState extends State<SetRow> {
         filled: true,
         fillColor: c.background,
         contentPadding: EdgeInsets.zero,
-        enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: c.borderStrong), borderRadius: BorderRadius.zero),
-        disabledBorder: OutlineInputBorder(borderSide: BorderSide(color: c.border), borderRadius: BorderRadius.zero),
-        focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: c.accent), borderRadius: BorderRadius.zero),
+        enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: c.borderStrong), borderRadius: c.fieldRadius),
+        disabledBorder: OutlineInputBorder(borderSide: BorderSide(color: c.border), borderRadius: c.fieldRadius),
+        focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: c.accent), borderRadius: c.fieldRadius),
       );
 
   @override
@@ -741,6 +742,7 @@ class _SetRowState extends State<SetRow> {
           onTap: widget.editable
               ? () {
                   Haptics.light(); // appens reglage + telefonens vibration vid tryck
+                  if (!s.isLogged) AmbientLife.burst(); // bakgrunden svarar (Cosmic: ljusvåg + gren)
                   widget.controller.toggleLog(widget.row.id, s.id);
                 }
               : null,

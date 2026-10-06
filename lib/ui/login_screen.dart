@@ -145,8 +145,8 @@ class _LoginScreenState extends State<LoginScreen> {
         filled: true,
         fillColor: c.background.withValues(alpha: .6),
         counterText: '',
-        enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: c.borderStrong), borderRadius: BorderRadius.zero),
-        focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: c.accent), borderRadius: BorderRadius.zero),
+        enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: c.borderStrong), borderRadius: c.fieldRadius),
+        focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: c.accent), borderRadius: c.fieldRadius),
       );
 
   Widget _primary(ChainTheme c, TextTheme text, String label, String busyLabel, VoidCallback onTap) => GestureDetector(

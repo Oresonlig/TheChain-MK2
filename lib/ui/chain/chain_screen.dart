@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 
 import '../../app/app_controller.dart';
 import '../../domain/domain.dart';
+import '../../theme/ambient_life.dart';
 import '../../theme/chain_theme.dart';
 import '../../theme/background_scope.dart';
 import '../../theme/surfaces.dart';
@@ -160,6 +161,10 @@ class _ChainScreenState extends State<ChainScreen> {
           final selected = _selected ?? inProgress.firstOrNull ?? chain.next ?? program.sessions.first.id;
           final session = program.sessionById(selected) ?? program.sessions.first;
           final trainingCount = program.sessions.length;
+          // Bakgrunden växer med rundan (Cosmic Horrors ådror). Hanterat =
+          // avklarat eller överhoppat, så nätet är fullvuxet när rundan är klar.
+          AmbientLife.roundProgress =
+              program.sessions.where((s) => chain.isDone(s.id) || chain.isSkipped(s.id)).length / trainingCount;
 
           return ListView(
             addRepaintBoundaries: glassListRepaintBoundaries,
@@ -670,8 +675,8 @@ class _RestPanelState extends State<_RestPanel> {
             decoration: InputDecoration(
               hintText: 'Note (optional)',
               hintStyle: text.bodySmall,
-              enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: c.borderStrong), borderRadius: BorderRadius.zero),
-              focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: c.restGold), borderRadius: BorderRadius.zero),
+              enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: c.borderStrong), borderRadius: c.fieldRadius),
+              focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: c.restGold), borderRadius: c.fieldRadius),
             ),
           ),
           const SizedBox(height: 16),

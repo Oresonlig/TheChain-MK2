@@ -60,6 +60,7 @@ const nanosuit = ChainTheme(
   tabShape: TabShape.chevron,
   navMark: NavMark.raised,
   fonts: ThemeType(display: 'Saira', text: 'Saira'),
+  cardShape: CardShape.square,
 );
 
 ThemeData nanosuitThemeData() => buildThemeData(nanosuit);

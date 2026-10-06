@@ -6,6 +6,8 @@
 ///     granne ("på glänt") = kortnamn, övriga = bara bokstav.
 library;
 
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../../domain/domain.dart';
@@ -118,28 +120,34 @@ class _ChainStripState extends State<ChainStrip> {
                     child: ActiveMarkFrame(
                       active: widget.inProgress.contains(s.id),
                       animate: widget.animate,
-                      seed: shapeSeed(s.id.value),
-                      child: Raised(
-                      material: material,
-                      seed: shapeSeed(s.id.value),
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                      child: Row(mainAxisSize: MainAxisSize.min, children: [
-                        if (skipped)
-                          SkippedLetter(mark: c.skippedMark, color: c.textMuted, child: letterText)
-                        else if (done)
-                          DoneLetter(mark: c.doneMark, color: c.accent, child: letterText)
-                        else
-                          letterText,
-                        if (name != null) ...[
-                          const SizedBox(width: 10),
-                          Text(name, style: base.copyWith(color: selected ? c.textStrong : letterColor)),
-                        ],
-                        if (widget.inProgress.contains(s.id)) ...[
-                          const SizedBox(width: 6),
-                          Container(width: 6, height: 6, decoration: BoxDecoration(color: c.success, shape: BoxShape.circle)),
-                        ],
-                      ]),
-                    ),
+                      child: TabMark(
+                        shape: raisedShape(c, seed: shapeSeed(s.id.value)),
+                        painter: skipped
+                            ? (c.skippedMark == SkippedMark.claw ? ClawPainter(c.fail, tab: true) : null)
+                            : done && c.doneMark == DoneMark.scar
+                                ? ScarPainter(c.accent)
+                                : null,
+                        child: Raised(
+                          material: material,
+                          seed: shapeSeed(s.id.value),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          child: Row(mainAxisSize: MainAxisSize.min, children: [
+                            // Bokstavsmarkering bara för teman utan eget fliklager.
+                            if (skipped && c.skippedMark == SkippedMark.cross)
+                              SkippedLetter(mark: c.skippedMark, color: c.textMuted, child: letterText)
+                            else
+                              letterText,
+                            if (name != null) ...[
+                              const SizedBox(width: 10),
+                              Text(name, style: base.copyWith(color: selected ? c.textStrong : letterColor)),
+                            ],
+                            if (widget.inProgress.contains(s.id)) ...[
+                              const SizedBox(width: 6),
+                              ActiveDot(animate: widget.animate),
+                            ],
+                          ]),
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -164,83 +172,101 @@ class SkippedLetter extends StatelessWidget {
   Widget build(BuildContext context) => switch (mark) {
         SkippedMark.cross => CustomPaint(foregroundPainter: _CrossPainter(color), child: child),
         // Klösmärkena har alltid temats fail-färg — det är deras betydelse.
-        SkippedMark.claw => CustomPaint(foregroundPainter: _ClawPainter(context.chain.fail), child: child),
+        SkippedMark.claw => CustomPaint(foregroundPainter: ClawPainter(context.chain.fail), child: child),
       };
 }
 
-/// Status-kanalen för ett AVKLARAT pass: temats [DoneMark] på bokstaven.
-class DoneLetter extends StatelessWidget {
-  const DoneLetter({super.key, required this.mark, required this.color, required this.child});
+/// Status som eget lager över HELA fliken (Niklas 2026-10-06: rivmärkena var
+/// för små på bokstaven). Klippt till flikens form. Flikens yta, kant och
+/// storlek rörs inte — där bor närheten, och den kanalen blandas aldrig.
+class TabMark extends StatelessWidget {
+  const TabMark({super.key, required this.shape, required this.painter, required this.child});
 
-  final DoneMark mark;
-  final Color color;
+  final ShapeBorder shape;
+  final CustomPainter? painter;
   final Widget child;
 
   @override
-  Widget build(BuildContext context) => switch (mark) {
-        DoneMark.none => child,
-        DoneMark.scar => CustomPaint(foregroundPainter: _ScarPainter(color), child: child),
-      };
+  Widget build(BuildContext context) {
+    final p = painter;
+    if (p == null) return child;
+    return Stack(children: [
+      child,
+      Positioned.fill(
+        child: IgnorePointer(
+          child: ClipPath(clipper: ShapeBorderClipper(shape: shape), child: CustomPaint(painter: p)),
+        ),
+      ),
+    ]);
+  }
 }
 
-/// Tre klösmärken snett över bokstaven, avsmalnande i ändarna.
-class _ClawPainter extends CustomPainter {
-  const _ClawPainter(this.color);
+/// Tre klösmärken snett över ytan, spetsiga i ändarna. [tab] = över en hel
+/// flik (grövre blad, lite bredare), annars över en bokstav.
+class ClawPainter extends CustomPainter {
+  const ClawPainter(this.color, {this.tab = false});
   final Color color;
+  final bool tab;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final p = Paint()..color = color;
     final w = size.width, h = size.height;
+    final blade = tab ? 2.4 : 1.1;
+    final gap = tab ? math.min(9.0, w * .1) : 4.2;
+    final glow = Paint()
+      ..color = color.withValues(alpha: .35)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
+    final p = Paint()..color = color.withValues(alpha: tab ? .85 : 1);
     for (var i = -1; i <= 1; i++) {
-      final dx = i * 4.2;
-      final a = Offset(w * .85 + dx, h * .1);
-      final b = Offset(w * .1 + dx, h * .88);
-      final mid = Offset.lerp(a, b, .5)! + const Offset(2, 1.5); // lätt böj
+      final dx = i * gap;
+      // Över en flik: från övre högra till nedre vänstra, kant till kant.
+      final a = tab ? Offset(w * .72 + dx, -2) : Offset(w * .85 + dx, h * .1);
+      final b = tab ? Offset(w * .3 + dx, h + 2) : Offset(w * .1 + dx, h * .88);
+      final mid = Offset.lerp(a, b, .5)! + Offset(blade, blade * .7); // lätt böj
       final n = Offset(-(b - a).dy, (b - a).dx) / (b - a).distance;
-      // Ett smalt spetsigt blad: tjockast i mitten.
-      canvas.drawPath(
-        Path()
-          ..moveTo(a.dx, a.dy)
-          ..quadraticBezierTo(mid.dx + n.dx * 1.1, mid.dy + n.dy * 1.1, b.dx, b.dy)
-          ..quadraticBezierTo(mid.dx - n.dx * 1.1, mid.dy - n.dy * 1.1, a.dx, a.dy),
-        p,
-      );
+      final path = Path()
+        ..moveTo(a.dx, a.dy)
+        ..quadraticBezierTo(mid.dx + n.dx * blade, mid.dy + n.dy * blade, b.dx, b.dy)
+        ..quadraticBezierTo(mid.dx - n.dx * blade, mid.dy - n.dy * blade, a.dx, a.dy);
+      if (tab) canvas.drawPath(path, glow);
+      canvas.drawPath(path, p);
     }
   }
 
   @override
-  bool shouldRepaint(_ClawPainter old) => old.color != color;
+  bool shouldRepaint(ClawPainter old) => old.color != color || old.tab != tab;
 }
 
-/// Förseglat: en läkt ärrlinje tvärs över bokstaven, med stygn.
-class _ScarPainter extends CustomPainter {
-  const _ScarPainter(this.color);
+/// Förseglat: en läkt ärrlinje från kant till kant över fliken, med stygn —
+/// under textens mitt, så namnet går att läsa.
+class ScarPainter extends CustomPainter {
+  const ScarPainter(this.color);
   final Color color;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final y = size.height * .56;
-    final x0 = -3.0, x1 = size.width + 3;
+    final w = size.width, y = size.height * .74;
     final line = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1
+      ..strokeWidth = 1.4
       ..strokeCap = StrokeCap.round
       ..color = color.withValues(alpha: .7);
     canvas.drawPath(
       Path()
-        ..moveTo(x0, y + 1)
-        ..cubicTo(x0 + (x1 - x0) * .3, y - 2, x0 + (x1 - x0) * .6, y + 2, x1, y - 1),
+        ..moveTo(-2, y + 2)
+        ..cubicTo(w * .3, y - 3, w * .6, y + 3, w + 2, y - 2),
       line,
     );
-    for (final f in const [.22, .5, .78]) {
-      final x = x0 + (x1 - x0) * f;
-      canvas.drawLine(Offset(x - .8, y - 3), Offset(x + .8, y + 3), line);
+    // Stygn var ~12:e px.
+    final n = math.max(2, (w / 12).floor());
+    for (var i = 1; i < n; i++) {
+      final x = w * i / n;
+      canvas.drawLine(Offset(x - 1.2, y - 4), Offset(x + 1.2, y + 4), line);
     }
   }
 
   @override
-  bool shouldRepaint(_ScarPainter old) => old.color != color;
+  bool shouldRepaint(ScarPainter old) => old.color != color;
 }
 
 class _CrossPainter extends CustomPainter {

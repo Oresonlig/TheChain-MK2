@@ -262,9 +262,13 @@ void main() {
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/cosmic_done.png'));
     await pick('V');
     await pick('D');
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/cosmic_eye.png'));
     await tester.tap(find.text('CONTINUE SESSION'));
     await frames(20);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/cosmic_workout.png'));
+    await tester.tap(find.text('LOG').first); // ljusvåg genom ådrorna
+    await frames(14);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/cosmic_burst.png'));
     await tester.pumpWidget(const SizedBox());
   });
 
