@@ -295,6 +295,16 @@ class _ChainScreenState extends State<ChainScreen> {
                         skipped: 0,
                       )),
                 ),
+                // Temats bakgrund fullvuxen (Cosmic Horrors ådror), på/av.
+                // Bara visning — inget skrivs eller synkas.
+                if (c.ambient == Ambient.veins) ...[
+                  const SizedBox(height: 8),
+                  GhostButton(
+                    label: 'DEV · BACKGROUND FULL GROWN: ${AmbientLife.devFull ? 'ON' : 'OFF'}',
+                    color: c.textFaint,
+                    onTap: () => setState(() => AmbientLife.devFull = !AmbientLife.devFull),
+                  ),
+                ],
               ],
             ],
           );

@@ -116,8 +116,11 @@ class _ChainStripState extends State<ChainStrip> {
                   label: '${s.isRest ? 'Forced rest day' : s.name}${skipped ? ', skipped' : done ? ', done' : ''}',
                   child: GestureDetector(
                     onTap: () => widget.onSelect(s.id),
-                    // Pågående pass: temats markering runt fliken (Nanosuit: puls).
-                    child: ActiveMarkFrame(
+                    // Pågående pass: temats markering runt fliken (Nanosuit:
+                    // puls). Cosmic Horror: hela fliken är ett öga.
+                    child: widget.inProgress.contains(s.id) && c.activeMark == ActiveMark.eye
+                        ? Eye(letter: letter[s.id]!, selected: selected, animate: widget.animate)
+                        : ActiveMarkFrame(
                       active: widget.inProgress.contains(s.id),
                       animate: widget.animate,
                       child: TabMark(
@@ -143,7 +146,7 @@ class _ChainStripState extends State<ChainStrip> {
                             ],
                             if (widget.inProgress.contains(s.id)) ...[
                               const SizedBox(width: 6),
-                              ActiveDot(animate: widget.animate),
+                              Container(width: 6, height: 6, decoration: BoxDecoration(color: c.success, shape: BoxShape.circle)),
                             ],
                           ]),
                         ),

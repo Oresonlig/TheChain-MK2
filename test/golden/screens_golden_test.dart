@@ -11,6 +11,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:the_chain/app/app_controller.dart';
 import 'package:the_chain/domain/domain.dart';
 import 'package:the_chain/main.dart';
+import 'package:the_chain/theme/active_mark.dart';
+import 'package:the_chain/theme/ambient_life.dart';
 import 'package:the_chain/theme/nanosuit.dart';
 import 'package:the_chain/ui/chain/round_complete.dart';
 import 'package:the_chain/ui/charts/chain_chart.dart';
@@ -261,8 +263,23 @@ void main() {
     await frames(8);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/cosmic_done.png'));
     await pick('V');
-    await pick('D');
+    // D pågår: hela fliken är ett öga (målat, ingen Text att hitta).
+    await tester.ensureVisible(find.byType(Eye));
+    await frames(6);
+    await tester.tap(find.byType(Eye));
+    await frames(12);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/cosmic_eye.png'));
+    // DEV: nätet fullvuxet (växer fram på ~2 s).
+    final full = find.textContaining('BACKGROUND FULL GROWN');
+    await tester.ensureVisible(full);
+    await frames(4);
+    await tester.tap(full);
+    await frames(60);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/cosmic_full.png'));
+    await tester.tap(full);
+    await frames(4);
+    await tester.ensureVisible(find.text('CONTINUE SESSION'));
+    await frames(4);
     await tester.tap(find.text('CONTINUE SESSION'));
     await frames(20);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/cosmic_workout.png'));
@@ -270,6 +287,28 @@ void main() {
     await frames(14);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/cosmic_burst.png'));
     await tester.pumpWidget(const SizedBox());
+    AmbientLife.reset();
+  });
+
+  testWidgets('temaväljaren: varje tema ritat i sitt eget tema', (tester) async {
+    await _loadSaira();
+    final b = FakeBackend(mk1: {...mk1(), 'sessionOrder': ['A', 'B']});
+    final app = _app(b);
+    await _phone(tester, TheChainApp(app: app, emailOf: () => ''));
+    await tester.runAsync(() async {
+      await app.start();
+      await app.signIn('x', 'secret');
+      await pumpEventQueue();
+      await app.importFromWebsite();
+      await _tourSeen(app);
+      await app.updateSettings(app.repo!.settings().copyWith(theme: 'cosmic'));
+    });
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('SETTINGS'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Appearance'));
+    await tester.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/theme_picker.png'));
   });
 
   testWidgets('avslutat pass: låst, COPY + UNDO', (tester) async {

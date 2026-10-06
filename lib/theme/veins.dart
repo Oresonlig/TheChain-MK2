@@ -75,12 +75,15 @@ class _Network {
     }
 
     final w = s.width, h = s.height;
+    // Fullvuxet (rundan klar) ska synas tydligt större än i början
+    // (Niklas 2026-10-06, DEV-knappen): långa stammar, rundans början visar 35 %.
     final roots = [
-      (Offset(w + 6, -8), 2.35, 16, 1.0), // övre högra hörnet
-      (Offset(-6, h + 8), -.78, 16, 1.0), // nedre vänstra hörnet
-      (Offset(w + 4, h * .42), math.pi - .25, 11, .85), // höger kant
-      (Offset(-4, h * .66), .2, 11, .85), // vänster kant
-      (Offset(w * .7, h + 6), -1.9, 10, .8), // nederkant
+      (Offset(w + 6, -8), 2.35, 26, 1.15), // övre högra hörnet
+      (Offset(-6, h + 8), -.78, 26, 1.15), // nedre vänstra hörnet
+      (Offset(w + 4, h * .42), math.pi - .25, 17, 1.0), // höger kant
+      (Offset(-4, h * .66), .2, 17, 1.0), // vänster kant
+      (Offset(w * .7, h + 6), -1.9, 16, 1.0), // nederkant
+      (Offset(w * .3, -6), 1.75, 14, .95), // överkant
     ];
     reachOf = List.filled(roots.length, 0);
     for (final (i, (start, angle, segs, reach)) in roots.indexed) {

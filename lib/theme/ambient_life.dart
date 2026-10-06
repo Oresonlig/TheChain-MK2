@@ -40,9 +40,13 @@ class AmbientLife {
   static const burstLife = 3200;
   static const maxSprouts = 14;
 
+  /// DEV: visa nätet fullvuxet oavsett runda (Niklas 2026-10-06: "måste
+  /// gissa mig till hur slutresultatet ser ut"). Sparas inte.
+  static bool devFull = false;
+
   /// Var nätet ska vara: 35 % vid rundans start, fullt när den är klar,
   /// plus groddarna från dagens LOG.
-  static double get target => math.min(1.0, .35 + .65 * _progress + _sprouts * .012);
+  static double get target => devFull ? 1 : math.min(1.0, .35 + .65 * _progress + _sprouts * .012);
 
   /// Visad tillväxt — glider mot [target] (~2 s), så växten syns ske.
   /// [animated] false = hoppar direkt dit (minska rörelse).
@@ -71,5 +75,6 @@ class AmbientLife {
     _sprouts = 0;
     _shown = null;
     _bursts.clear();
+    devFull = false;
   }
 }

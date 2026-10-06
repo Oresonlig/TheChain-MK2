@@ -55,8 +55,8 @@ enum ActiveMark {
   /// Nanosuit: ett kort ljusspår som löper runt flikens chevron-kontur.
   tracePulse,
 
-  /// Cosmic Horror: pricken blir ett smalt öga som tittar och blinkar med
-  /// slumpad takt (Niklas 2026-10-06). Ingen ram — inget att klippa.
+  /// Cosmic Horror: hela fliken blir ett öga — bokstaven är pupillen — som
+  /// blinkar med slumpad takt (Niklas 2026-10-06). Ingen glöd att klippa.
   eye,
 }
 

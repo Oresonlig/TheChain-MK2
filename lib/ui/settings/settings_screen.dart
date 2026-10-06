@@ -253,6 +253,44 @@ Widget choiceButton(BuildContext context, String label, bool on, VoidCallback on
   );
 }
 
+/// Ett tema i väljaren, ritat i SITT eget tema (Niklas 2026-10-06): Nanosuit
+/// är alltid en chevron i cyan och Saira, Cosmic alltid ett blad i mint och
+/// Cinzel — knappen visar temats symbol, oavsett vilket tema som är valt.
+/// Vald = temats aktiva yta, övriga = temats vilande yta.
+class _ThemeButton extends StatelessWidget {
+  const _ThemeButton({required this.choice, required this.on, required this.onTap});
+  final ThemeChoice choice;
+  final bool on;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Expanded(
+        child: Semantics(
+          button: true,
+          selected: on,
+          label: '${choice.label} theme',
+          child: GestureDetector(
+            onTap: onTap,
+            child: Theme(
+              data: themeDataFor(choice.theme),
+              child: Builder(builder: (context) {
+                final c = context.chain;
+                final text = Theme.of(context).textTheme;
+                return SizedBox(
+                  height: 56,
+                  child: Raised(
+                    material: on ? c.raisedActive : c.raisedIdle,
+                    padding: EdgeInsets.zero,
+                    child: _fit(Text(choice.label, style: text.labelLarge!.copyWith(color: on ? c.textStrong : c.accent))),
+                  ),
+                );
+              }),
+            ),
+          ),
+        ),
+      );
+}
+
 /// Etiketten krymper hellre än bryts (Cinzel är bredare än Saira:
 /// "COSMIC HORROR" bröts mot vänsterkanten, build 90).
 Widget _fit(Widget label) => Padding(
@@ -560,7 +598,11 @@ class AppearanceSettingsScreen extends StatelessWidget {
                 Row(children: [
                   for (final (i, t) in choices.indexed) ...[
                     if (i > 0) const SizedBox(width: 8),
-                    choiceButton(context, t.label, identical(t.theme, current), () => app.updateSettings(s.copyWith(theme: t.id))),
+                    _ThemeButton(
+                      choice: t,
+                      on: identical(t.theme, current),
+                      onTap: () => app.updateSettings(s.copyWith(theme: t.id)),
+                    ),
                   ],
                 ]),
                 if (devTools) ...[
