@@ -3,6 +3,8 @@
 /// i, och synkas till andra enheter (beslut 2026-10-02).
 library;
 
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../data/repository.dart';
@@ -249,7 +251,8 @@ class WorkoutController extends ChangeNotifier {
   }
 
   // ── avsluta ──
-  bool get canFinish => workout.canFinish;
+  /// Släckt när passet redan är avslutat — ett andra FINISH har inget att göra.
+  bool get canFinish => !workout.isFinished && workout.canFinish;
 
   Future<bool> finish({String? note}) async {
     if (closedElsewhere) {
@@ -270,7 +273,10 @@ class WorkoutController extends ChangeNotifier {
       }
       workout = res.entry.workout;
       notifyListeners();
-      await onFinished();
+      // Inte await: passet är redan sparat lokalt. En synk som hängde på dåligt
+      // gym-nät höll kvar vyn, och nästa FINISH föll tyst på "already
+      // finished" (Niklas 2026-10-06).
+      unawaited(onFinished());
       return true;
     } on WorkoutError catch (e) {
       error = e.message;
@@ -281,7 +287,7 @@ class WorkoutController extends ChangeNotifier {
 
   Future<void> discard() async {
     if (!closedElsewhere) await repo.discardActiveWorkout(workout, _now());
-    await onFinished();
+    unawaited(onFinished()); // som finish: vänta aldrig på nätet
   }
 }
 

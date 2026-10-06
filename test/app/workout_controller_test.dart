@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:the_chain/app/app_controller.dart';
 import 'package:the_chain/app/workout_controller.dart';
@@ -55,6 +57,21 @@ Future<AppController> ready() async {
 }
 
 void main() {
+  test('FINISH väntar aldrig på nätet; avslutat pass kan inte avslutas igen (Niklas 2026-10-06)', () async {
+    final app = await ready();
+    final open = app.openWorkout(const SessionId('A'));
+    final hang = Completer<void>(); // synk som aldrig blir klar (dåligt gym-nät)
+    final wc = WorkoutController(repo: app.repo!, workout: open.workout, newId: app.newId, onFinished: () => hang.future);
+    for (final r in wc.workout.exercises) {
+      logAll(wc, r);
+      wc.markDone(r.id);
+    }
+    expect(wc.canFinish, isTrue);
+    expect(await wc.finish(note: 'first').timeout(const Duration(seconds: 2)), isTrue);
+    expect(app.repo!.activeWorkouts(), isEmpty, reason: 'sparat lokalt innan synken');
+    expect(wc.canFinish, isFalse, reason: 'FINISH släckt efter avslut');
+  });
+
   test('anteckning vid avslut: sparas, ändras, tas bort; UNDO behåller den', () async {
     final app = await ready();
     final wc = app.openWorkout(const SessionId('A'));
@@ -98,6 +115,7 @@ void main() {
     expect(repo.history().whereType<WorkoutEntry>().length, 2);
     expect(repo.chain().done, containsAll([const SessionId('A'), const SessionId('B')]));
     expect(repo.chain().next, const SessionId('V'));
+    await pumpEventQueue(); // synken går i bakgrunden efter FINISH
     expect(app.status, 'Synced');
   });
 

@@ -495,9 +495,11 @@ class AppController extends ChangeNotifier {
       // nätfel själv. Utan det här fastnade `busy` och appen synkade aldrig mer.
       busy = false;
       status = 'Could not save on this phone: $e';
-      notifyListeners();
+      if (!_disposed) notifyListeners();
       return;
     }
+    // Synken körs i bakgrunden efter FINISH (2026-10-06) — kan landa efter dispose.
+    if (_disposed) return;
     if (!identical(repo, r)) {
       // Utloggad under synken — inget av resultatet hör till nästa inloggning.
       // Hann någon logga in under tiden väntar dess första synk här.
