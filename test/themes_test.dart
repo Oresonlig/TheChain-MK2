@@ -1,7 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:the_chain/theme/active_mark.dart';
+import 'package:the_chain/theme/eye_tab.dart';
 import 'package:the_chain/theme/ambient_life.dart';
 import 'package:the_chain/theme/cosmic_horror.dart';
 import 'package:the_chain/theme/nanosuit.dart';

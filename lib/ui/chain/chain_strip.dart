@@ -13,6 +13,7 @@ import 'package:flutter/material.dart';
 import '../../domain/domain.dart';
 import '../../theme/active_mark.dart';
 import '../../theme/chain_theme.dart';
+import '../../theme/eye_tab.dart';
 import '../../theme/surfaces.dart';
 
 class ChainStrip extends StatefulWidget {
@@ -81,10 +82,14 @@ class _ChainStripState extends State<ChainStrip> {
     final selIndex = sessions.indexWhere((s) => s.id == widget.selected);
     final letter = ChainStrip.letters(widget.program);
 
+    // Ögonfliken (Cosmic) behöver plats utanför sig själv — innanför scrollen,
+    // som annars klipper vid flikens kant (samma mekanism som fyrkantspulsen).
+    final eyeRoom = c.activeMark == ActiveMark.eye && widget.inProgress.isNotEmpty;
     return Glass(
-      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+      padding: EdgeInsets.symmetric(vertical: eyeRoom ? 0 : 10, horizontal: 8),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
+        padding: EdgeInsets.symmetric(vertical: eyeRoom ? eyeTabRoom : 0, horizontal: eyeRoom ? 8 : 0),
         child: Row(children: [
           for (final (i, s) in sessions.indexed)
             () {
@@ -107,52 +112,59 @@ class _ChainStripState extends State<ChainStrip> {
                       : distance == 1
                           ? (s.name.length <= 3 ? s.name : s.name.substring(0, 3)).toUpperCase()
                           : null;
+              final running = widget.inProgress.contains(s.id);
+              final eyes = running && c.activeMark == ActiveMark.eye;
+              final shape = raisedShape(c, seed: shapeSeed(s.id.value));
+              final tab = TabMark(
+                shape: shape,
+                painter: skipped
+                    ? (c.skippedMark == SkippedMark.claw ? ClawPainter(c.fail, tab: true) : null)
+                    : done && c.doneMark == DoneMark.scar
+                        ? ScarPainter(c.accent)
+                        : null,
+                child: Raised(
+                  material: material,
+                  seed: shapeSeed(s.id.value),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    // Bokstavsmarkering bara för teman utan eget fliklager.
+                    if (skipped && c.skippedMark == SkippedMark.cross)
+                      SkippedLetter(mark: c.skippedMark, color: c.textMuted, child: letterText)
+                    else
+                      letterText,
+                    if (name != null) ...[
+                      const SizedBox(width: 10),
+                      Text(name, style: base.copyWith(color: selected ? c.textStrong : letterColor)),
+                    ],
+                    // Grön prick = pågår. Ögonen (Cosmic) ersätter den.
+                    if (running && !eyes) ...[
+                      const SizedBox(width: 6),
+                      Container(width: 6, height: 6, decoration: BoxDecoration(color: c.success, shape: BoxShape.circle)),
+                    ],
+                  ]),
+                ),
+              );
               return Padding(
                 key: _keys.putIfAbsent(s.id, GlobalKey.new),
                 padding: const EdgeInsets.only(right: 6),
                 child: Semantics(
                   button: true,
                   selected: selected,
-                  label: '${s.isRest ? 'Forced rest day' : s.name}${skipped ? ', skipped' : done ? ', done' : ''}',
+                  label: '${s.isRest ? 'Forced rest day' : s.name}${running ? ', in progress' : skipped ? ', skipped' : done ? ', done' : ''}',
                   child: GestureDetector(
                     onTap: () => widget.onSelect(s.id),
                     // Pågående pass: temats markering runt fliken (Nanosuit:
-                    // puls). Cosmic Horror: ögon i flikens slut (EyeMark).
-                    child: ActiveMarkFrame(
-                      active: widget.inProgress.contains(s.id),
-                      animate: widget.animate,
-                      child: TabMark(
-                        shape: raisedShape(c, seed: shapeSeed(s.id.value)),
-                        painter: skipped
-                            ? (c.skippedMark == SkippedMark.claw ? ClawPainter(c.fail, tab: true) : null)
-                            : done && c.doneMark == DoneMark.scar
-                                ? ScarPainter(c.accent)
-                                : null,
-                        child: Raised(
-                          material: material,
-                          seed: shapeSeed(s.id.value),
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                          child: Row(mainAxisSize: MainAxisSize.min, children: [
-                            // Bokstavsmarkering bara för teman utan eget fliklager.
-                            if (skipped && c.skippedMark == SkippedMark.cross)
-                              SkippedLetter(mark: c.skippedMark, color: c.textMuted, child: letterText)
-                            else
-                              letterText,
-                            if (name != null) ...[
-                              const SizedBox(width: 10),
-                              Text(name, style: base.copyWith(color: selected ? c.textStrong : letterColor)),
-                            ],
-                            if (widget.inProgress.contains(s.id)) ...[
-                              const SizedBox(width: 6),
-                              if (c.activeMark == ActiveMark.eye)
-                                EyeMark(key: ValueKey(EyeChoice.current), variant: EyeChoice.current, animate: widget.animate)
-                              else
-                                Container(width: 6, height: 6, decoration: BoxDecoration(color: c.success, shape: BoxShape.circle)),
-                            ],
-                          ]),
-                        ),
-                      ),
-                    ),
+                    // puls). Cosmic Horror: ögon över hela fliken (EyeTab).
+                    child: eyes
+                        ? EyeTab(
+                            key: ValueKey(EyeChoice.current),
+                            variant: EyeChoice.current,
+                            shape: shape,
+                            membrane: material,
+                            animate: widget.animate,
+                            child: tab,
+                          )
+                        : ActiveMarkFrame(active: running, animate: widget.animate, child: tab),
                   ),
                 ),
               );

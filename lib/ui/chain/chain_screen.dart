@@ -7,7 +7,7 @@ import 'package:flutter/services.dart';
 
 import '../../app/app_controller.dart';
 import '../../domain/domain.dart';
-import '../../theme/active_mark.dart';
+import '../../theme/eye_tab.dart';
 import '../../theme/chain_theme.dart';
 import '../../theme/background_scope.dart';
 import '../../theme/surfaces.dart';

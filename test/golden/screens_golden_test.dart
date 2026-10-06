@@ -11,7 +11,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:the_chain/app/app_controller.dart';
 import 'package:the_chain/domain/domain.dart';
 import 'package:the_chain/main.dart';
-import 'package:the_chain/theme/active_mark.dart';
+import 'package:the_chain/theme/eye_tab.dart';
 import 'package:the_chain/theme/ambient_life.dart';
 import 'package:the_chain/theme/nanosuit.dart';
 import 'package:the_chain/ui/chain/round_complete.dart';
