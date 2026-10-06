@@ -558,7 +558,7 @@ class AppearanceSettingsScreen extends StatelessWidget {
                 ]),
                 if (devTools) ...[
                   const SizedBox(height: 8),
-                  Text('DEV: Arctic is a preview and not in the stable build.', style: text.bodySmall),
+                  Text('DEV: unreleased themes are not in the stable build.', style: text.bodySmall),
                 ],
               ]),
             settingsSection(context, 'BACKGROUND', [

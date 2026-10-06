@@ -54,9 +54,6 @@ enum ActiveMark {
 
   /// Nanosuit: ett kort ljusspår som löper runt flikens chevron-kontur.
   tracePulse,
-
-  /// Arctic: kvävedimma rinner långsamt ner från fliken (Niklas 2026-10-06).
-  nitrogen,
 }
 
 /// Hur temat markerar ett ÖVERHOPPAT pass på bokstaven (status-kanalen).
@@ -65,28 +62,6 @@ enum ActiveMark {
 enum SkippedMark {
   /// Bokstaven dämpad som avklarad + ett X över.
   cross,
-
-  /// Arctic: isen frös igen — frost över bokstaven (du slog dig aldrig igenom).
-  frozen,
-}
-
-/// Hur temat markerar ett AVKLARAT pass på bokstaven (status-kanalen). Fliken
-/// själv är hel — närheten bor där (Niklas 2026-10-06).
-enum DoneMark {
-  /// Bara dämpad färg.
-  none,
-
-  /// Arctic: du bröt igenom isen — bokstaven kluven i två förskjutna halvor.
-  cleave,
-}
-
-/// Formen på upphöjda ytor (kedjans flikar, LOG, DONE …).
-enum TabShape {
-  /// Nanosuit: avfasade spetsar i vänster/höger kant.
-  chevron,
-
-  /// Arctic: isflak — plan yta, fasetterad kant, oregelbunden per flik.
-  floe,
 }
 
 /// Temats rörliga bakgrund.
@@ -95,9 +70,6 @@ enum Ambient {
 
   /// Nanosuit: hex-väv med energivågor.
   hexField,
-
-  /// Arctic: markdimma, frost från hörnen, frostkorn.
-  polarNight,
 }
 
 @immutable
@@ -129,8 +101,6 @@ class ChainTheme extends ThemeExtension<ChainTheme> {
     required this.ambient,
     required this.activeMark,
     required this.skippedMark,
-    required this.doneMark,
-    required this.tabShape,
     Color? fail,
   }) : fail = fail ?? restGold;
 
@@ -139,11 +109,6 @@ class ChainTheme extends ThemeExtension<ChainTheme> {
 
   /// Överhoppat pass i kedjan — obligatoriskt.
   final SkippedMark skippedMark;
-
-  /// Avklarat pass i kedjan — obligatoriskt.
-  final DoneMark doneMark;
-
-  final TabShape tabShape;
 
   final String name;
 
@@ -232,8 +197,6 @@ class ChainTheme extends ThemeExtension<ChainTheme> {
       ambient: t < 0.5 ? ambient : other.ambient,
       activeMark: t < 0.5 ? activeMark : other.activeMark,
       skippedMark: t < 0.5 ? skippedMark : other.skippedMark,
-      doneMark: t < 0.5 ? doneMark : other.doneMark,
-      tabShape: t < 0.5 ? tabShape : other.tabShape,
       fail: c(fail, other.fail),
     );
   }

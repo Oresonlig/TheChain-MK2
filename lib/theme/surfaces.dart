@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 
 import 'background_scope.dart';
 import 'chain_theme.dart';
-import 'floe.dart';
 
 /// Frostat glas: kortets bit av den blurrade bakgrundsbilden (RITAT glas,
 /// background_scope.dart) + temats ton [ChainTheme.glassTop] → [glassBottom].
@@ -143,28 +142,18 @@ class ChevronBorder extends OutlinedBorder {
   ShapeBorder scale(double t) => ChevronBorder(inset: inset * t, side: side.scale(t));
 }
 
-/// Upphöjd yta i temats form ([TabShape]): Nanosuits chevron (gradient
-/// topp→botten, ljus överkant, kant, glöd) eller Arctics isflak.
+/// Upphöjd yta i chevron-form: gradient topp→botten, ljus överkant, kant, glöd.
 class Raised extends StatelessWidget {
-  const Raised({super.key, required this.material, required this.child, this.padding, this.inset = 8, this.seed});
+  const Raised({super.key, required this.material, required this.child, this.padding, this.inset = 8});
 
   final RaisedMaterial material;
   final Widget child;
   final EdgeInsetsGeometry? padding;
   final double inset;
 
-  /// Isflakets silhuett ([floeSeed]); samma frö = samma flak. Null = knappens.
-  final int? seed;
-
   @override
   Widget build(BuildContext context) {
     final m = material;
-    if (context.chain.tabShape == TabShape.floe) {
-      return CustomPaint(
-        painter: FloePainter(material: m, seed: seed ?? 7),
-        child: Padding(padding: padding ?? const EdgeInsets.symmetric(horizontal: 16, vertical: 10), child: child),
-      );
-    }
     final shape = ChevronBorder(inset: inset, side: BorderSide(color: m.edge));
     return DecoratedBox(
       decoration: ShapeDecoration(

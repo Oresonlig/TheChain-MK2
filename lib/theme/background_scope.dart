@@ -64,7 +64,7 @@ class BlurredBackdrop {
       Paint()..imageFilter = ui.ImageFilter.blur(sigmaX: theme.glassBlur, sigmaY: theme.glassBlur, tileMode: TileMode.clamp),
     );
     c.drawRect(area, Paint()..shader = backgroundGradient(theme).createShader(area));
-    paintAmbient(c, canvas, model, theme, animated: animated, grain: false);
+    paintAmbient(c, canvas, model, theme, animated: animated);
     c.restore();
     final picture = recorder.endRecording();
     final image = picture.toImageSync(w, h);

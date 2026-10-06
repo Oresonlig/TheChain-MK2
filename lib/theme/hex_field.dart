@@ -10,7 +10,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 
 import 'chain_theme.dart';
-import 'polar_night.dart';
 
 class _Wave {
   _Wave.ring(this.x, this.y, this.maxR, this.speed, this.width, this.strength)
@@ -171,16 +170,14 @@ void paintHexField(Canvas canvas, HexFieldModel model, {required Color line, req
   }
 }
 
-/// Temats rörliga bakgrund ritad i skärmens koordinater: Nanosuits väv eller
-/// Arctics polarnatt. Delas av bakgrunden och glasets nedskalade kopia.
-void paintAmbient(Canvas canvas, Size size, HexFieldModel model, ChainTheme theme, {required bool animated, bool grain = true}) {
+/// Temats rörliga bakgrund ritad i skärmens koordinater. Delas av bakgrunden
+/// och glasets nedskalade kopia.
+void paintAmbient(Canvas canvas, Size size, HexFieldModel model, ChainTheme theme, {required bool animated}) {
   switch (theme.ambient) {
     case Ambient.none:
       return;
     case Ambient.hexField:
       if (model.hexes.isNotEmpty) paintHexField(canvas, model, line: theme.hexLine, animated: animated);
-    case Ambient.polarNight:
-      paintPolarNight(canvas, size, animated ? model.frame : 0, theme, grain: grain);
   }
 }
 

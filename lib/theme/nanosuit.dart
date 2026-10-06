@@ -56,8 +56,6 @@ const nanosuit = ChainTheme(
   ambient: Ambient.hexField,
   activeMark: ActiveMark.tracePulse,
   skippedMark: SkippedMark.cross,
-  doneMark: DoneMark.none,
-  tabShape: TabShape.chevron,
 );
 
 ThemeData nanosuitThemeData() => buildThemeData(nanosuit);

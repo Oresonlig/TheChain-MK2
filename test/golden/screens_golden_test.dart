@@ -215,51 +215,6 @@ void main() {
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/chain.png'));
   });
 
-  testWidgets('Arctic: kedjevyn med pågående, avklarat och överhoppat pass', (tester) async {
-    await _loadSaira();
-    final b = FakeBackend(mk1: {...mk1(), 'restSlots': [2], 'sessionOrder': ['A', 'B', 'C', 'D']});
-    final app = _app(b);
-    tester.view.physicalSize = const Size(1080, 2340);
-    tester.view.devicePixelRatio = 2.625;
-    addTearDown(tester.view.reset);
-    // Animationer PÅ: dimman och bakgrunden ska synas mitt i rörelsen.
-    await tester.pumpWidget(MediaQuery(
-      data: const MediaQueryData(size: Size(411.4, 891.4), devicePixelRatio: 2.625, padding: EdgeInsets.only(top: 36, bottom: 24)),
-      child: TheChainApp(app: app, emailOf: () => ''),
-    ));
-    await tester.runAsync(() async {
-      await app.start();
-      await app.signIn('x', 'secret');
-      await pumpEventQueue();
-      await app.importFromWebsite();
-      await _tourSeen(app);
-      await app.updateSettings(app.repo!.settings().copyWith(theme: 'arctic'));
-      await app.skipSession(const SessionId('C'), 'Travel');
-    });
-    app.openWorkout(const SessionId('D'));
-    for (var i = 0; i < 40; i++) {
-      await tester.pump(const Duration(milliseconds: 50));
-    }
-    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/arctic_chain.png'));
-    await tester.pump(const Duration(milliseconds: 1500));
-    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/arctic_chain_b.png'));
-    await tester.tap(find.text('B').first);
-    for (var i = 0; i < 10; i++) {
-      await tester.pump(const Duration(milliseconds: 50));
-    }
-    await tester.tap(find.text('CHE').first); // avklarade A: kluven bokstav
-    for (var i = 0; i < 20; i++) {
-      await tester.pump(const Duration(milliseconds: 50));
-    }
-    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/arctic_chain_done.png'));
-    await tester.tap(find.text('SETTINGS'));
-    for (var i = 0; i < 20; i++) {
-      await tester.pump(const Duration(milliseconds: 50));
-    }
-    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/arctic_settings.png'));
-    await tester.pumpWidget(const SizedBox());
-  });
-
   testWidgets('avslutat pass: låst, COPY + UNDO', (tester) async {
     await _loadSaira();
     final b = FakeBackend(mk1: {...mk1(), 'sessionOrder': ['A', 'B']});
