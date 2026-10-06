@@ -54,6 +54,9 @@ enum ActiveMark {
 
   /// Nanosuit: ett kort ljusspår som löper runt flikens chevron-kontur.
   tracePulse,
+
+  /// Arctic: kvävedimma rinner långsamt ner från fliken (Niklas 2026-10-06).
+  nitrogen,
 }
 
 /// Hur temat markerar ett ÖVERHOPPAT pass på bokstaven (status-kanalen).
@@ -62,6 +65,39 @@ enum ActiveMark {
 enum SkippedMark {
   /// Bokstaven dämpad som avklarad + ett X över.
   cross,
+
+  /// Arctic: isen frös igen — frost över bokstaven (du slog dig aldrig igenom).
+  frozen,
+}
+
+/// Hur temat markerar ett AVKLARAT pass på bokstaven (status-kanalen). Fliken
+/// själv är hel — närheten bor där (Niklas 2026-10-06).
+enum DoneMark {
+  /// Bara dämpad färg.
+  none,
+
+  /// Arctic: du bröt igenom isen — bokstaven kluven i två förskjutna halvor.
+  cleave,
+}
+
+/// Formen på upphöjda ytor (kedjans flikar, LOG, DONE …).
+enum TabShape {
+  /// Nanosuit: avfasade spetsar i vänster/höger kant.
+  chevron,
+
+  /// Arctic: isflak — plan yta, fasetterad kant, oregelbunden per flik.
+  floe,
+}
+
+/// Temats rörliga bakgrund.
+enum Ambient {
+  none,
+
+  /// Nanosuit: hex-väv med energivågor.
+  hexField,
+
+  /// Arctic: markdimma, frost från hörnen, frostkorn.
+  polarNight,
 }
 
 @immutable
@@ -90,9 +126,11 @@ class ChainTheme extends ThemeExtension<ChainTheme> {
     required this.secondaryAction,
     required this.hexLine,
     required this.hexEnergy,
-    required this.hasAmbient,
+    required this.ambient,
     required this.activeMark,
     required this.skippedMark,
+    required this.doneMark,
+    required this.tabShape,
     Color? fail,
   }) : fail = fail ?? restGold;
 
@@ -101,6 +139,11 @@ class ChainTheme extends ThemeExtension<ChainTheme> {
 
   /// Överhoppat pass i kedjan — obligatoriskt.
   final SkippedMark skippedMark;
+
+  /// Avklarat pass i kedjan — obligatoriskt.
+  final DoneMark doneMark;
+
+  final TabShape tabShape;
 
   final String name;
 
@@ -150,8 +193,10 @@ class ChainTheme extends ThemeExtension<ChainTheme> {
   final Color hexLine;
   final Color hexEnergy;
 
+  final Ambient ambient;
+
   /// Temat har en rörlig bakgrund (och behöver då glas under kedjan, MK1 3.88.3).
-  final bool hasAmbient;
+  bool get hasAmbient => ambient != Ambient.none;
 
   @override
   ChainTheme copyWith() => this;
@@ -184,13 +229,51 @@ class ChainTheme extends ThemeExtension<ChainTheme> {
       secondaryAction: c(secondaryAction, other.secondaryAction),
       hexLine: c(hexLine, other.hexLine),
       hexEnergy: c(hexEnergy, other.hexEnergy),
-      hasAmbient: t < 0.5 ? hasAmbient : other.hasAmbient,
+      ambient: t < 0.5 ? ambient : other.ambient,
       activeMark: t < 0.5 ? activeMark : other.activeMark,
       skippedMark: t < 0.5 ? skippedMark : other.skippedMark,
+      doneMark: t < 0.5 ? doneMark : other.doneMark,
+      tabShape: t < 0.5 ? tabShape : other.tabShape,
       fail: c(fail, other.fail),
     );
   }
 }
+
+const _font = 'Saira';
+
+TextStyle _t(double size, double weight, Color color, {double spacing = 0, double width = 100}) => TextStyle(
+      fontFamily: _font,
+      fontSize: size,
+      color: color,
+      letterSpacing: spacing,
+      fontVariations: [FontVariation.weight(weight), FontVariation.width(width)],
+      fontFeatures: const [FontFeature.tabularFigures()],
+    );
+
+/// Flutters ThemeData för ett tema: samma typskala för alla (Saira, beslut
+/// 2026-10-02), färgerna ur [c].
+ThemeData buildThemeData(ChainTheme c) => ThemeData(
+      brightness: Brightness.dark,
+      scaffoldBackgroundColor: c.background,
+      fontFamily: _font,
+      colorScheme: ColorScheme.dark(
+        primary: c.accent,
+        secondary: c.accentBright,
+        surface: c.surface,
+        onPrimary: c.background,
+        onSurface: c.textStrong,
+      ),
+      textTheme: TextTheme(
+        displaySmall: _t(34, 800, c.textStrong, spacing: 6, width: 110),
+        titleLarge: _t(20, 600, c.textStrong, spacing: 1.5),
+        titleMedium: _t(16, 600, c.textStrong, spacing: 1),
+        bodyMedium: _t(15, 400, c.textBody),
+        bodySmall: _t(12, 400, c.textMuted, spacing: .5),
+        labelLarge: _t(14, 700, c.textStrong, spacing: 2, width: 105),
+        labelSmall: _t(11, 600, c.textFaint, spacing: 1.5),
+      ),
+      extensions: [c],
+    );
 
 extension ChainThemeX on BuildContext {
   ChainTheme get chain => Theme.of(this).extension<ChainTheme>()!;

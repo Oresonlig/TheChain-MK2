@@ -9,6 +9,9 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 
+import 'chain_theme.dart';
+import 'polar_night.dart';
+
 class _Wave {
   _Wave.ring(this.x, this.y, this.maxR, this.speed, this.width, this.strength)
       : isRing = true,
@@ -168,29 +171,42 @@ void paintHexField(Canvas canvas, HexFieldModel model, {required Color line, req
   }
 }
 
+/// Temats rörliga bakgrund ritad i skärmens koordinater: Nanosuits väv eller
+/// Arctics polarnatt. Delas av bakgrunden och glasets nedskalade kopia.
+void paintAmbient(Canvas canvas, Size size, HexFieldModel model, ChainTheme theme, {required bool animated, bool grain = true}) {
+  switch (theme.ambient) {
+    case Ambient.none:
+      return;
+    case Ambient.hexField:
+      if (model.hexes.isNotEmpty) paintHexField(canvas, model, line: theme.hexLine, animated: animated);
+    case Ambient.polarNight:
+      paintPolarNight(canvas, size, animated ? model.frame : 0, theme, grain: grain);
+  }
+}
+
 class HexFieldPainter extends CustomPainter {
-  HexFieldPainter(this.model, {required this.line, required this.animated}) : super(repaint: model);
+  HexFieldPainter(this.model, {required this.theme, required this.animated}) : super(repaint: model);
 
   final HexFieldModel model;
-  final Color line;
+  final ChainTheme theme;
   final bool animated;
 
   @override
   void paint(Canvas canvas, Size size) {
     model.layout(size);
-    paintHexField(canvas, model, line: line, animated: animated);
+    paintAmbient(canvas, size, model, theme, animated: animated);
   }
 
   @override
-  bool shouldRepaint(HexFieldPainter old) => old.animated != animated || old.line != line;
+  bool shouldRepaint(HexFieldPainter old) => old.animated != animated || old.theme != theme;
 }
 
 /// Bakgrundslagret. [enabled] = användarens ambient-inställning; systemets
 /// "minska rörelse" stänger också av animationen.
 class HexFieldBackground extends StatefulWidget {
-  const HexFieldBackground({super.key, required this.line, this.enabled = true, this.model});
+  const HexFieldBackground({super.key, required this.theme, this.enabled = true, this.model});
 
-  final Color line;
+  final ChainTheme theme;
   final bool enabled;
 
   /// Delad modell (ChainScaffold delar den med glaskorten) eller testens.
@@ -246,7 +262,7 @@ class _HexFieldBackgroundState extends State<HexFieldBackground> with SingleTick
   @override
   Widget build(BuildContext context) => RepaintBoundary(
         child: CustomPaint(
-          painter: HexFieldPainter(_model, line: widget.line, animated: _animate),
+          painter: HexFieldPainter(_model, theme: widget.theme, animated: _animate),
           size: Size.infinite,
         ),
       );

@@ -53,44 +53,11 @@ const nanosuit = ChainTheme(
   secondaryAction: Color(0xFF3F8FA8),
   hexLine: Color(0x1400D4FF), // 8 % — MK1 BASE
   hexEnergy: _cyanBright,
-  hasAmbient: true,
+  ambient: Ambient.hexField,
   activeMark: ActiveMark.tracePulse,
   skippedMark: SkippedMark.cross,
+  doneMark: DoneMark.none,
+  tabShape: TabShape.chevron,
 );
 
-const _font = 'Saira';
-
-TextStyle _t(double size, double weight, Color color, {double spacing = 0, double width = 100}) => TextStyle(
-      fontFamily: _font,
-      fontSize: size,
-      color: color,
-      letterSpacing: spacing,
-      fontVariations: [FontVariation.weight(weight), FontVariation.width(width)],
-      fontFeatures: const [FontFeature.tabularFigures()],
-    );
-
-ThemeData nanosuitThemeData() {
-  const c = nanosuit;
-  return ThemeData(
-    brightness: Brightness.dark,
-    scaffoldBackgroundColor: c.background,
-    fontFamily: _font,
-    colorScheme: const ColorScheme.dark(
-      primary: _cyan,
-      secondary: _cyanBright,
-      surface: Color(0xFF0A1628),
-      onPrimary: _bg,
-      onSurface: _ink,
-    ),
-    textTheme: TextTheme(
-      displaySmall: _t(34, 800, c.textStrong, spacing: 6, width: 110),
-      titleLarge: _t(20, 600, c.textStrong, spacing: 1.5),
-      titleMedium: _t(16, 600, c.textStrong, spacing: 1),
-      bodyMedium: _t(15, 400, c.textBody),
-      bodySmall: _t(12, 400, c.textMuted, spacing: .5),
-      labelLarge: _t(14, 700, c.textStrong, spacing: 2, width: 105),
-      labelSmall: _t(11, 600, c.textFaint, spacing: 1.5),
-    ),
-    extensions: const [nanosuit],
-  );
-}
+ThemeData nanosuitThemeData() => buildThemeData(nanosuit);

@@ -29,7 +29,11 @@ class UserSettings {
     this.appBuild,
     this.importedFromWebsite = false,
     this.haptics = true,
+    this.theme = 'nanosuit',
   });
+
+  /// Valt tema (id ur theme/themes.dart). Okänt id → Nanosuit.
+  final String theme;
 
   /// Appens haptik (LOG, DONE, FINISH, ROUND COMPLETE). Av = aldrig, även om
   /// telefonens vibration vid tryck är på (Niklas 2026-10-06).
@@ -76,6 +80,7 @@ class UserSettings {
     String? appBuild,
     bool? importedFromWebsite,
     bool? haptics,
+    String? theme,
   }) =>
       UserSettings(
         weightUnit: weightUnit ?? this.weightUnit,
@@ -90,5 +95,6 @@ class UserSettings {
         appBuild: appBuild ?? this.appBuild,
         importedFromWebsite: importedFromWebsite ?? this.importedFromWebsite,
         haptics: haptics ?? this.haptics,
+        theme: theme ?? this.theme,
       );
 }

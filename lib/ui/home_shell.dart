@@ -67,7 +67,7 @@ class _HomeShellState extends State<HomeShell> {
       ),
       WeightScreen(app: widget.app),
       ProgressScreen(app: widget.app),
-      SettingsScreen(app: widget.app, email: widget.email, versionLabel: widget.versionLabel),
+      SettingsScreen(app: widget.app, email: widget.email, versionLabel: widget.versionLabel, devTools: widget.devTools),
     ];
     return Scaffold(
       body: IndexedStack(index: _tab, children: pages),

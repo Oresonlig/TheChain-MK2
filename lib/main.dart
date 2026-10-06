@@ -8,6 +8,7 @@ import 'theme/chain_theme.dart';
 import 'app/supabase_backend.dart';
 import 'app/updater.dart';
 import 'theme/nanosuit.dart';
+import 'theme/themes.dart';
 import 'ui/home_shell.dart';
 import 'ui/login_screen.dart';
 import 'ui/other_device_screen.dart';
@@ -90,14 +91,15 @@ class _TheChainAppState extends State<TheChainApp> {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      navigatorKey: _navigator,
-      title: 'The Chain',
-      debugShowCheckedModeBanner: false,
-      theme: nanosuitThemeData(),
-      home: ListenableBuilder(
-        listenable: app,
-        builder: (context, _) => switch (app.phase) {
+    return ListenableBuilder(
+      listenable: app,
+      builder: (context, _) => MaterialApp(
+        navigatorKey: _navigator,
+        title: 'The Chain',
+        debugShowCheckedModeBanner: false,
+        // Kontots tema (Settings › Appearance); utloggad = Nanosuit.
+        theme: themeDataFor(themeFor(app.repo?.settings().theme, devTools: kChannel != 'stable')),
+        home: switch (app.phase) {
           Phase.signedOut => LoginScreen(app: app, versionLabel: kVersionLabel),
           Phase.loading => const Scaffold(body: Center(child: CircularProgressIndicator())),
           Phase.confirmDevice => OtherDeviceScreen(app: app),

@@ -126,6 +126,9 @@ void main() {
     // Haptik (2026-10-06): av överlever rundresan; äldre post utan fältet = på.
     expect(settingsFromJson(viaText(settingsToJson(const UserSettings(haptics: false)))).haptics, isFalse);
     expect(settingsFromJson(const {'weightUnit': 'kg'}).haptics, isTrue);
+    // Tema (2026-10-06): överlever rundresan; äldre post utan fältet = Nanosuit.
+    expect(settingsFromJson(viaText(settingsToJson(const UserSettings(theme: 'arctic')))).theme, 'arctic');
+    expect(settingsFromJson(const {'weightUnit': 'kg'}).theme, 'nanosuit');
   });
 
   test('okänt enumvärde från framtida version faller tillbaka i stället för att krascha', () {

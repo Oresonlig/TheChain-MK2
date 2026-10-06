@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import '../../domain/domain.dart';
 import '../../theme/active_mark.dart';
 import '../../theme/chain_theme.dart';
+import '../../theme/floe.dart';
 import '../../theme/surfaces.dart';
 
 class ChainStrip extends StatefulWidget {
@@ -80,9 +81,12 @@ class _ChainStripState extends State<ChainStrip> {
     final letter = ChainStrip.letters(widget.program);
 
     return Glass(
-      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+      padding: EdgeInsets.fromLTRB(8, 10, 8, c.activeMark == ActiveMark.nitrogen ? 0 : 10),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
+        // Kvävedimman behöver plats att rinna ner på hyllan — INNANFÖR
+        // scrollen, som annars klipper den vid flikens underkant.
+        padding: EdgeInsets.only(bottom: c.activeMark == ActiveMark.nitrogen ? 26 : 0),
         child: Row(children: [
           for (final (i, s) in sessions.indexed)
             () {
@@ -120,9 +124,15 @@ class _ChainStripState extends State<ChainStrip> {
                       animate: widget.animate,
                       child: Raised(
                       material: material,
+                      seed: floeSeed(s.id.value),
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                       child: Row(mainAxisSize: MainAxisSize.min, children: [
-                        if (skipped) SkippedLetter(mark: c.skippedMark, color: c.textMuted, child: letterText) else letterText,
+                        if (skipped)
+                          SkippedLetter(mark: c.skippedMark, color: c.textMuted, child: letterText)
+                        else if (done)
+                          DoneLetter(mark: c.doneMark, child: letterText)
+                        else
+                          letterText,
                         if (name != null) ...[
                           const SizedBox(width: 10),
                           Text(name, style: base.copyWith(color: selected ? c.textStrong : letterColor)),
@@ -156,7 +166,102 @@ class SkippedLetter extends StatelessWidget {
   @override
   Widget build(BuildContext context) => switch (mark) {
         SkippedMark.cross => CustomPaint(foregroundPainter: _CrossPainter(color), child: child),
+        SkippedMark.frozen => CustomPaint(foregroundPainter: _FrostPainter(color), child: child),
       };
+}
+
+/// Status-kanalen för ett AVKLARAT pass: temats [DoneMark] på bokstaven.
+class DoneLetter extends StatelessWidget {
+  const DoneLetter({super.key, required this.mark, required this.child});
+
+  final DoneMark mark;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => switch (mark) {
+        DoneMark.none => child,
+        DoneMark.cleave => Stack(clipBehavior: Clip.none, children: [
+            // Två halvor längs en ojämn spricka, isärskjutna åt var sitt håll.
+            Opacity(opacity: 0, child: child), // behåller måttet
+            Positioned.fill(
+              child: Transform.translate(
+                offset: const Offset(-1, -1.3),
+                child: ClipPath(clipper: const _CleaveClipper(upper: true), child: child),
+              ),
+            ),
+            Positioned.fill(
+              child: Transform.translate(
+                offset: const Offset(1, 1.3),
+                child: ClipPath(clipper: const _CleaveClipper(upper: false), child: child),
+              ),
+            ),
+          ]),
+      };
+}
+
+/// Sprickan: från övre högra till nedre vänstra hörnet, med ett knyck.
+class _CleaveClipper extends CustomClipper<Path> {
+  const _CleaveClipper({required this.upper});
+  final bool upper;
+
+  @override
+  Path getClip(Size s) {
+    final crack = [
+      Offset(s.width + 2, s.height * .22),
+      Offset(s.width * .58, s.height * .46),
+      Offset(s.width * .44, s.height * .4),
+      Offset(-2, s.height * .78),
+    ];
+    final p = Path()..moveTo(crack.first.dx, crack.first.dy);
+    for (final q in crack.skip(1)) {
+      p.lineTo(q.dx, q.dy);
+    }
+    if (upper) {
+      p
+        ..lineTo(-2, -4)
+        ..lineTo(s.width + 2, -4);
+    } else {
+      p
+        ..lineTo(-2, s.height + 4)
+        ..lineTo(s.width + 2, s.height + 4);
+    }
+    return p..close();
+  }
+
+  @override
+  bool shouldReclip(_CleaveClipper old) => old.upper != upper;
+}
+
+/// Isen frös igen: en frostskiva över bokstaven med kristallstreck.
+class _FrostPainter extends CustomPainter {
+  const _FrostPainter(this.color);
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final r = Rect.fromCenter(center: size.center(Offset.zero), width: size.width + 8, height: size.height * .8);
+    final rr = RRect.fromRectAndRadius(r, const Radius.circular(3));
+    canvas.drawRRect(rr, Paint()..color = const Color(0x40DCF2FB));
+    canvas.drawRRect(rr, Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = .8
+      ..color = color.withValues(alpha: .6));
+    // Fasta kristallstreck (samma varje gång) — läses utan färg.
+    final p = Paint()
+      ..color = Colors.white.withValues(alpha: .7)
+      ..strokeWidth = .9
+      ..strokeCap = StrokeCap.round;
+    for (final (x, y, a) in const [(.2, .3, .7), (.72, .22, 2.3), (.5, .7, 1.2), (.85, .72, .3), (.12, .76, 2.0)]) {
+      final c = Offset(r.left + r.width * x, r.top + r.height * y);
+      final d = Offset.fromDirection(a, 3.2);
+      canvas
+        ..drawLine(c - d, c + d, p)
+        ..drawLine(c - Offset(-d.dy, d.dx) * .6, c + Offset(-d.dy, d.dx) * .6, p);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_FrostPainter old) => old.color != color;
 }
 
 class _CrossPainter extends CustomPainter {

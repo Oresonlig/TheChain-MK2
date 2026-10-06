@@ -43,7 +43,7 @@ class _ChainScaffoldState extends State<ChainScaffold> {
           key: _canvas,
           child: DecoratedBox(decoration: BoxDecoration(gradient: backgroundGradient(c))),
         ),
-        if (c.hasAmbient) Positioned.fill(child: HexFieldBackground(line: c.hexLine, enabled: widget.ambient, model: _model)),
+        if (c.hasAmbient) Positioned.fill(child: HexFieldBackground(theme: c, enabled: widget.ambient, model: _model)),
         BackgroundScope(
           model: _model,
           backdrop: _backdrop,

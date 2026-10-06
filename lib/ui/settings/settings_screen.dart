@@ -13,17 +13,21 @@ import '../../domain/domain.dart';
 import '../../theme/chain_theme.dart';
 import '../../theme/background_scope.dart';
 import '../../theme/surfaces.dart';
+import '../../theme/themes.dart';
 import '../nanosuit_scaffold.dart';
 import '../program/program_screen.dart';
 import 'admin_screen.dart';
 import 'data_sync_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
-  const SettingsScreen({super.key, required this.app, required this.email, required this.versionLabel});
+  const SettingsScreen({super.key, required this.app, required this.email, required this.versionLabel, this.devTools = false});
 
   final AppController app;
   final String email;
   final String versionLabel;
+
+  /// DEV-bygge: temaväljaren visar även teman som inte är släppta.
+  final bool devTools;
 
   @override
   Widget build(BuildContext context) {
@@ -86,7 +90,7 @@ class SettingsScreen extends StatelessWidget {
               SettingsRow(
                 title: 'Appearance',
                 subtitle: 'Theme · moving background',
-                onTap: () => open(AppearanceSettingsScreen(app: app)),
+                onTap: () => open(AppearanceSettingsScreen(app: app, devTools: devTools)),
               ),
               SettingsRow(
                 title: 'Data & Sync',
@@ -529,8 +533,9 @@ class TrainingSettingsScreen extends StatelessWidget {
 }
 
 class AppearanceSettingsScreen extends StatelessWidget {
-  const AppearanceSettingsScreen({super.key, required this.app});
+  const AppearanceSettingsScreen({super.key, required this.app, this.devTools = false});
   final AppController app;
+  final bool devTools;
 
   @override
   Widget build(BuildContext context) => SettingsPage(
@@ -539,14 +544,30 @@ class AppearanceSettingsScreen extends StatelessWidget {
         builder: (context, app) {
           final s = app.repo!.settings();
           final text = Theme.of(context).textTheme;
+          final choices = [for (final t in themeChoices) if (devTools || !t.devOnly) t];
+          final current = themeFor(s.theme, devTools: devTools);
           return [
+            // Bara ett tema släppt → ingen väljare i stable.
+            if (choices.length > 1)
+              settingsSection(context, 'THEME', [
+                Row(children: [
+                  for (final (i, t) in choices.indexed) ...[
+                    if (i > 0) const SizedBox(width: 8),
+                    choiceButton(context, t.label, identical(t.theme, current), () => app.updateSettings(s.copyWith(theme: t.id))),
+                  ],
+                ]),
+                if (devTools) ...[
+                  const SizedBox(height: 8),
+                  Text('DEV: Arctic is a preview and not in the stable build.', style: text.bodySmall),
+                ],
+              ]),
             settingsSection(context, 'BACKGROUND', [
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
                 value: s.ambientEffects,
                 onChanged: (v) => app.updateSettings(_copy(s, ambient: v)),
                 title: Text('Moving background', style: text.titleMedium),
-                subtitle: Text('The hex wave behind the app. Turn off to save battery.', style: text.bodySmall),
+                subtitle: Text('The theme\'s moving background. Turn off to save battery.', style: text.bodySmall),
               ),
             ]),
           ];

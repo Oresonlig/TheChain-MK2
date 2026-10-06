@@ -291,6 +291,7 @@ Json settingsToJson(UserSettings s) => {
       'appBuild': ?s.appBuild,
       if (s.importedFromWebsite) 'imported': true,
       'haptics': s.haptics,
+      'theme': s.theme,
     };
 
 UserSettings settingsFromJson(Json j) => UserSettings(
@@ -306,4 +307,5 @@ UserSettings settingsFromJson(Json j) => UserSettings(
       appBuild: j['appBuild'] as String?,
       importedFromWebsite: j['imported'] == true,
       haptics: j['haptics'] != false, // saknas (äldre post) = på
+      theme: j['theme'] as String? ?? 'nanosuit',
     );
