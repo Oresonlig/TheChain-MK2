@@ -100,6 +100,9 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> with ChartR
             Glass(
               child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                 Text('SESSIONS · BEST SET', style: text.labelSmall),
+                // Nybörjartestet (Niklas 2026-10-06): raderna ser statiska ut.
+                if (rows.isNotEmpty)
+                  Padding(padding: const EdgeInsets.only(top: 2, bottom: 4), child: Text('Tap a set to delete it.', style: text.bodySmall)),
                 if (rows.isEmpty) Padding(padding: const EdgeInsets.only(top: 8), child: Text('Nothing in this period', style: text.bodySmall)),
                 for (final p in rows)
                   // Tryck = radera felloggat set (Niklas 2026-10-06).
