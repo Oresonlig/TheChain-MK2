@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'app/app_controller.dart';
+import 'app/haptics.dart';
 import 'app/native_rest_alarm.dart';
 import 'app/rest_timer.dart';
 import 'theme/chain_theme.dart';
@@ -27,6 +28,7 @@ Future<void> main() async {
     restTimer: RestTimer(alarm: NativeRestAlarm(look: nanosuitThemeData().extension<ChainTheme>()!)),
     appBuild: kBuild == '0' ? '' : '${kChannel.toUpperCase()} · build $kBuild',
   );
+  Haptics.enabled = () => app.repo?.settings().haptics ?? true; // reglaget i Settings
   runApp(TheChainApp(app: app, emailOf: () => backend.userEmail ?? ''));
   await app.start();
 }

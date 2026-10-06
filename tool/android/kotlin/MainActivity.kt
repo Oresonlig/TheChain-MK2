@@ -72,6 +72,15 @@ class MainActivity : FlutterActivity() {
                             result.success(true)
                         }
                     }
+                    // Haptik (Niklas 2026-10-06): appens reglage respekterar telefonens
+                    // "vibration vid tryck" — Settings visar om den är av och leder dit.
+                    "touchVibrationOn" -> result.success(
+                        Settings.System.getInt(contentResolver, Settings.System.HAPTIC_FEEDBACK_ENABLED, 1) != 0,
+                    )
+                    "openSoundSettings" -> {
+                        startActivity(Intent(Settings.ACTION_SOUND_SETTINGS))
+                        result.success(null)
+                    }
                     else -> result.notImplemented()
                 }
             } catch (e: Exception) {

@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../app/app_controller.dart';
+import '../../app/haptics.dart';
 import '../../app/workout_controller.dart';
 import '../../domain/domain.dart';
 import '../../theme/chain_theme.dart';
@@ -172,7 +173,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                                   if (note == null) return; // Cancel: ett steg bakåt, passet pågår
                                 }
                                 final ok = await controller.finish(note: note);
-                                if (ok) HapticFeedback.mediumImpact();
+                                if (ok) Haptics.medium();
                                 if (ok && context.mounted) Navigator.pop(context);
                               }
                             : null,
@@ -423,7 +424,7 @@ class ExerciseCard extends StatelessWidget {
                 child: GestureDetector(
                   onTap: canDone
                       ? () {
-                          HapticFeedback.mediumImpact();
+                          Haptics.medium();
                           controller.markDone(row.id);
                         }
                       : null,
@@ -739,7 +740,7 @@ class _SetRowState extends State<SetRow> {
           key: widget.logKey,
           onTap: widget.editable
               ? () {
-                  HapticFeedback.lightImpact(); // följer telefonens vibrationsfeedback
+                  Haptics.light(); // appens reglage + telefonens vibration vid tryck
                   widget.controller.toggleLog(widget.row.id, s.id);
                 }
               : null,

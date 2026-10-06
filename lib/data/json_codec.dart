@@ -290,6 +290,7 @@ Json settingsToJson(UserSettings s) => {
       if (s.workoutTourSeen) 'tourSeen': true,
       'appBuild': ?s.appBuild,
       if (s.importedFromWebsite) 'imported': true,
+      'haptics': s.haptics,
     };
 
 UserSettings settingsFromJson(Json j) => UserSettings(
@@ -304,4 +305,5 @@ UserSettings settingsFromJson(Json j) => UserSettings(
       workoutTourSeen: j['tourSeen'] == true,
       appBuild: j['appBuild'] as String?,
       importedFromWebsite: j['imported'] == true,
+      haptics: j['haptics'] != false, // saknas (äldre post) = på
     );

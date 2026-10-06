@@ -123,6 +123,9 @@ void main() {
     expect(s.weightUnit, WeightUnit.lbs);
     expect(s.weightGoalKg, 95);
     expect(s.ambientEffects, isFalse);
+    // Haptik (2026-10-06): av överlever rundresan; äldre post utan fältet = på.
+    expect(settingsFromJson(viaText(settingsToJson(const UserSettings(haptics: false)))).haptics, isFalse);
+    expect(settingsFromJson(const {'weightUnit': 'kg'}).haptics, isTrue);
   });
 
   test('okänt enumvärde från framtida version faller tillbaka i stället för att krascha', () {

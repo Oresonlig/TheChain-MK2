@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../app/app_controller.dart';
+import '../../app/haptics.dart';
 import '../../app/rest_timer.dart';
 import '../../domain/domain.dart';
 import '../../theme/chain_theme.dart';
@@ -358,6 +359,76 @@ class _WakeScreenSectionState extends State<_WakeScreenSection> with WidgetsBind
   }
 }
 
+/// Haptik (Niklas 2026-10-06, väg A): eget reglage som respekterar telefonen.
+/// ON med telefonens "vibration vid tryck" av → raden säger det och knappen
+/// öppnar telefonens inställning. Läses av igen när man kommer tillbaka.
+class _HapticsSection extends StatefulWidget {
+  const _HapticsSection({required this.app, required this.settings});
+  final AppController app;
+  final UserSettings settings;
+
+  @override
+  State<_HapticsSection> createState() => _HapticsSectionState();
+}
+
+class _HapticsSectionState extends State<_HapticsSection> with WidgetsBindingObserver {
+  bool? _phoneOn; // null = okänt
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _check();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _check();
+  }
+
+  Future<void> _check() async {
+    final on = await Haptics.touchVibrationOn();
+    if (mounted) setState(() => _phoneOn = on);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = widget.settings;
+    final c = context.chain;
+    final text = Theme.of(context).textTheme;
+    final blocked = s.haptics && _phoneOn == false;
+    return settingsSection(context, 'VIBRATION', [
+      Row(children: [
+        choiceButton(context, 'ON', s.haptics, () {
+          widget.app.updateSettings(s.copyWith(haptics: true));
+          HapticFeedback.mediumImpact(); // känn efter direkt (inställningen hinner inte sparas först)
+        }),
+        const SizedBox(width: 8),
+        choiceButton(context, 'OFF', !s.haptics, () => widget.app.updateSettings(s.copyWith(haptics: false))),
+      ]),
+      const SizedBox(height: 8),
+      Text(
+        !s.haptics
+            ? 'Off: The Chain never vibrates on taps, even if your phone does.'
+            : blocked
+                ? 'Touch vibration is off on this phone, so nothing is felt. Turn it on in the phone settings.'
+                : 'A short tap on LOG, DONE, FINISH and when a round is complete.',
+        style: text.bodySmall!.copyWith(color: blocked ? c.accent : c.textMuted),
+      ),
+      if (blocked) ...[
+        const SizedBox(height: 10),
+        const GhostButton(label: 'OPEN PHONE SETTINGS', onTap: Haptics.openSoundSettings),
+      ],
+    ]);
+  }
+}
+
 class TrainingSettingsScreen extends StatelessWidget {
   const TrainingSettingsScreen({super.key, required this.app});
   final AppController app;
@@ -451,6 +522,7 @@ class TrainingSettingsScreen extends StatelessWidget {
               ],
             ]),
             if (s.restTimerEnabled) _WakeScreenSection(app: app, settings: s),
+            _HapticsSection(app: app, settings: s),
           ];
         },
       );

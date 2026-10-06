@@ -11,8 +11,8 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
+import '../../app/haptics.dart';
 import '../../domain/domain.dart';
 import '../../theme/chain_theme.dart';
 import '../../theme/surfaces.dart';
@@ -73,7 +73,7 @@ class _RoundCompleteState extends State<RoundComplete> with SingleTickerProvider
     super.didChangeDependencies();
     if (_started) return;
     _started = true;
-    HapticFeedback.heavyImpact(); // följer telefonens vibrationsfeedback
+    Haptics.heavy(); // appens reglage + telefonens vibration vid tryck
 
     _still = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
     if (_still) {
@@ -88,7 +88,7 @@ class _RoundCompleteState extends State<RoundComplete> with SingleTickerProvider
   void _onTick() {
     if (!_landed && _a.value * _tl.total >= _tl.flipEnd) {
       _landed = true;
-      HapticFeedback.mediumImpact();
+      Haptics.medium();
     }
   }
 

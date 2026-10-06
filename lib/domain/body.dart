@@ -28,7 +28,12 @@ class UserSettings {
     this.workoutTourSeen = false,
     this.appBuild,
     this.importedFromWebsite = false,
+    this.haptics = true,
   });
+
+  /// Appens haptik (LOG, DONE, FINISH, ROUND COMPLETE). Av = aldrig, även om
+  /// telefonens vibration vid tryck är på (Niklas 2026-10-06).
+  final bool haptics;
 
   final WeightUnit weightUnit;
   final TempUnit tempUnit;
@@ -70,6 +75,7 @@ class UserSettings {
     bool? workoutTourSeen,
     String? appBuild,
     bool? importedFromWebsite,
+    bool? haptics,
   }) =>
       UserSettings(
         weightUnit: weightUnit ?? this.weightUnit,
@@ -83,5 +89,6 @@ class UserSettings {
         workoutTourSeen: workoutTourSeen ?? this.workoutTourSeen,
         appBuild: appBuild ?? this.appBuild,
         importedFromWebsite: importedFromWebsite ?? this.importedFromWebsite,
+        haptics: haptics ?? this.haptics,
       );
 }
