@@ -55,9 +55,31 @@ abstract class Backend {
 
   /// mk2_admin_stats() (supabase/002_admin_stats.sql) — en rad per användare.
   Future<List<Map<String, Object?>>> adminStats();
+
+  /// Den inloggades ANDRA inloggningar (supabase/003_sessions.sql). Null = vet
+  /// inte (nätfel, SQL:en inte körd) — då varnar appen inte och loggar inte ut någon.
+  Future<List<OtherSession>?> otherSessions();
+
+  /// Loggar ut alla andra inloggningar (en enhet i taget, Niklas 2026-10-06).
+  Future<void> signOutOthers();
+
+  /// Loggar ut bara den här enheten (CANCEL i varningen) — de andra rörs inte.
+  Future<void> signOutHere();
 }
 
-enum Phase { signedOut, loading, ready }
+/// En annan inloggning på samma konto.
+class OtherSession {
+  const OtherSession({this.userAgent, this.lastActive});
+  final String? userAgent;
+  final DateTime? lastActive;
+
+  /// Hemsidan (webbläsare) eller appen.
+  bool get isWebsite => (userAgent ?? '').contains('Mozilla');
+}
+
+/// [confirmDevice] = nyss inloggad, men kontot är inloggat på en annan enhet:
+/// varningen visas innan något öppnas (en enhet i taget, Niklas 2026-10-06).
+enum Phase { signedOut, loading, confirmDevice, ready }
 
 class AppController extends ChangeNotifier {
   AppController(this.backend,
@@ -112,6 +134,46 @@ class AppController extends ChangeNotifier {
     await _onUser();
   }
 
+  /// En enhet i taget (Niklas 2026-10-06): satt av inloggningsmetoderna, så att
+  /// kollen görs vid en NY inloggning — aldrig vid appstart med sparad session.
+  bool _freshSignIn = false;
+
+  /// Användaren loggar ut själv (då är det inget "utloggad av annan enhet").
+  bool _signingOut = false;
+
+  /// Andra inloggningar som hittades (Phase.confirmDevice).
+  List<OtherSession>? otherDevices;
+
+  /// SIGN IN HERE: de andra enheterna loggas ut, sedan öppnas appen här.
+  Future<void> confirmSignInHere() async {
+    busy = true;
+    notifyListeners();
+    try {
+      await backend.signOutOthers();
+    } catch (e) {
+      // Servern nåddes inte: öppna ändå — de andra loggas ut vid nästa inloggning.
+      debugPrint('signOutOthers: $e');
+    }
+    busy = false;
+    otherDevices = null;
+    phase = Phase.signedOut; // _onUser öppnar härifrån
+    await _onUser();
+  }
+
+  /// CANCEL: bara den här enheten loggas ut. Inget har öppnats här.
+  Future<void> cancelSignIn() async {
+    otherDevices = null;
+    _signingOut = true;
+    try {
+      await backend.signOutHere();
+    } catch (e) {
+      debugPrint('signOutHere: $e');
+    } finally {
+      _signingOut = false;
+    }
+    _clearSession();
+  }
+
   /// Användaren vars data öppnas just nu. Vid start kommer både start()-anropet
   /// och Supabase "initialSession" — utan spärren öppnades två synkmotorer mot
   /// samma filer (2026-10-04).
@@ -123,13 +185,38 @@ class AppController extends ChangeNotifier {
     if (_recovering) return;
     final uid = backend.userId;
     if (uid == null) {
+      // Utloggad utan att användaren bett om det, medan appen var öppen: en
+      // inloggning på en annan enhet loggade ut den här.
+      final kicked = repo != null && !_signingOut;
       if (repo != null || phase != Phase.signedOut) _clearSession();
+      if (kicked) {
+        error = 'Signed out: your account was signed in on another device.';
+        notifyListeners();
+      }
       return;
     }
-    if (repo != null || _openingUid == uid) return;
+    if (repo != null || _openingUid == uid || phase == Phase.confirmDevice) return;
     _openingUid = uid;
     phase = Phase.loading;
     notifyListeners();
+    // Nyss inloggad (inte vid appstart): är kontot inne på en annan enhet?
+    // Varna INNAN telefonens data öppnas — CANCEL på en kompis telefon ska inte
+    // lämna något efter sig.
+    if (_freshSignIn) {
+      _freshSignIn = false;
+      final others = await backend.otherSessions();
+      if (backend.userId != uid) {
+        _openingUid = null;
+        return;
+      }
+      if (others != null && others.isNotEmpty) {
+        otherDevices = others;
+        _openingUid = null;
+        phase = Phase.confirmDevice;
+        notifyListeners();
+        return;
+      }
+    }
     try {
       final engine = SyncEngine(
         remote: backend.remote,
@@ -178,6 +265,8 @@ class AppController extends ChangeNotifier {
     moved = null;
     movedAt = null;
     websiteData = null;
+    otherDevices = null;
+    _freshSignIn = false;
     repo = null;
     status = null;
     lastSync = null;
@@ -298,10 +387,12 @@ class AppController extends ChangeNotifier {
   Future<void> signIn(String email, String password) async {
     error = null;
     busy = true;
+    _freshSignIn = true;
     notifyListeners();
     try {
       await backend.signIn(email.trim(), password);
     } catch (e) {
+      _freshSignIn = false;
       error = 'Sign in failed: $e';
     } finally {
       busy = false;
@@ -312,10 +403,12 @@ class AppController extends ChangeNotifier {
   Future<void> signInWithGoogle() async {
     error = null;
     busy = true;
+    _freshSignIn = true;
     notifyListeners();
     try {
-      await backend.signInWithGoogle(); // avbrutet = inget besked
+      if (!await backend.signInWithGoogle()) _freshSignIn = false; // avbrutet = inget besked
     } catch (e) {
+      _freshSignIn = false;
       error = 'Google sign-in failed: ${_reason(e)}';
     } finally {
       busy = false;
@@ -363,10 +456,12 @@ class AppController extends ChangeNotifier {
     }
     error = null;
     busy = true;
+    _freshSignIn = true; // nytt konto: inga andra enheter, men samma väg
     notifyListeners();
     try {
       await backend.verifySignupCode(email.trim(), digits); // inloggad → appen öppnas
     } catch (x) {
+      _freshSignIn = false;
       error = 'Code not accepted: ${_reason(x)}';
     } finally {
       busy = false;
@@ -459,17 +554,21 @@ class AppController extends ChangeNotifier {
       busy = false;
       notifyListeners();
     }
+    _freshSignIn = backend.userId != null; // återställt lösenord = ny inloggning
     await _onUser();
   }
 
   static String _reason(Object x) => '$x'.replaceFirst(RegExp(r'^Exception: '), '');
 
   Future<void> signOut() async {
+    _signingOut = true;
     try {
       await backend.signOut();
     } catch (e) {
       // Servern nåddes inte: logga ut lokalt ändå — aldrig fast i ett halvläge.
       debugPrint('signOut: $e');
+    } finally {
+      _signingOut = false;
     }
     _clearSession();
   }

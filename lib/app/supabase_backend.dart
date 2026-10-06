@@ -165,4 +165,32 @@ class SupabaseBackend implements Backend {
   @override
   Future<void> markMovedToApp(String sourceVersion) =>
       _client.from('mk2_migration').insert({'source_app_version': sourceVersion});
+
+  @override
+  Future<List<OtherSession>?> otherSessions() async {
+    try {
+      final res = await _client.rpc<Object?>('mk2_other_sessions');
+      return [
+        for (final r in (res as List? ?? const []))
+          if (r is Map)
+            OtherSession(
+              userAgent: r['user_agent'] as String?,
+              lastActive: r['last_active'] is String ? DateTime.tryParse(r['last_active'] as String) : null,
+            ),
+      ];
+    } catch (_) {
+      return null; // vet inte: varna inte, logga inte ut någon
+    }
+  }
+
+  @override
+  Future<void> signOutOthers() => _client.auth.signOut(scope: SignOutScope.others);
+
+  @override
+  Future<void> signOutHere() async {
+    try {
+      await GoogleSignIn.instance.signOut();
+    } catch (_) {}
+    await _client.auth.signOut(scope: SignOutScope.local);
+  }
 }

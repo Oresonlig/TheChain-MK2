@@ -10,6 +10,7 @@ import 'app/updater.dart';
 import 'theme/nanosuit.dart';
 import 'ui/home_shell.dart';
 import 'ui/login_screen.dart';
+import 'ui/other_device_screen.dart';
 
 /// Kanal och byggnummer injiceras av CI via --dart-define.
 const String kChannel = String.fromEnvironment('CHANNEL', defaultValue: 'local');
@@ -99,6 +100,7 @@ class _TheChainAppState extends State<TheChainApp> {
         builder: (context, _) => switch (app.phase) {
           Phase.signedOut => LoginScreen(app: app, versionLabel: kVersionLabel),
           Phase.loading => const Scaffold(body: Center(child: CircularProgressIndicator())),
+          Phase.confirmDevice => OtherDeviceScreen(app: app),
           Phase.ready => HomeShell(app: app, email: emailOf(), versionLabel: kVersionLabel, devTools: kChannel != 'stable'),
         },
       ),

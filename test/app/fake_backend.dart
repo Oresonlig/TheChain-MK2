@@ -54,6 +54,22 @@ class FakeBackend implements Backend {
     _users.add(null);
   }
 
+  /// Andra inloggningar på kontot (null = servern svarar inte).
+  List<OtherSession>? others = const [];
+  int othersSignedOut = 0;
+
+  @override
+  Future<List<OtherSession>?> otherSessions() async => others;
+
+  @override
+  Future<void> signOutOthers() async {
+    othersSignedOut++;
+    others = const [];
+  }
+
+  @override
+  Future<void> signOutHere() => signOut();
+
   /// Google: 'ok' loggar in, 'cancel' = användaren stängde väljaren, annars fel.
   String google = 'ok';
 
