@@ -513,7 +513,7 @@ void main() {
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/settings_data.png'));
     await tester.pageBack();
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Training'));
+    await tester.tap(find.text('Training & App Functions'));
     await tester.pumpAndSettle();
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/settings_training.png'));
   });

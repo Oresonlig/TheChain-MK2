@@ -79,8 +79,8 @@ class SettingsScreen extends StatelessWidget {
                 onTap: () => open(ProgramScreen(app: app)),
               ),
               SettingsRow(
-                title: 'Training',
-                subtitle: 'Units · finish note · rest timer',
+                title: 'Training & App Functions',
+                subtitle: 'Units · finish note · rest timer · vibration',
                 onTap: () => open(TrainingSettingsScreen(app: app)),
               ),
               SettingsRow(
@@ -436,7 +436,7 @@ class TrainingSettingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) => SettingsPage(
         app: app,
-        title: 'TRAINING',
+        title: 'TRAINING & APP FUNCTIONS',
         builder: (context, app) {
           final s = app.repo!.settings();
           return [
