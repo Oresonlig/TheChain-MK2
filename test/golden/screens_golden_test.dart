@@ -53,7 +53,7 @@ AppController _app(FakeBackend b) => AppController(b, syncDelay: Duration.zero);
 Future<void> _tourSeen(AppController app) => app.updateSettings(app.repo!.settings().copyWith(workoutTourSeen: true));
 
 void main() {
-  testWidgets('runda klar: våg, puls, omladdning', (tester) async {
+  testWidgets('runda klar: fönster, våg, fallbladsflip, uppbyggnad', (tester) async {
     await _loadSaira();
     tester.view.physicalSize = const Size(1080, 2340);
     tester.view.devicePixelRatio = 2.625;
@@ -63,7 +63,8 @@ void main() {
       theme: nanosuitThemeData(),
       home: Scaffold(
         body: RoundComplete(
-          summary: RoundSummary(round: 18, start: DateTime(2026, 9, 24), end: DateTime(2026, 10, 5), trained: 8, skipped: 1),
+          summary: RoundSummary(
+              round: 19, start: DateTime(2026, 9, 24), end: DateTime(2026, 10, 5), trained: 8, skipped: 1, restDays: 2, sets: 87),
           letters: [for (final id in ids) (SessionId(id), id.startsWith('V') ? 'V' : id)],
           restIds: const {SessionId('V'), SessionId('V2')},
           newPrs: 3,
@@ -71,12 +72,20 @@ void main() {
         ),
       ),
     ));
-    await tester.pump(const Duration(milliseconds: 800)); // vågen halvvägs
-    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/round_wave.png'));
-    await tester.pump(const Duration(milliseconds: 900)); // pulsen, allt tänt
-    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/round_lit.png'));
-    await tester.pump(const Duration(milliseconds: 700)); // omladdad: ROUND 19
-    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/round_reset.png'));
+    // Tidslinjen för 9 bokstäver: våg 600–1950, puls –2350, flip 2550–3450,
+    // uppbyggnad 3650–5630, fade 7130–7630 ms.
+    var elapsed = 0;
+    Future<void> at(int ms, String name) async {
+      await tester.pump(Duration(milliseconds: ms - elapsed));
+      elapsed = ms;
+      await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/$name.png'));
+    }
+    await at(1200, 'round_wave');
+    await at(2300, 'round_lit');
+    await at(2950, 'round_flip1');
+    await at(3250, 'round_flip2');
+    await at(4500, 'round_rebuild');
+    await at(6500, 'round_final');
     await tester.pumpAndSettle();
   });
 

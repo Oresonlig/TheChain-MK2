@@ -97,7 +97,7 @@ class _TheChainAppState extends State<TheChainApp> {
         builder: (context, _) => switch (app.phase) {
           Phase.signedOut => LoginScreen(app: app, versionLabel: kVersionLabel),
           Phase.loading => const Scaffold(body: Center(child: CircularProgressIndicator())),
-          Phase.ready => HomeShell(app: app, email: emailOf(), versionLabel: kVersionLabel),
+          Phase.ready => HomeShell(app: app, email: emailOf(), versionLabel: kVersionLabel, devTools: kChannel != 'stable'),
         },
       ),
     );

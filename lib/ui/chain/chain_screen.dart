@@ -20,12 +20,26 @@ import 'chain_strip.dart';
 import 'round_complete.dart';
 
 class ChainScreen extends StatefulWidget {
-  const ChainScreen({super.key, required this.app, this.email = '', this.buildLabel = '', this.now});
+  const ChainScreen({
+    super.key,
+    required this.app,
+    this.email = '',
+    this.buildLabel = '',
+    this.now,
+    this.visible = true,
+    this.devTools = false,
+  });
 
   final AppController app;
   final String email;
   final String buildLabel;
   final DateTime Function()? now;
+
+  /// Kedjefliken är den som syns (HomeShell: IndexedStack bygger alla flikar).
+  final bool visible;
+
+  /// DEV-/lokalt bygge: testknappar som aldrig skriver data.
+  final bool devTools;
 
   @override
   State<ChainScreen> createState() => _ChainScreenState();
@@ -40,14 +54,22 @@ class _ChainScreenState extends State<ChainScreen> {
 
   DateTime get _now => (widget.now ?? DateTime.now)();
 
-  /// Efter ett avslutat pass eller en vilodag: blev rundan klar nyss? Bara då —
-  /// aldrig vid appstart, import eller synk från en annan enhet.
-  void _checkRound(int before) {
+  /// AppController säger när en egen handling stängde rundan (alla vägar:
+  /// pass, vilodag, överhopp, "in progress"-bannern). Visas först när kedjan
+  /// syns överst — inte bakom passvyn eller på en annan flik.
+  void _maybeCelebrate(BuildContext context) {
+    if (!widget.visible || widget.app.pendingRound == null) return;
+    if (ModalRoute.of(context)?.isCurrent == false) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final s = widget.app.takePendingRound();
+      if (s != null) _celebrateNow(s);
+    });
+  }
+
+  void _celebrateNow(RoundSummary s) {
     final repo = widget.app.repo;
     if (repo == null || !mounted) return;
-    final ch = repo.chain();
-    final s = ch.lastRound;
-    if (ch.round != before + 1 || s == null) return;
     final prs = repo.records().values.where((p) => !p.date.isBefore(s.start) && !p.date.isAfter(s.end)).length;
     setState(() {
       _celebrate = s;
@@ -75,18 +97,19 @@ class _ChainScreenState extends State<ChainScreen> {
       if (goThere == true && mounted) await _openWorkout(other.sessionId);
       return;
     }
-    final before = widget.app.repo!.chain().round;
     final wc = widget.app.openWorkout(id);
     await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => WorkoutScreen(controller: wc, app: widget.app)));
     if (mounted) setState(() => _selected = null); // tillbaka: visa nästa föreslagna
-    _checkRound(before);
   }
 
   @override
   Widget build(BuildContext context) {
+    _maybeCelebrate(context);
     return ListenableBuilder(
       listenable: widget.app,
-      builder: (context, _) => ChainScaffold(
+      builder: (context, _) {
+        _maybeCelebrate(context);
+        return ChainScaffold(
         ambient: widget.app.repo?.settings().ambientEffects ?? true,
         child: Stack(children: [
           _content(context),
@@ -106,7 +129,8 @@ class _ChainScreenState extends State<ChainScreen> {
               }),
             ),
         ]),
-      ),
+      );
+      },
     );
   }
 
@@ -195,11 +219,7 @@ class _ChainScreenState extends State<ChainScreen> {
                 _RestPanel(
                   key: ValueKey('rest-${session.id.value}'),
                   done: chain.isDone(session.id),
-                  onDone: (note) async {
-                    final before = chain.round;
-                    await widget.app.markRestDone(session.id, note: note);
-                    _checkRound(before);
-                  },
+                  onDone: (note) => widget.app.markRestDone(session.id, note: note),
                   onUndo: () async {
                     final last = (history.whereType<RestEntry>().where((e) => e.sessionId == session.id).toList()
                           ..sort((a, b) => b.date.compareTo(a.date)))
@@ -254,6 +274,23 @@ class _ChainScreenState extends State<ChainScreen> {
                     showUndo(messenger, 'Skip undone', () => widget.app.restoreHistoryEntry(entry));
                   },
                 ),
+              // DEV-bygget: spela upp ROUND COMPLETE utan att något skrivs eller
+              // synkas (Niklas 2026-10-06). Tas bort när animationen är godkänd.
+              if (widget.devTools) ...[
+                const SizedBox(height: 32),
+                GhostButton(
+                  label: 'DEV · TEST ROUND COMPLETE',
+                  color: c.textFaint,
+                  onTap: () => _celebrateNow(chain.lastRound ??
+                      RoundSummary(
+                        round: chain.round,
+                        start: _now.subtract(const Duration(days: 8)),
+                        end: _now,
+                        trained: program.sessions.length,
+                        skipped: 0,
+                      )),
+                ),
+              ],
             ],
           );
         },

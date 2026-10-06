@@ -72,6 +72,20 @@ void main() {
     expect(wc.canFinish, isFalse, reason: 'FINISH släckt efter avslut');
   });
 
+  test('ROUND COMPLETE även när rundan stängs med skip + vilodag (Niklas 2026-10-06)', () async {
+    final app = await ready();
+    final before = app.repo!.chain().round;
+    await app.skipSession(const SessionId('A'), 'showing a colleague');
+    await app.skipSession(const SessionId('B'), 'showing a colleague');
+    expect(app.pendingRound, isNull, reason: 'vilodagen kvar');
+    await app.markRestDone(const SessionId('V'));
+    expect(app.repo!.chain().round, before + 1);
+    final s = app.takePendingRound()!;
+    // B var redan gjord (MK1-datan): gjort vinner över överhopp.
+    expect((s.round, s.skipped, s.restDays), (before, 1, 1));
+    expect(app.takePendingRound(), isNull, reason: 'visas exakt en gång');
+  });
+
   test('anteckning vid avslut: sparas, ändras, tas bort; UNDO behåller den', () async {
     final app = await ready();
     final wc = app.openWorkout(const SessionId('A'));

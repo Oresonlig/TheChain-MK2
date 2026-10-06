@@ -627,6 +627,7 @@ class AppController extends ChangeNotifier {
       scheduleSync(); // andra enheter ska se att passet pågår
     }
     late final WorkoutController wc;
+    final roundAtOpen = r.chain().round;
     wc = WorkoutController(
       repo: r,
       workout: w,
@@ -640,6 +641,7 @@ class AppController extends ChangeNotifier {
       onFinished: () async {
         restTimer.stop();
         if (identical(_openWorkout, wc)) _openWorkout = null;
+        if (wc.workout.isFinished) _noteRound(roundAtOpen); // inte vid discard
         notifyListeners();
         await syncNow();
       },
@@ -852,9 +854,29 @@ class AppController extends ChangeNotifier {
     final r = repo!;
     if (r.activeWorkoutFor(sessionId) != null) throw const WorkoutError('Discard the started session first');
     final session = r.program().sessionById(sessionId)!;
+    final before = r.chain().round;
     await r.saveHistory(skippedEntry(session, _now(), reason), _now());
+    _noteRound(before);
     notifyListeners();
     await syncNow();
+  }
+
+  /// En egen handling (avslutat pass, vilodag, överhopp) stängde nyss rundan →
+  /// kedjevyn visar "ROUND COMPLETE" en gång. Aldrig vid appstart, import eller
+  /// synk från en annan enhet. Förr kollade bara kedjevyns egna vägar — skip och
+  /// "in progress"-bannern missades (Niklas 2026-10-06).
+  RoundSummary? pendingRound;
+
+  void _noteRound(int before) {
+    final ch = repo?.chain();
+    if (ch != null && ch.round == before + 1 && ch.lastRound != null) pendingRound = ch.lastRound;
+  }
+
+  /// Hämtar och nollställer — visas exakt en gång.
+  RoundSummary? takePendingRound() {
+    final s = pendingRound;
+    pendingRound = null;
+    return s;
   }
 
   Future<void> undoSkip(SkippedEntry entry) async {
@@ -866,7 +888,9 @@ class AppController extends ChangeNotifier {
   Future<void> markRestDone(SessionId sessionId, {String? note}) async {
     final r = repo!;
     final session = r.program().sessionById(sessionId)!;
+    final before = r.chain().round;
     await r.saveHistory(completeRest(session, _now(), note: note), _now());
+    _noteRound(before);
     notifyListeners();
     await syncNow();
   }

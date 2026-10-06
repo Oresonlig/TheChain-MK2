@@ -8,15 +8,30 @@ library;
 import 'history.dart';
 import 'ids.dart';
 import 'program.dart';
+import 'set_entry.dart';
 
 /// Den senast avslutade rundan — för "ROUND 18 COMPLETE" (Niklas 2026-10-05).
 class RoundSummary {
-  const RoundSummary({required this.round, required this.start, required this.end, required this.trained, required this.skipped});
+  const RoundSummary({
+    required this.round,
+    required this.start,
+    required this.end,
+    required this.trained,
+    required this.skipped,
+    this.restDays = 0,
+    this.sets = 0,
+  });
   final int round;
   final DateTime start, end;
 
   /// Genomförda pass (vilodagar inräknade) och överhoppade i rundan.
   final int trained, skipped;
+
+  /// Vilodagar bland [trained], och loggade arbetsset i rundans pass —
+  /// summeringen i fönstret (Niklas 2026-10-06: "som ett litet pris").
+  final int restDays, sets;
+
+  int get sessions => trained - restDays;
 }
 
 class ChainState {
@@ -55,6 +70,7 @@ ChainState chainState(
   int roundOffset = 0,
 }) {
   final all = program.sessions.map((s) => s.id).toSet();
+  final rests = {for (final s in program.sessions) if (s.isRest) s.id};
   final restarts = manualRestarts.toList()..sort();
   final entries = history.where((e) => e.source == EntrySource.app).toList()
     ..sort((a, b) => a.date.compareTo(b.date));
@@ -63,6 +79,7 @@ ChainState chainState(
   var done = <SessionId>{};
   var skipped = <SessionId>{};
   var r = 0;
+  var sets = 0;
   DateTime? start;
   RoundSummary? last;
 
@@ -71,9 +88,18 @@ ChainState chainState(
     // Bara en runda som fullbordades (inte en omstart) räknas som "klar".
     last = end == null || start == null
         ? null
-        : RoundSummary(round: completed, start: start!, end: end, trained: done.length, skipped: skipped.length);
+        : RoundSummary(
+            round: completed,
+            start: start!,
+            end: end,
+            trained: done.length,
+            skipped: skipped.length,
+            restDays: done.where(rests.contains).length,
+            sets: sets,
+          );
     done = <SessionId>{};
     skipped = <SessionId>{};
+    sets = 0;
     start = null;
   }
 
@@ -90,6 +116,11 @@ ChainState chainState(
     };
     if (!all.contains(id)) continue;
     start ??= e.date;
+    if (e is WorkoutEntry) {
+      for (final x in e.workout.exercises) {
+        sets += x.sets.where((s) => s.isLogged && s.kind == SetKind.work).length;
+      }
+    }
     if (isSkip) {
       if (!done.contains(id)) skipped.add(id);
     } else {

@@ -16,11 +16,14 @@ import 'workout/rest_timer_bar.dart';
 import 'workout/workout_screen.dart';
 
 class HomeShell extends StatefulWidget {
-  const HomeShell({super.key, required this.app, required this.email, required this.versionLabel});
+  const HomeShell({super.key, required this.app, required this.email, required this.versionLabel, this.devTools = false});
 
   final AppController app;
   final String email;
   final String versionLabel;
+
+  /// DEV-/lokalt bygge (aldrig STABLE): testknappar som aldrig skriver data.
+  final bool devTools;
 
   @override
   State<HomeShell> createState() => _HomeShellState();
@@ -36,18 +39,32 @@ class _HomeShellState extends State<HomeShell> {
   void initState() {
     super.initState();
     _lifecycle = AppLifecycleListener(onResume: widget.app.onResume);
+    widget.app.addListener(_onApp);
   }
 
   @override
   void dispose() {
+    widget.app.removeListener(_onApp);
     _lifecycle.dispose();
     super.dispose();
+  }
+
+  /// Rundan stängdes från en annan flik ("in progress"-bannern): till kedjan,
+  /// där ROUND COMPLETE visas.
+  void _onApp() {
+    if (widget.app.pendingRound != null && _tab != 0 && mounted) setState(() => _tab = 0);
   }
 
   @override
   Widget build(BuildContext context) {
     final pages = [
-      ChainScreen(app: widget.app, email: widget.email, buildLabel: widget.versionLabel),
+      ChainScreen(
+        app: widget.app,
+        email: widget.email,
+        buildLabel: widget.versionLabel,
+        visible: _tab == 0,
+        devTools: widget.devTools,
+      ),
       WeightScreen(app: widget.app),
       ProgressScreen(app: widget.app),
       SettingsScreen(app: widget.app, email: widget.email, versionLabel: widget.versionLabel),
