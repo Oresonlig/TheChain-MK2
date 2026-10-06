@@ -143,7 +143,10 @@ class _PickerState extends State<_Picker> {
     final text = Theme.of(context).textTheme;
     final q = _q.trim().toLowerCase();
     bool match(Exercise e) => q.isEmpty || e.name.toLowerCase().contains(q);
-    final lib = exerciseLibrary.where(match).toList();
+    // En egen övning med samma namn som en senare biblioteksövning har samma id
+    // (slug) och vinner i resolveExercise — visa den bara en gång, som egen.
+    final mineIds = {for (final e in _custom) e.id};
+    final lib = exerciseLibrary.where((e) => match(e) && !mineIds.contains(e.id)).toList();
     final mine = _custom.where(match).toList()..sort((a, b) => a.name.compareTo(b.name));
     final byId = {for (final e in [...exerciseLibrary, ..._custom]) e.id: e};
     final recent = q.isNotEmpty ? const <Exercise>[] : [for (final id in widget.recent) ?byId[id]];

@@ -27,6 +27,14 @@ void main() {
     expect(libraryExercise(const ExerciseId('ex_bench_press_bb'))!.measure, Measure.weight);
   });
 
+  test('2026-10-06: kettlebell = suffix (KB) i muskelgruppen, luckor ifyllda', () {
+    expect(libraryExercise(const ExerciseId('ex_shrugs_smith'))!.group, MuscleGroup.traps);
+    expect(libraryExercise(const ExerciseId('ex_swing_kb'))!.group, MuscleGroup.legs);
+    expect(libraryExercise(const ExerciseId('ex_front_rack_carry_kb'))!.measure, Measure.carry);
+    expect(libraryExercise(const ExerciseId('ex_one_arm_row_db'))!.unilateral, isTrue);
+    expect(exerciseLibrary.where((e) => e.name.endsWith('(KB)')).length, 8);
+  });
+
   test('resolveExercise: egen övning först, justering applicerad', () {
     const myId = ExerciseId('custom_1');
     const mine = Exercise(id: myId, name: 'My Press', group: MuscleGroup.chest, measure: Measure.weight, isCustom: true);
