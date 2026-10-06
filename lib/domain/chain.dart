@@ -20,7 +20,11 @@ class RoundSummary {
     required this.skipped,
     this.restDays = 0,
     this.sets = 0,
+    this.skippedIds = const {},
   });
+
+  /// Vilka pass som hoppades över — kryssas i fönstret (Niklas 2026-10-06).
+  final Set<SessionId> skippedIds;
   final int round;
   final DateTime start, end;
 
@@ -96,6 +100,7 @@ ChainState chainState(
             skipped: skipped.length,
             restDays: done.where(rests.contains).length,
             sets: sets,
+            skippedIds: Set.unmodifiable(skipped),
           );
     done = <SessionId>{};
     skipped = <SessionId>{};

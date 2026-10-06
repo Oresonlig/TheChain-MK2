@@ -16,6 +16,7 @@ import '../../app/haptics.dart';
 import '../../domain/domain.dart';
 import '../../theme/chain_theme.dart';
 import '../../theme/surfaces.dart';
+import 'chain_strip.dart' show SkippedLetter;
 
 class RoundComplete extends StatefulWidget {
   const RoundComplete({
@@ -133,6 +134,11 @@ class _RoundCompleteState extends State<RoundComplete> with SingleTickerProvider
     final rebuild = still ? 1.0 : _Timeline.seg(ms, tl.rebuildStart, tl.rebuildEnd);
 
     final days = s.end.difference(s.start).inDays + 1;
+    // Vilka pass som hoppades över, i kedjans ordning: "C · D".
+    final skippedLetters = [
+      for (final (id, letter) in widget.letters)
+        if (s.skippedIds.contains(id)) letter,
+    ].join(' · ');
     final stats = [
       ('${s.sessions}', s.sessions == 1 ? 'SESSION' : 'SESSIONS'),
       ('${s.sets}', 'SETS'),
@@ -177,7 +183,8 @@ class _RoundCompleteState extends State<RoundComplete> with SingleTickerProvider
                     for (var row = 0; row < 2; row++)
                       Padding(
                         padding: EdgeInsets.only(top: row == 0 ? 0 : 12),
-                        child: Row(children: [
+                        // Överkant: "C · D" under SKIPPED får inte lyfta radens siffror.
+                        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                           for (var col = 0; col < 3; col++)
                             Expanded(
                               child: Opacity(
@@ -189,7 +196,8 @@ class _RoundCompleteState extends State<RoundComplete> with SingleTickerProvider
                                         _Timeline.statsStart + (row * 3 + col + 1) * _Timeline.statStep + 200,
                                       ),
                                 child: _stat(context, c, stats[row * 3 + col].$1, stats[row * 3 + col].$2,
-                                    warn: row * 3 + col == 5 && s.skipped > 0),
+                                    warn: row * 3 + col == 5 && s.skipped > 0,
+                                    detail: row * 3 + col == 5 ? skippedLetters : null),
                               ),
                             ),
                         ]),
@@ -204,7 +212,11 @@ class _RoundCompleteState extends State<RoundComplete> with SingleTickerProvider
                         children: [
                           for (final (i, (id, letter)) in widget.letters.indexed)
                             _letter(context, c, letter, i, n,
-                                rest: widget.restIds.contains(id), lit: !reset && wave * n > i, reset: reset, rebuild: rebuild),
+                                rest: widget.restIds.contains(id),
+                                lit: !reset && wave * n > i,
+                                skipped: s.skippedIds.contains(id),
+                                reset: reset,
+                                rebuild: rebuild),
                         ],
                       ),
                     ),
@@ -234,19 +246,23 @@ class _RoundCompleteState extends State<RoundComplete> with SingleTickerProvider
         style: Theme.of(context).textTheme.bodyMedium!.copyWith(color: c.textBody),
       );
 
-  Widget _stat(BuildContext context, ChainTheme c, String value, String label, {bool warn = false}) {
+  Widget _stat(BuildContext context, ChainTheme c, String value, String label, {bool warn = false, String? detail}) {
     final text = Theme.of(context).textTheme;
     return Column(children: [
       Text(value, style: text.headlineSmall!.copyWith(color: warn ? c.fail : c.textStrong)),
       const SizedBox(height: 2),
       Text(label, textAlign: TextAlign.center, style: text.labelSmall!.copyWith(color: c.textMuted, letterSpacing: 1.5)),
+      if (detail != null && detail.isNotEmpty)
+        Text(detail, textAlign: TextAlign.center, style: text.labelSmall!.copyWith(color: c.fail, letterSpacing: 1.5)),
     ]);
   }
 
-  /// Före omladdningen: tänds av vågen. Efter: borta, och byggs upp igen en
-  /// bokstav i taget (skalas in från 60 %).
+  /// Före omladdningen: tänds av vågen — ett överhoppat pass tänds INTE utan
+  /// får temats överhopps-markering (Nanosuit: X), som i kedjan (Niklas
+  /// 2026-10-06: "kryssa för de passen jag hoppade över"). Efter: borta, och
+  /// byggs upp igen en bokstav i taget (skalas in från 60 %), alla rena.
   Widget _letter(BuildContext context, ChainTheme c, String letter, int i, int n,
-      {required bool rest, required bool lit, required bool reset, required double rebuild}) {
+      {required bool rest, required bool lit, required bool skipped, required bool reset, required double rebuild}) {
     final text = Theme.of(context).textTheme;
     var scale = 1.0, opacity = 1.0;
     if (reset) {
@@ -254,7 +270,10 @@ class _RoundCompleteState extends State<RoundComplete> with SingleTickerProvider
       opacity = k;
       scale = .6 + .4 * Curves.easeOutBack.transform(k);
     }
-    final color = rest ? c.restGold : (lit ? c.textStrong : c.accent);
+    final crossed = lit && skipped; // vågen har nått ett överhoppat pass
+    final on = lit && !skipped;
+    final color = crossed ? c.textMuted : (rest ? c.restGold : (on ? c.textStrong : c.accent));
+    final glyph = Text(letter, style: text.titleMedium!.copyWith(color: color));
     return Opacity(
       opacity: opacity,
       child: Transform.scale(
@@ -263,9 +282,9 @@ class _RoundCompleteState extends State<RoundComplete> with SingleTickerProvider
           width: 44,
           height: 44,
           child: Raised(
-            material: lit ? c.raisedActive : c.raisedIdle,
+            material: on ? c.raisedActive : c.raisedIdle,
             padding: EdgeInsets.zero,
-            child: Center(child: Text(letter, style: text.titleMedium!.copyWith(color: color))),
+            child: Center(child: crossed ? SkippedLetter(mark: c.skippedMark, color: c.fail, child: glyph) : glyph),
           ),
         ),
       ),

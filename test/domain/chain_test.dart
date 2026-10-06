@@ -30,6 +30,7 @@ void main() {
     expect(r.trained, 3);
     expect(r.skipped, 1);
     expect((r.restDays, r.sessions), (1, 2));
+    expect(r.skippedIds, {b});
     // En omstart mitt i en runda är ingen "klar runda".
     final restarted = chainState(program, [trained(a, 1)], manualRestarts: [day(2)]);
     expect(restarted.lastRound, isNull);

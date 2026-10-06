@@ -64,7 +64,14 @@ void main() {
       home: Scaffold(
         body: RoundComplete(
           summary: RoundSummary(
-              round: 19, start: DateTime(2026, 9, 24), end: DateTime(2026, 10, 5), trained: 8, skipped: 1, restDays: 2, sets: 87),
+              round: 19,
+              start: DateTime(2026, 9, 24),
+              end: DateTime(2026, 10, 5),
+              trained: 7,
+              skipped: 2,
+              restDays: 2,
+              sets: 74,
+              skippedIds: const {SessionId('C'), SessionId('D')}),
           letters: [for (final id in ids) (SessionId(id), id.startsWith('V') ? 'V' : id)],
           restIds: const {SessionId('V'), SessionId('V2')},
           newPrs: 3,
