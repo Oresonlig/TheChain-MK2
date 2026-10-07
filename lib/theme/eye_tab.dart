@@ -26,6 +26,9 @@ import 'chain_theme.dart';
 /// alltid var 3:e sekund"). Ibland en dubbelblinkning direkt efter.
 Duration nextBlink(math.Random r) => Duration(milliseconds: 2500 + r.nextInt(6500));
 
+/// Ny blickriktning (x, y i −1…1): oftast åt sidan, lite upp eller ner.
+Offset nextGaze(math.Random r) => Offset(r.nextDouble() * 2 - 1, (r.nextDouble() * 2 - 1) * .7);
+
 enum EyeVariant { many, slit }
 
 /// Slumpas 50/50 en gång per appstart (byter aldrig mitt i ett pass).
@@ -79,18 +82,19 @@ class _EyeTabState extends State<EyeTab> with TickerProviderStateMixin {
   ];
   late final AnimationController _slit = AnimationController(vsync: this, duration: const Duration(milliseconds: 750));
 
-  /// Springans blick glider mellan lägena (Niklas 2026-10-07: irisen
-  /// "teleporterar" när den hoppar rakt).
-  late final AnimationController _look = AnimationController(vsync: this, duration: const Duration(milliseconds: 380));
-  double _lookFrom = 0, _lookTo = 0;
-  double get _slitGaze => _lookFrom + (_lookTo - _lookFrom) * Curves.easeInOut.transform(_look.value);
-  void _lookAt(double g) {
+  /// Springans blick flyttar sig (Niklas 2026-10-07: irisen "teleporterade"
+  /// när den hoppade rakt): ett snabbt ryck som skjuter lite över målet och
+  /// sätter sig — som ett djur, inte en mjuk maskin.
+  late final AnimationController _look = AnimationController(vsync: this, duration: const Duration(milliseconds: 260));
+  Offset _lookFrom = Offset.zero, _lookTo = Offset.zero;
+  Offset get _slitGaze => Offset.lerp(_lookFrom, _lookTo, Curves.easeOutBack.transform(_look.value))!;
+  void _lookAt(Offset g) {
     _lookFrom = _slitGaze;
     _lookTo = g;
     _look.forward(from: 0);
   }
 
-  final _gaze = List<double>.filled(_eyes, 0);
+  final _gaze = List<Offset>.filled(_eyes, Offset.zero);
   int _gen = 0;
   final _timers = <Timer>{};
 
@@ -114,10 +118,10 @@ class _EyeTabState extends State<EyeTab> with TickerProviderStateMixin {
     for (final b in _blinks) {
       b.value = 0;
     }
-    _gaze.fillRange(0, _eyes, 0);
+    _gaze.fillRange(0, _eyes, Offset.zero);
     _look.stop();
     _look.value = 0;
-    _lookFrom = _lookTo = 0;
+    _lookFrom = _lookTo = Offset.zero;
     if (!_moving) {
       _life.stop();
       _slit.value = .6; // stilla: springan halvöppen, ögat syns
@@ -159,10 +163,14 @@ class _EyeTabState extends State<EyeTab> with TickerProviderStateMixin {
     while (true) {
       await _wait(nextBlink(_r));
       if (!_alive(gen)) return;
-      await _blinks[i].forward(from: 0);
+      // Blicken byts medan ögat är stängt (lid = 0 vid .4) — aldrig ett hopp
+      // i ett öppet öga.
+      await _blinks[i].animateTo(.4);
+      if (!_alive(gen)) return;
+      _gaze[i] = _r.nextDouble() < .4 ? Offset.zero : nextGaze(_r);
+      await _blinks[i].forward();
       if (!_alive(gen)) return;
       _blinks[i].value = 0;
-      setState(() => _gaze[i] = _r.nextDouble() < .4 ? 0 : _r.nextDouble() * 2 - 1);
       if (_r.nextDouble() < .2) {
         await _blinks[i].forward(from: 0); // dubbelblink
         if (!_alive(gen)) return;
@@ -180,11 +188,11 @@ class _EyeTabState extends State<EyeTab> with TickerProviderStateMixin {
       for (var k = 0, n = 2 + _r.nextInt(3); k < n; k++) {
         await _wait(Duration(milliseconds: 600 + _r.nextInt(900)));
         if (!_alive(gen)) return;
-        _lookAt(_r.nextDouble() * 2 - 1); // tittar runt
+        _lookAt(nextGaze(_r)); // tittar runt
       }
       await _wait(Duration(milliseconds: 500 + _r.nextInt(700)));
       if (!_alive(gen)) return;
-      _lookAt(0);
+      _lookAt(Offset.zero);
       await _slit.reverse();
       if (!_alive(gen)) return;
     }
@@ -328,7 +336,7 @@ class SlitGeometry {
 
 /// Ett öga: mandel, mörkt sjukt vitöga med blodkärl, gulgrön iris och en
 /// smal lodrät pupill — reptil, inte groda. [open] 0 = stängt, 1 = öppet.
-void drawEye(Canvas canvas, ChainTheme t, Offset c, double w, double h, double open, double gaze) {
+void drawEye(Canvas canvas, ChainTheme t, Offset c, double w, double h, double open, Offset gaze) {
   final lid = h / 2 * open;
   final almond = Path()
     ..moveTo(c.dx - w / 2, c.dy)
@@ -360,7 +368,7 @@ void _eyeGlow(Canvas canvas, ChainTheme t, Path almond, double h) => canvas.draw
   ..maskFilter = MaskFilter.blur(BlurStyle.normal, math.max(1.5, h * .25)));
 
 /// Ögongloben kring [c], liggande längs x — anroparen klipper till mandeln.
-void _eyeball(Canvas canvas, ChainTheme t, Offset c, double w, double h, double gaze) {
+void _eyeball(Canvas canvas, ChainTheme t, Offset c, double w, double h, Offset gaze) {
   final iris = _iris(t);
   final box = Rect.fromCenter(center: c, width: w, height: h);
   canvas.drawRect(
@@ -377,20 +385,31 @@ void _eyeball(Canvas canvas, ChainTheme t, Offset c, double w, double h, double 
       ..drawLine(corner, corner + Offset(-s * w * .18, -h * .2), vessel)
       ..drawLine(corner, corner + Offset(-s * w * .14, h * .22), vessel);
   }
-  final ic = c + Offset(gaze * w * .22, 0);
+  // Klotet vrids (Niklas 2026-10-07: "ser lite stel ut"): irisen glider åt
+  // blickens håll och ses snett — trycks ihop mot kanten, pupillen med den.
+  final shift = Offset(gaze.dx * w * .22, gaze.dy * h * .18);
+  final ic = c + shift;
   final ir = math.min(h * .44, w * .2);
+  canvas.save();
+  canvas.translate(ic.dx, ic.dy);
+  canvas.scale(math.cos(gaze.dx.clamp(-1.2, 1.2) * .75), math.cos(gaze.dy.clamp(-1.2, 1.2) * .6));
   canvas.drawCircle(
-    ic,
+    Offset.zero,
     ir,
     Paint()
       ..shader = RadialGradient(colors: [
         Color.lerp(iris, Colors.white, .3)!,
         iris,
         Color.lerp(iris, t.background, .6)!,
-      ], stops: const [0, .5, 1]).createShader(Rect.fromCircle(center: ic, radius: ir)),
+      ], stops: const [0, .5, 1]).createShader(Rect.fromCircle(center: Offset.zero, radius: ir)),
   );
-  canvas.drawOval(Rect.fromCenter(center: ic, width: math.max(1.4, ir * .32), height: ir * 1.85), Paint()..color = t.background);
-  canvas.drawCircle(ic + Offset(-ir * .4, -ir * .45), math.max(.8, ir * .14), Paint()..color = Colors.white.withValues(alpha: .5));
+  canvas.drawOval(Rect.fromCenter(center: Offset.zero, width: math.max(1.4, ir * .32), height: ir * 1.85), Paint()..color = t.background);
+  canvas.restore();
+  // Reflexen sitter på hornhinnan, inte på irisen: den släpar efter och
+  // ligger nästan kvar medan irisen glider under den.
+  var lag = shift * .5;
+  if (lag.distance > ir * .3) lag = lag / lag.distance * ir * .3;
+  canvas.drawCircle(ic + Offset(-ir * .4, -ir * .45) - lag, math.max(.8, ir * .14), Paint()..color = Colors.white.withValues(alpha: .5));
 }
 
 /// Springan mellan ögonlocken: den mandelformade öppningen med ett stort öga
@@ -399,7 +418,7 @@ class _SlitPainter extends CustomPainter {
   _SlitPainter({required this.slit, required this.membrane, required this.gaze, required this.theme});
   final SlitGeometry slit;
   final RaisedMaterial membrane;
-  final double gaze;
+  final Offset gaze;
   final ChainTheme theme;
 
   @override
@@ -456,7 +475,7 @@ class _EdgePainter extends CustomPainter {
   final double? Function() seconds;
 
   /// Kantögonens läge just nu; null = inga kantögon (springan).
-  final List<({double open, double gaze})> Function()? eyes;
+  final List<({double open, Offset gaze})> Function()? eyes;
   final Color color;
   final ChainTheme theme;
 
