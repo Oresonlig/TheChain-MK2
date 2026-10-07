@@ -12,7 +12,7 @@ import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 // Arbeta ALLTID i MK2-repots rot, oavsett var skriptet startas. 2026-10-02 kördes
-// det av misstag från C:\Resistance och ändrade MK1:s android/ (återställt, aldrig
+// det av misstag från C:\Projects\Resistance och ändrade MK1:s android/ (återställt, aldrig
 // pushat). Vakten: kräv ett Flutter-projekt (pubspec.yaml med the_chain).
 const REPO = dirname(dirname(fileURLToPath(import.meta.url)));
 process.chdir(REPO);

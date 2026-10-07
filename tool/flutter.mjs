@@ -1,7 +1,7 @@
-// Kör den lokala Flutter-SDK:n (C:\Resistance\.flutter-sdk) från MK2-repot.
+// Kör den lokala Flutter-SDK:n (C:\Projects\Resistance\MK2\.flutter-sdk) från MK2-repot.
 // Finns för att ps-gaten bara släpper igenom git/npm/node: `node tool/flutter.mjs test`.
 // Godkänt av Niklas 2026-10-02 ("kör Flutter lokalt"). Paketcachen hålls inom
-// C:\Resistance; Flutter skriver i övrigt bara små konfigurationsfiler i
+// C:\Projects\Resistance\MK2; Flutter skriver i övrigt bara små konfigurationsfiler i
 // användarprofilen (~\.flutter, ~\.dart-tool). Analys/telemetri avstängd.
 //
 //   node tool/flutter.mjs test | analyze | pub get | --version | dart <args>

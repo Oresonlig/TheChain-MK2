@@ -1,15 +1,17 @@
 // Gör MK2:s appikon ur MK1:s ikon, omfärgad till Nanosuit: den röda länken och
 // glöden blir Nanosuit-cyan (#00D4FF), grått och svart får en kall marinblå ton.
 // Pixelvis — formen, skuggorna och den rundade alfakanten är orörda.
-// Lokalt verktyg (sharp från C:\Resistance\node_modules).
+// Lokalt verktyg (sharp från C:\Projects\Resistance\MK1\node_modules).
 // Kör: node tool/make_icon.mjs [--preview fil.png]  → assets/icon/icon.png (1024 px)
-import sharp from 'sharp';
+import { createRequire } from 'node:module';
 import { mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const REPO = dirname(dirname(fileURLToPath(import.meta.url)));
-const SRC = join(REPO, '..', 'icons', 'icon-512.png'); // MK1:s färdiga, rundade ikon
+const MK1 = join(REPO, '..', '..', 'MK1');
+const sharp = createRequire(join(MK1, 'package.json'))('sharp');
+const SRC = join(MK1, 'icons', 'icon-512.png'); // MK1:s färdiga, rundade ikon
 const OUT = join(REPO, 'assets', 'icon');
 mkdirSync(OUT, { recursive: true });
 
