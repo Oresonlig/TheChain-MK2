@@ -131,6 +131,17 @@ enum RuleStyle {
   dashed,
 }
 
+/// Hur ROUND COMPLETE-fönstret rör sig (Niklas 2026-10-07: "varje tema sitt
+/// eget round complete").
+enum RoundStyle {
+  /// Nanosuit: ljusvåg över bokstäverna, rundnumret som fallbladsklocka.
+  flipClock,
+
+  /// Cosmic Horror: ett hjärtslag (lub-dub) tänder bokstäverna längs en
+  /// åder, rundnumret blinkar fram bakom ett ögonlock, kedjan växer fram.
+  heartbeat,
+}
+
 /// Temats småsaker — det som skiljer ett tema från en färgbyte (MK1 Cosmic
 /// Horror, Niklas 2026-10-07: "ta in de med"). Obligatoriska som allt annat:
 /// ett tema utan egen variant anger det neutrala värdet.
@@ -142,7 +153,10 @@ class ThemeDetails {
     required this.doneTint,
     required this.historyDate,
     required this.rampColor,
+    required this.round,
   });
+
+  final RoundStyle round;
 
   /// Uppvärmningssetens etikett (W1, W2 …).
   final Color warmupLabel;

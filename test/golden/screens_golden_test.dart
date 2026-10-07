@@ -13,6 +13,8 @@ import 'package:the_chain/domain/domain.dart';
 import 'package:the_chain/main.dart';
 import 'package:the_chain/theme/eye_tab.dart';
 import 'package:the_chain/theme/ambient_life.dart';
+import 'package:the_chain/theme/chain_theme.dart';
+import 'package:the_chain/theme/cosmic_horror.dart';
 import 'package:the_chain/theme/nanosuit.dart';
 import 'package:the_chain/ui/chain/round_complete.dart';
 import 'package:the_chain/ui/charts/chain_chart.dart';
@@ -58,48 +60,68 @@ AppController _app(FakeBackend b) => AppController(b, syncDelay: Duration.zero);
 /// Rundturen har sin egen bild; övriga passvyns-bilder visar vyn utan den.
 Future<void> _tourSeen(AppController app) => app.updateSettings(app.repo!.settings().copyWith(workoutTourSeen: true));
 
-void main() {
-  testWidgets('runda klar: fönster, våg, fallbladsflip, uppbyggnad', (tester) async {
-    await _loadSaira();
-    tester.view.physicalSize = const Size(1080, 2340);
-    tester.view.devicePixelRatio = 2.625;
-    addTearDown(tester.view.reset);
-    const ids = ['A', 'B', 'C', 'V', 'D', 'E', 'F', 'K', 'V2'];
-    await tester.pumpWidget(MaterialApp(
-      theme: nanosuitThemeData(),
-      home: Scaffold(
-        body: RoundComplete(
-          summary: RoundSummary(
-              round: 19,
-              start: DateTime(2026, 9, 24),
-              end: DateTime(2026, 10, 5),
-              trained: 7,
-              skipped: 2,
-              restDays: 2,
-              sets: 74,
-              skippedIds: const {SessionId('C'), SessionId('D')}),
-          letters: [for (final id in ids) (SessionId(id), id.startsWith('V') ? 'V' : id)],
-          restIds: const {SessionId('V'), SessionId('V2')},
-          newPrs: 3,
-          onDone: () {},
-        ),
+/// ROUND COMPLETE i ett tema; bilderna tas vid [shots] (ms → namn).
+Future<void> _round(WidgetTester tester, ThemeData theme, Map<int, String> shots) async {
+  await _loadSaira();
+  tester.view.physicalSize = const Size(1080, 2340);
+  tester.view.devicePixelRatio = 2.625;
+  addTearDown(tester.view.reset);
+  addTearDown(AmbientLife.reset); // hjärtslagen får inte läcka in i nästa test
+  const ids = ['A', 'B', 'C', 'V', 'D', 'E', 'F', 'K', 'V2'];
+  await tester.pumpWidget(MaterialApp(
+    theme: theme,
+    home: Scaffold(
+      body: RoundComplete(
+        summary: RoundSummary(
+            round: 19,
+            start: DateTime(2026, 9, 24),
+            end: DateTime(2026, 10, 5),
+            trained: 7,
+            skipped: 2,
+            restDays: 2,
+            sets: 74,
+            skippedIds: const {SessionId('C'), SessionId('D')}),
+        letters: [for (final id in ids) (SessionId(id), id.startsWith('V') ? 'V' : id)],
+        restIds: const {SessionId('V'), SessionId('V2')},
+        newPrs: 3,
+        onDone: () {},
       ),
-    ));
-    // Tidslinjen för 9 bokstäver: våg 600–1950, puls –2350, flip 2550–3450,
+    ),
+  ));
+  var elapsed = 0;
+  for (final MapEntry(key: ms, value: name) in shots.entries) {
+    await tester.pump(Duration(milliseconds: ms - elapsed));
+    elapsed = ms;
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/$name.png'));
+  }
+  await tester.pumpAndSettle();
+}
+
+void main() {
+  testWidgets('runda klar, Cosmic: hjärtslag, ögonlock, kedjan växer fram', (tester) async {
+    // 9 bokstäver: slag 600–2900 (lub/dub var 460 ms), puls –3300, lock
+    // 3500–4400 (stängt ~3950), uppväxt 4600–6580, fade 8080–8580 ms.
+    await _round(tester, buildThemeData(cosmicHorror), {
+      1700: 'round_cosmic_beat',
+      3150: 'round_cosmic_lit',
+      3800: 'round_cosmic_lid1',
+      4250: 'round_cosmic_lid2',
+      5400: 'round_cosmic_grow',
+      7400: 'round_cosmic_final',
+    });
+  });
+
+  testWidgets('runda klar: fönster, våg, fallbladsflip, uppbyggnad', (tester) async {
+    // 9 bokstäver: våg 600–1950, puls –2350, flip 2550–3450,
     // uppbyggnad 3650–5630, fade 7130–7630 ms.
-    var elapsed = 0;
-    Future<void> at(int ms, String name) async {
-      await tester.pump(Duration(milliseconds: ms - elapsed));
-      elapsed = ms;
-      await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/$name.png'));
-    }
-    await at(1200, 'round_wave');
-    await at(2300, 'round_lit');
-    await at(2950, 'round_flip1');
-    await at(3250, 'round_flip2');
-    await at(4500, 'round_rebuild');
-    await at(6500, 'round_final');
-    await tester.pumpAndSettle();
+    await _round(tester, nanosuitThemeData(), {
+      1200: 'round_wave',
+      2300: 'round_lit',
+      2950: 'round_flip1',
+      3250: 'round_flip2',
+      4500: 'round_rebuild',
+      6500: 'round_final',
+    });
   });
 
   testWidgets('adminsidan (påhittade användare)', (tester) async {
@@ -223,6 +245,9 @@ void main() {
 
   testWidgets('Cosmic Horror: kedjan (pågående, avklarat, överhoppat), passvyn, settings', (tester) async {
     await _loadSaira();
+    // Ögonvarianten slumpas per appstart — låst här, annars byter bilden
+    // utseende varannan körning.
+    EyeChoice.current = EyeVariant.slit;
     final b = FakeBackend(mk1: {...mk1(), 'restSlots': [2], 'sessionOrder': ['A', 'B', 'C', 'D']});
     final app = _app(b);
     tester.view.physicalSize = const Size(1080, 2340);

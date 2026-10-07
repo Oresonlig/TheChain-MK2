@@ -55,6 +55,32 @@ class AmbientLife {
     return _bursts.map((t) => now - t).where((a) => a >= 0 && a < burstLife);
   }
 
+  static final List<int> _beats = [];
+
+  /// Ett hjärtslag genom nätet (ROUND COMPLETE, Cosmic): ett tydligt lub-dub,
+  /// starkare än nätets eget svaga slag.
+  static void heartbeat() {
+    final now = _clock.elapsedMilliseconds;
+    _beats.add(now);
+    _beats.removeWhere((t) => now - t > 1000);
+  }
+
+  /// Hjärtslagens styrka just nu, 0–1.
+  static double beat() {
+    final now = _clock.elapsedMilliseconds;
+    var b = 0.0;
+    for (final t in _beats) {
+      final s = (now - t) / 1000;
+      if (s < 0 || s > 1) continue;
+      double pulse(double c, double w) => math.exp(-math.pow((s - c) / w, 2).toDouble());
+      b = math.max(b, pulse(.08, .07) + .6 * pulse(.3, .07));
+    }
+    return math.min(1.0, b);
+  }
+
   /// Tester: börja om.
-  static void reset() => _bursts.clear();
+  static void reset() {
+    _bursts.clear();
+    _beats.clear();
+  }
 }

@@ -67,6 +67,7 @@ const nanosuit = ChainTheme(
     doneTint: Color(0x00000000),
     historyDate: FontStyle.normal,
     rampColor: Color(0xFF7FA6B4), // = textMuted
+    round: RoundStyle.flipClock,
   ),
 );
 

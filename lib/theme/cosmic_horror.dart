@@ -74,5 +74,6 @@ const cosmicHorror = ChainTheme(
     doneTint: Color(0xFFB6F09C), // = success
     historyDate: FontStyle.italic,
     rampColor: Color(0xFFD8B878), // = restGold, bärnsten
+    round: RoundStyle.heartbeat,
   ),
 );

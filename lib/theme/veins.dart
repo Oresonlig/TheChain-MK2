@@ -120,7 +120,7 @@ void paintVeins(Canvas canvas, Size size, int frame, ChainTheme theme, {required
     _netSize = size;
   }
   final net = _net!;
-  final beat = animated ? _networkBeat(frame) : 0.0;
+  final beat = animated ? math.max(_networkBeat(frame), AmbientLife.beat()) : 0.0;
   final g = AmbientLife.growth(animated: animated);
 
   // Ådrorna, så långt de vuxit.
