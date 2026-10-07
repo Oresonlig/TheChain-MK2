@@ -135,6 +135,10 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
             Expanded(
               child: ListView(
                 addRepaintBoundaries: glassListRepaintBoundaries,
+                // Alla kort hålls byggda (ett pass har ~10): ett kort som fälls
+                // ihop vid DONE hamnar annars långt ovanför skärmen, kastas av
+                // den lata listan — och scrollen dit och skimret dör med det.
+                cacheExtent: 5000,
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
                 children: [
                   for (final r in w.exercises) ...[
@@ -433,6 +437,15 @@ class ExerciseCard extends StatelessWidget {
                       ? () {
                           Haptics.medium();
                           controller.markDone(row.id);
+                          // Kortet fälls ihop där det stod — med listan kvar
+                          // hamnade det ovanför skärmen. Scrolla fram det:
+                          // klar övning överst, nästa direkt under (Niklas
+                          // 2026-10-07), så skimret och det gröna syns.
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            if (!context.mounted) return;
+                            Scrollable.ensureVisible(context,
+                                alignment: 0, duration: const Duration(milliseconds: 350), curve: Curves.easeOutCubic);
+                          });
                         }
                       : null,
                   // Släckt tills varje set är loggat (Niklas 2026-10-03).

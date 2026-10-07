@@ -291,6 +291,56 @@ void main() {
     expect(find.byType(CircularProgressIndicator), findsNothing);
   });
 
+  testWidgets('UI: FINISH via CONTINUE-raden från Settings → kedjan, inte Settings (Niklas 2026-10-07)', (tester) async {
+    tester.view.physicalSize = const Size(1080, 4000);
+    tester.view.devicePixelRatio = 2.625;
+    addTearDown(tester.view.reset);
+    final b = FakeBackend(mk1: {...mk1(), 'sessionOrder': ['A', 'B'], 'restSlots': <int>[]});
+    final app = AppController(b);
+    await tester.pumpWidget(MediaQuery(
+      data: const MediaQueryData(disableAnimations: true),
+      child: TheChainApp(app: app, emailOf: () => ''),
+    ));
+    await tester.runAsync(() async {
+      await app.start();
+      await app.signIn('x', 'secret');
+      await pumpEventQueue();
+      await app.importFromWebsite();
+      await app.updateSettings(app.repo!.settings().copyWith(workoutTourSeen: true));
+    });
+    await tester.pump();
+    await tester.tap(find.text('START SESSION'));
+    await tester.pumpAndSettle();
+    // Ut ur passvyn med bakåtpilen (passet pågår), till Settings.
+    await tester.tap(find.byIcon(Icons.arrow_back));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('SETTINGS'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('CONTINUE'));
+    await tester.pumpAndSettle();
+    // Bakåtpilen med passet kvar: tillbaka till Settings, som förut.
+    await tester.tap(find.byIcon(Icons.arrow_back));
+    await tester.pumpAndSettle();
+    expect(find.text('Appearance').hitTestable(), findsOneWidget);
+    await tester.tap(find.text('CONTINUE'));
+    await tester.pumpAndSettle();
+    // Allt hoppas över, FINISH + anteckning.
+    while (find.text('SKIP').hitTestable().evaluate().isNotEmpty) {
+      await tester.tap(find.text('SKIP').hitTestable().last);
+      await tester.pump();
+    }
+    await tester.tap(find.text('FINISH SESSION'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).last, 'Short one');
+    await tester.tap(find.text('Finish'));
+    await tester.runAsync(() => pumpEventQueue());
+    await tester.pumpAndSettle();
+    await tester.pump(const Duration(seconds: 5)); // ev. ROUND COMPLETE (stilla: 4 s)
+    await tester.pumpAndSettle();
+    expect(find.text('Appearance').hitTestable(), findsNothing, reason: 'inte kvar i Settings');
+    expect(find.textContaining('sessions done').hitTestable(), findsOneWidget, reason: 'kedjan');
+  });
+
   testWidgets('UI: helt pass — starta, logga, klar, avsluta, tillbaka till kedjan', (tester) async {
     tester.view.physicalSize = const Size(1080, 4000);
     tester.view.devicePixelRatio = 2.625;

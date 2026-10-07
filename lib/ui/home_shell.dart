@@ -83,7 +83,8 @@ class _HomeShellState extends State<HomeShell> {
             RestTimerBar(timer: widget.app.restTimer),
             // Förslag (a), Niklas ja 2026-10-02: pågående pass nås med ett tryck
             // från vilken flik som helst. Kedjefliken har redan CONTINUE-knappen.
-            if (active != null && _tab != 0) _ContinueBar(app: widget.app, workout: active),
+            if (active != null && _tab != 0)
+              _ContinueBar(app: widget.app, workout: active, onEnded: () => setState(() => _tab = 0)),
             _NavBar(index: _tab, onTap: (i) => setState(() => _tab = i)),
           ]);
         },
@@ -93,9 +94,14 @@ class _HomeShellState extends State<HomeShell> {
 }
 
 class _ContinueBar extends StatelessWidget {
-  const _ContinueBar({required this.app, required this.workout});
+  const _ContinueBar({required this.app, required this.workout, required this.onEnded});
   final AppController app;
   final Workout workout;
+
+  /// Passet avslutades (eller kasserades) i passvyn: till kedjan, inte
+  /// tillbaka till fliken passet öppnades från (Niklas 2026-10-07: FINISH
+  /// "kastade in" honom i Settings).
+  final VoidCallback onEnded;
 
   @override
   Widget build(BuildContext context) {
@@ -108,9 +114,12 @@ class _ContinueBar extends StatelessWidget {
       label: 'Continue session',
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onTap: () {
+        onTap: () async {
           final wc = app.openWorkout(workout.sessionId);
-          Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => WorkoutScreen(controller: wc, app: app)));
+          await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => WorkoutScreen(controller: wc, app: app)));
+          // Bakåtpilen med passet kvar = stanna där man var.
+          final stillActive = app.repo?.activeWorkouts().any((w) => w.id == workout.id) ?? false;
+          if (!stillActive) onEnded();
         },
         child: Container(
           height: 52,

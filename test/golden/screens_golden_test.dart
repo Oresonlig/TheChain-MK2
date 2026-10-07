@@ -310,9 +310,9 @@ void main() {
     await tester.tap(find.text('LOG').first); // ljusvåg + ådrorna sträcker ut sig
     await frames(20);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/cosmic_burst.png'));
-    // Resten av seten + DONE: det mörkgröna glaset (Niklas 2026-10-07: hinnan
-    // syntes inte). Skimret självt: done_sheen_test.dart — här hinner kortet
-    // scrollas bort och byggas om innan bilden tas.
+    // Resten av seten + DONE: listan scrollar fram det klara kortet, skimret
+    // glider över det, sedan ligger det mörkgröna glaset kvar (Niklas
+    // 2026-10-07: varken hinnan eller kortet syntes).
     while (find.text('LOG').evaluate().isNotEmpty) {
       await tester.ensureVisible(find.text('LOG').first);
       await tester.tap(find.text('LOG').first);
@@ -320,9 +320,8 @@ void main() {
     }
     await tester.ensureVisible(find.text('DONE'));
     await tester.tap(find.text('DONE'));
-    await frames(1);
-    // Nästa övning öppnas och skjuter undan den klara — scrolla fram den.
-    await tester.drag(find.text('WORK').first, const Offset(0, 600));
+    await frames(11); // scrollen klar (350 ms), mitt i skimret
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/cosmic_done_sheen.png'));
     await frames(30);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/cosmic_done_card.png'));
     await tester.pumpWidget(const SizedBox());
