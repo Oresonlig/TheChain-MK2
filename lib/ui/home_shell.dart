@@ -64,19 +64,18 @@ class _HomeShellState extends State<HomeShell> {
     final d = decideWhatsNew(
       build: widget.build,
       lastSeen: await store.lastSeen(),
-      optedOut: await store.optedOut(),
       hasHistory: widget.app.repo?.history().isNotEmpty ?? false,
     );
     switch (d) {
       case WhatsNewNothing():
         return;
       case WhatsNewSilent(:final build):
-        await store.markSeen(build, optOut: false);
+        await store.markSeen(build);
       case WhatsNewShow(:final note):
         if (!mounted) return;
-        final never = await showWhatsNew(context, note);
-        // Sett, oavsett OK eller SKIP — visas aldrig igen för det här bygget.
-        await store.markSeen(widget.build, optOut: never ?? false);
+        await showWhatsNew(context, note);
+        // Sett, oavsett OK eller SKIP — visas inte igen förrän nästa nya text.
+        await store.markSeen(widget.build);
     }
   }
 

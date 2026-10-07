@@ -1,8 +1,10 @@
 /// "What's new" (Niklas 2026-10-07): en ruta EN gång efter att appen
 /// uppdaterats till en ny stable-version — det stora, inte varje detalj.
-/// Stängs bara med OK eller SKIP (tid att läsa), och "Don't show again"
-/// stänger av rutan för gott på den här telefonen. Bara i STABLE; DEV ser
-/// allt ändå (förhandsvisning via DEV-knappen på kedjevyn).
+/// Stängs bara med OK eller SKIP (tid att läsa); ett tryck räcker för att den
+/// inte kommer igen förrän nästa version med en ny text. Ingen "Don't show
+/// again" (Niklas 2026-10-07: överflödig när rutan ändå visas en gång per
+/// version). Bara i STABLE; DEV ser allt ändå (förhandsvisning via DEV-knappen
+/// på kedjevyn).
 ///
 /// Minnet ligger på telefonen, inte i kontots synkade data: rutan visas en
 /// gång per enhet och kommer aldrig tillbaka via en synk.
@@ -34,42 +36,28 @@ const whatsNewNotes = [
 abstract class WhatsNewStore {
   /// Senaste bygget vars ruta visats (eller tyst markerats), null = aldrig.
   Future<int?> lastSeen();
-  Future<bool> optedOut();
-  Future<void> markSeen(int build, {required bool optOut});
+  Future<void> markSeen(int build);
 }
 
 class PrefsWhatsNewStore implements WhatsNewStore {
-  static const _seenKey = 'whats_new_seen', _offKey = 'whats_new_off';
+  static const _seenKey = 'whats_new_seen';
 
   @override
   Future<int?> lastSeen() async => (await SharedPreferences.getInstance()).getInt(_seenKey);
 
   @override
-  Future<bool> optedOut() async => (await SharedPreferences.getInstance()).getBool(_offKey) ?? false;
-
-  @override
-  Future<void> markSeen(int build, {required bool optOut}) async {
-    final p = await SharedPreferences.getInstance();
-    await p.setInt(_seenKey, build);
-    if (optOut) await p.setBool(_offKey, true);
-  }
+  Future<void> markSeen(int build) async => (await SharedPreferences.getInstance()).setInt(_seenKey, build);
 }
 
 /// Tester.
 class MemoryWhatsNewStore implements WhatsNewStore {
-  MemoryWhatsNewStore({this.seen, this.off = false});
+  MemoryWhatsNewStore({this.seen});
   int? seen;
-  bool off;
 
   @override
   Future<int?> lastSeen() async => seen;
   @override
-  Future<bool> optedOut() async => off;
-  @override
-  Future<void> markSeen(int build, {required bool optOut}) async {
-    seen = build;
-    off = off || optOut;
-  }
+  Future<void> markSeen(int build) async => seen = build;
 }
 
 /// Vad som ska hända vid start.
@@ -97,11 +85,10 @@ class WhatsNewShow extends WhatsNewDecision {
 WhatsNewDecision decideWhatsNew({
   required int build,
   required int? lastSeen,
-  required bool optedOut,
   required bool hasHistory,
   List<WhatsNewNote> notes = whatsNewNotes,
 }) {
-  if (optedOut || build <= 0) return const WhatsNewNothing();
+  if (build <= 0) return const WhatsNewNothing();
   WhatsNewNote? newest;
   for (final n in notes) {
     if (n.build <= build && (lastSeen == null || n.build > lastSeen)) newest = n;

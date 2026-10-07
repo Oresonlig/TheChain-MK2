@@ -1,5 +1,5 @@
 // "What's new" (Niklas 2026-10-07): en gång efter en uppdatering i STABLE,
-// stängs bara med OK/SKIP, "Don't show again" stänger av för gott.
+// stängs bara med OK/SKIP; ett tryck räcker tills nästa nya text.
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:the_chain/app/app_controller.dart';
@@ -15,8 +15,8 @@ const _notes = [
   WhatsNewNote(build: 120, points: ['b']),
 ];
 
-WhatsNewDecision _d({int build = 110, int? seen, bool off = false, bool history = true}) =>
-    decideWhatsNew(build: build, lastSeen: seen, optedOut: off, hasHistory: history, notes: _notes);
+WhatsNewDecision _d({int build = 110, int? seen, bool history = true}) =>
+    decideWhatsNew(build: build, lastSeen: seen, hasHistory: history, notes: _notes);
 
 void main() {
   group('decideWhatsNew', () {
@@ -32,7 +32,6 @@ void main() {
       expect((_d(build: 121, seen: 110) as WhatsNewShow).note.build, 120);
     });
     test('bygge före första texten: inget', () => expect(_d(build: 105), isA<WhatsNewNothing>()));
-    test('"Don\'t show again": aldrig', () => expect(_d(build: 125, off: true), isA<WhatsNewNothing>()));
     test('helt ny användare (ingen historik): tyst markering, ingen ruta', () {
       expect((_d(build: 110, history: false) as WhatsNewSilent).build, 110);
     });
@@ -71,23 +70,20 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text("WHAT'S NEW"), findsNothing);
     expect(store.seen, 107);
-    expect(store.off, isFalse);
 
     await shell(tester, store); // nästa start
     expect(find.text("WHAT'S NEW"), findsNothing);
   });
 
-  testWidgets("UI: SKIP + Don't show again → aldrig mer, inte ens vid en ny text", (tester) async {
+  testWidgets('UI: SKIP räcker också — men nästa nya text visas', (tester) async {
     final store = MemoryWhatsNewStore();
     await shell(tester, store);
-    await tester.tap(find.text("Don't show again"));
-    await tester.pump();
+    expect(find.text("Don't show again"), findsNothing, reason: 'kryssrutan borttagen 2026-10-07');
     await tester.tap(find.text('Skip'));
     await tester.pumpAndSettle();
     expect(find.text("WHAT'S NEW"), findsNothing);
-    expect(store.off, isTrue);
-    expect(decideWhatsNew(build: 999, lastSeen: store.seen, optedOut: store.off, hasHistory: true, notes: _notes),
-        isA<WhatsNewNothing>());
+    expect(store.seen, 107);
+    expect(decideWhatsNew(build: 120, lastSeen: store.seen, hasHistory: true, notes: _notes), isA<WhatsNewShow>());
   });
 
   testWidgets('UI: utan store (DEV/lokalt) visas ingen ruta', (tester) async {

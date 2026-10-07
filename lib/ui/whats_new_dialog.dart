@@ -7,23 +7,15 @@ import 'package:flutter/material.dart';
 import '../app/whats_new.dart';
 import '../theme/chain_theme.dart';
 
-/// Sant = användaren kryssade "Don't show again". Null = stängd av systemet.
-Future<bool?> showWhatsNew(BuildContext context, WhatsNewNote note) => showDialog<bool>(
+Future<void> showWhatsNew(BuildContext context, WhatsNewNote note) => showDialog<void>(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => _WhatsNewDialog(note: note),
     );
 
-class _WhatsNewDialog extends StatefulWidget {
+class _WhatsNewDialog extends StatelessWidget {
   const _WhatsNewDialog({required this.note});
   final WhatsNewNote note;
-
-  @override
-  State<_WhatsNewDialog> createState() => _WhatsNewDialogState();
-}
-
-class _WhatsNewDialogState extends State<_WhatsNewDialog> {
-  bool _never = false;
 
   @override
   Widget build(BuildContext context) {
@@ -35,7 +27,7 @@ class _WhatsNewDialogState extends State<_WhatsNewDialog> {
         title: Text("WHAT'S NEW", style: text.titleMedium!.copyWith(letterSpacing: 2)),
         content: SingleChildScrollView(
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-            for (final p in widget.note.points)
+            for (final p in note.points)
               Padding(
                 padding: const EdgeInsets.only(bottom: 10),
                 child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -43,19 +35,11 @@ class _WhatsNewDialogState extends State<_WhatsNewDialog> {
                   Expanded(child: Text(p, style: text.bodyMedium!.copyWith(color: c.textBody))),
                 ]),
               ),
-            const SizedBox(height: 4),
-            InkWell(
-              onTap: () => setState(() => _never = !_never),
-              child: Row(children: [
-                Checkbox(value: _never, onChanged: (v) => setState(() => _never = v ?? false)),
-                Expanded(child: Text("Don't show again", style: text.bodySmall)),
-              ]),
-            ),
           ]),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, _never), child: const Text('Skip')),
-          TextButton(onPressed: () => Navigator.pop(context, _never), child: const Text('OK')),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Skip')),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK')),
         ],
       ),
     );
