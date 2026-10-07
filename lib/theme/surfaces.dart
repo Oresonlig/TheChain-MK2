@@ -2,6 +2,8 @@
 /// hexagon-chevron (LOG-formen). Färgerna kommer alltid från ChainTheme.
 library;
 
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import 'background_scope.dart';
@@ -42,12 +44,17 @@ class Glass extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
+          // Avklarad: eget mörkgrönt glas i stället för en tunn hinna (MK1
+          // `.ex-block.saved`; Niklas 2026-10-07: hinnan syntes inte).
           colors: tinted
-              ? [Color.alphaBlend(tint.withValues(alpha: .14), c.glassTop), Color.alphaBlend(tint.withValues(alpha: .05), c.glassBottom)]
+              ? [
+                  Color.lerp(c.background, tint, .2)!.withValues(alpha: .6),
+                  Color.lerp(c.background, tint, .07)!.withValues(alpha: .5),
+                ]
               : [c.glassTop, c.glassBottom],
         ),
         borderRadius: r,
-        border: border ? Border.all(color: tinted ? tint.withValues(alpha: .3) : c.border) : null,
+        border: border ? Border.all(color: tinted ? tint.withValues(alpha: .45) : c.border) : null,
       ),
       child: Padding(padding: padding, child: child),
     );
@@ -63,6 +70,90 @@ class Glass extends StatelessWidget {
       ]),
     );
   }
+}
+
+/// Skimret när en övning blir klar: ett ljussken glider en gång snett över
+/// kortet (~1 s) i temats [ThemeDetails.doneTint]. Bara när [done] slår om
+/// från false till true — inte för övningar som redan var klara när passet
+/// öppnades. Tema utan doneTint, eller minska rörelse: inget.
+class DoneSheen extends StatefulWidget {
+  const DoneSheen({super.key, required this.done, required this.child});
+
+  final bool done;
+  final Widget child;
+
+  @override
+  State<DoneSheen> createState() => _DoneSheenState();
+}
+
+class _DoneSheenState extends State<DoneSheen> with SingleTickerProviderStateMixin {
+  late final AnimationController _a = AnimationController(vsync: this, duration: const Duration(milliseconds: 1100));
+
+  @override
+  void didUpdateWidget(DoneSheen old) {
+    super.didUpdateWidget(old);
+    final still = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    if (!old.done && widget.done && !still) _a.forward(from: 0);
+  }
+
+  @override
+  void dispose() {
+    _a.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.chain;
+    final tint = c.details.doneTint;
+    if (tint.a == 0) return widget.child;
+    return Stack(children: [
+      widget.child,
+      Positioned.fill(
+        child: IgnorePointer(
+          child: AnimatedBuilder(
+            animation: _a,
+            builder: (context, _) {
+              if (!_a.isAnimating) return const SizedBox.shrink();
+              final t = Curves.easeInOut.transform(_a.value);
+              final fade = math.sin(_a.value * math.pi); // tonar in och ut
+              return ClipRRect(
+                borderRadius: c.cardRadius,
+                child: CustomPaint(painter: _SheenPainter(t: t, color: tint.withValues(alpha: .28 * fade))),
+              );
+            },
+          ),
+        ),
+      ),
+    ]);
+  }
+}
+
+class _SheenPainter extends CustomPainter {
+  _SheenPainter({required this.t, required this.color});
+  final double t;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // Ett snett band som glider från vänster utanför kortet till höger utanför.
+    final band = size.width * .35;
+    final x = -band + (size.width + band * 2) * t;
+    final rect = Rect.fromLTWH(x - band, 0, band * 2, size.height);
+    canvas.drawRect(
+      Offset.zero & size,
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+          transform: const GradientRotation(-.35),
+          colors: [color.withValues(alpha: 0), color, color.withValues(alpha: 0)],
+        ).createShader(rect),
+    );
+  }
+
+  @override
+  bool shouldRepaint(_SheenPainter old) => old.t != t || old.color != color;
 }
 
 /// Sekundärknapp: kontur på eget glas. Standard för knappar utan eget material

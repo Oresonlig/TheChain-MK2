@@ -256,8 +256,12 @@ class ExerciseCard extends StatelessWidget {
   /// Rundturens mål (bara på det expanderade kortet).
   final TourKeys? tour;
 
+  // Skimret när DONE trycks (temats doneTint) — samma State oavsett om
+  // kortet är öppet eller ihopfällt.
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => DoneSheen(done: row.status == ExerciseStatus.done, child: _card(context));
+
+  Widget _card(BuildContext context) {
     final c = context.chain;
     final text = Theme.of(context).textTheme;
     final ex = controller.exerciseOf(row);
