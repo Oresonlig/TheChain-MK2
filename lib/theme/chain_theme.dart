@@ -4,6 +4,8 @@
 /// skriva, eftersom varje tillstånd har ett eget namngivet fält.
 library;
 
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 /// Material för en upphöjd yta (session-slider, LOG, DONE): fasad kant, ljusare
@@ -121,6 +123,41 @@ enum Ambient {
   veins,
 }
 
+/// Avdelarnas linje mellan rader i listor.
+enum RuleStyle {
+  solid,
+
+  /// Cosmic Horror (MK1): streckad.
+  dashed,
+}
+
+/// Temats småsaker — det som skiljer ett tema från en färgbyte (MK1 Cosmic
+/// Horror, Niklas 2026-10-07: "ta in de med"). Obligatoriska som allt annat:
+/// ett tema utan egen variant anger det neutrala värdet.
+@immutable
+class ThemeDetails {
+  const ThemeDetails({
+    required this.warmupLabel,
+    required this.rule,
+    required this.doneTint,
+    required this.historyDate,
+    required this.rampColor,
+  });
+
+  /// Uppvärmningssetens etikett (W1, W2 …).
+  final Color warmupLabel;
+  final RuleStyle rule;
+
+  /// Skimret över en avklarad övning i passet; transparent = inget.
+  final Color doneTint;
+
+  /// Datumen i History.
+  final FontStyle historyDate;
+
+  /// Set-schemat "ramp" där det står i text.
+  final Color rampColor;
+}
+
 /// Temats typsnitt: [display] för det stora (rubriker, kedjebokstäver,
 /// knappar), [text] för det lilla (data, brödtext, etiketter).
 @immutable
@@ -171,10 +208,18 @@ class ChainTheme extends ThemeExtension<ChainTheme> {
     required this.navMark,
     required this.fonts,
     required this.cardShape,
+    required this.details,
     Color? fail,
   }) : fail = fail ?? restGold;
 
   final CardShape cardShape;
+  final ThemeDetails details;
+
+  /// Avdelare ovanför en rad i en lista ([ThemeDetails.rule]).
+  Decoration get ruleAbove => switch (details.rule) {
+        RuleStyle.solid => BoxDecoration(border: Border(top: BorderSide(color: border))),
+        RuleStyle.dashed => _DashedRuleAbove(borderStrong),
+      };
 
   /// Glaskort. Blad: MK1 `24px 6px 28px 8px / 16px 22px 12px 24px`.
   BorderRadius get cardRadius => switch (cardShape) {
@@ -313,8 +358,34 @@ class ChainTheme extends ThemeExtension<ChainTheme> {
       navMark: t < 0.5 ? navMark : other.navMark,
       fonts: t < 0.5 ? fonts : other.fonts,
       cardShape: t < 0.5 ? cardShape : other.cardShape,
+      details: t < 0.5 ? details : other.details,
       fail: c(fail, other.fail),
     );
+  }
+}
+
+/// Streckad linje längs överkanten (MK1 Cosmic: `border-top:1px dashed`).
+class _DashedRuleAbove extends Decoration {
+  const _DashedRuleAbove(this.color);
+  final Color color;
+
+  @override
+  BoxPainter createBoxPainter([VoidCallback? onChanged]) => _DashedRulePainter(color);
+}
+
+class _DashedRulePainter extends BoxPainter {
+  _DashedRulePainter(this.color);
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Offset offset, ImageConfiguration configuration) {
+    final w = configuration.size?.width ?? 0;
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 1;
+    for (var x = 0.0; x < w; x += 7) {
+      canvas.drawLine(offset + Offset(x, .5), offset + Offset(math.min(x + 4, w), .5), paint);
+    }
   }
 }
 

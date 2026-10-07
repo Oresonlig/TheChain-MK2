@@ -294,7 +294,8 @@ class ExerciseCard extends StatelessWidget {
       ),
     );
 
-    if (!expanded) return Glass(padding: const EdgeInsets.fromLTRB(10, 8, 12, 8), child: header);
+    final done = row.status == ExerciseStatus.done;
+    if (!expanded) return Glass(padding: const EdgeInsets.fromLTRB(10, 8, 12, 8), done: done, child: header);
 
     final last = lastPerformance(controller.repo.history(), row.exerciseId);
     final notes = controller.notesFor(row.exerciseId);
@@ -322,6 +323,7 @@ class ExerciseCard extends StatelessWidget {
 
     return Glass(
       padding: const EdgeInsets.fromLTRB(10, 8, 12, 16),
+      done: done,
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(children: [
           Expanded(child: header),
@@ -688,7 +690,7 @@ class _SetRowState extends State<SetRow> {
           onTap: widget.editable ? () => _removeSet(context) : null,
           child: Padding(
             padding: const EdgeInsets.only(top: 12),
-            child: Text(widget.label, style: text.titleMedium!.copyWith(color: s.kind == SetKind.warmup ? c.textMuted : c.textStrong)),
+            child: Text(widget.label, style: text.titleMedium!.copyWith(color: s.kind == SetKind.warmup ? c.details.warmupLabel : c.textStrong)),
           ),
         ),
       ),

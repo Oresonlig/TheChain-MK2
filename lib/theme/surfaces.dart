@@ -18,6 +18,7 @@ class Glass extends StatelessWidget {
     this.padding = const EdgeInsets.all(16),
     this.radius,
     this.border = true,
+    this.done = false,
   });
 
   final Widget child;
@@ -27,19 +28,26 @@ class Glass extends StatelessWidget {
   final BorderRadius? radius;
   final bool border;
 
+  /// Avklarad övning: temats skimmer ([ThemeDetails.doneTint]) över glaset.
+  final bool done;
+
   @override
   Widget build(BuildContext context) {
     final c = context.chain;
     final r = radius ?? c.cardRadius;
+    final tint = done ? c.details.doneTint : null;
+    final tinted = tint != null && tint.a > 0;
     final surface = DecoratedBox(
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [c.glassTop, c.glassBottom],
+          colors: tinted
+              ? [Color.alphaBlend(tint.withValues(alpha: .14), c.glassTop), Color.alphaBlend(tint.withValues(alpha: .05), c.glassBottom)]
+              : [c.glassTop, c.glassBottom],
         ),
         borderRadius: r,
-        border: border ? Border.all(color: c.border) : null,
+        border: border ? Border.all(color: tinted ? tint.withValues(alpha: .3) : c.border) : null,
       ),
       child: Padding(padding: padding, child: child),
     );

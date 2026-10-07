@@ -329,12 +329,13 @@ class SessionEditScreen extends StatelessWidget {
             padding: const EdgeInsets.only(bottom: 8),
             child: Builder(builder: (context) {
               final ex = exerciseOf(slot.exerciseId);
+              // Ramp i temats egen färg (Cosmic: bärnsten, MK1:s RAMP-tagg).
               final details = [
-                if (ex != null) measureDescription(ex.measure),
-                if (ex?.scheme == SetScheme.ramp) 'ramp',
-                if (ex?.scheme == SetScheme.singles) 'singles',
-                if (ex?.unilateral ?? false) 'L/R',
-              ].join(' · ');
+                if (ex != null) TextSpan(text: measureDescription(ex.measure)),
+                if (ex?.scheme == SetScheme.ramp) TextSpan(text: 'ramp', style: TextStyle(color: c.details.rampColor)),
+                if (ex?.scheme == SetScheme.singles) const TextSpan(text: 'singles'),
+                if (ex?.unilateral ?? false) const TextSpan(text: 'L/R'),
+              ];
               return GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onTap: ex == null ? null : () => showExerciseSheet(context, app: app, exercise: ex),
@@ -345,7 +346,10 @@ class SessionEditScreen extends StatelessWidget {
                     Expanded(
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                         Text(ex?.name ?? slot.exerciseId.value, style: text.titleMedium),
-                        if (details.isNotEmpty) Text(details, style: text.bodySmall),
+                        if (details.isNotEmpty)
+                          Text.rich(TextSpan(style: text.bodySmall, children: [
+                            for (final (i, d) in details.indexed) ...[if (i > 0) const TextSpan(text: ' · '), d],
+                          ])),
                       ]),
                     ),
                     IconButton(

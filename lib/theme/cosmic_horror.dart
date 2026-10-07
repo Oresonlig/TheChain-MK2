@@ -66,4 +66,13 @@ const cosmicHorror = ChainTheme(
   tabShape: TabShape.blob,
   navMark: NavMark.fang,
   fonts: ThemeType(display: 'Cinzel', text: 'Martian Mono', textWidth: 87.5, textScale: .9),
+  // MK1:s småsaker (Niklas 2026-10-07): blodröda W1/W2, streckade avdelare,
+  // grönt skimmer på en avklarad övning, kursiva datum, ramp i bärnsten.
+  details: ThemeDetails(
+    warmupLabel: Color(0xFFD0606C), // = fail, blodrött
+    rule: RuleStyle.dashed,
+    doneTint: Color(0xFFB6F09C), // = success
+    historyDate: FontStyle.italic,
+    rampColor: Color(0xFFD8B878), // = restGold, bärnsten
+  ),
 );

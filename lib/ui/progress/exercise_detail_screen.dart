@@ -111,7 +111,7 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> with ChartR
                     child: Container(
                       constraints: const BoxConstraints(minHeight: 48),
                       padding: const EdgeInsets.symmetric(vertical: 10),
-                      decoration: BoxDecoration(border: Border(top: BorderSide(color: c.border))),
+                      decoration: c.ruleAbove,
                       child: Row(children: [
                         SizedBox(width: 104, child: Text(fmtDate(p.date), style: text.bodySmall)),
                         Expanded(child: Text(fmtSet(p.set, p.measure, s), style: text.titleMedium)),

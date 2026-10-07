@@ -210,7 +210,7 @@ class _WeightScreenState extends State<WeightScreen> with ChartRangeState {
                   const SizedBox(height: 14),
                   Container(
                     padding: const EdgeInsets.only(top: 10),
-                    decoration: BoxDecoration(border: Border(top: BorderSide(color: c.border))),
+                    decoration: c.ruleAbove,
                     child: Row(children: [
                       Expanded(
                         child: Text.rich(TextSpan(children: [
@@ -242,7 +242,7 @@ class _WeightScreenState extends State<WeightScreen> with ChartRangeState {
                   for (final e in entries.take(30))
                     Container(
                       padding: const EdgeInsets.symmetric(vertical: 4),
-                      decoration: BoxDecoration(border: Border(top: BorderSide(color: c.border))),
+                      decoration: c.ruleAbove,
                       child: Row(children: [
                         Expanded(child: Text(e.date, style: text.bodyMedium)),
                         Text(_fmt(e.kg, s.weightUnit), style: text.titleMedium),

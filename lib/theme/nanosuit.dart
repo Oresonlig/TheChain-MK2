@@ -61,6 +61,13 @@ const nanosuit = ChainTheme(
   navMark: NavMark.raised,
   fonts: ThemeType(display: 'Saira', text: 'Saira'),
   cardShape: CardShape.square,
+  details: ThemeDetails(
+    warmupLabel: Color(0xFF7FA6B4), // = textMuted
+    rule: RuleStyle.solid,
+    doneTint: Color(0x00000000),
+    historyDate: FontStyle.normal,
+    rampColor: Color(0xFF7FA6B4), // = textMuted
+  ),
 );
 
 ThemeData nanosuitThemeData() => buildThemeData(nanosuit);

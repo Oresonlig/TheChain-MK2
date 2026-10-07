@@ -467,7 +467,7 @@ class _SessionPanel extends StatelessWidget {
         if (skip != null) ...[
           Container(
             padding: const EdgeInsets.symmetric(vertical: 10),
-            decoration: BoxDecoration(border: Border(top: BorderSide(color: c.border))),
+            decoration: c.ruleAbove,
             child: Text(skip.reason, style: text.bodyMedium!.copyWith(color: c.textBody)),
           ),
           const SizedBox(height: 16),
@@ -491,7 +491,7 @@ class _SessionPanel extends StatelessWidget {
           if (lastOfSession.workout.note case final n?)
             Container(
               padding: const EdgeInsets.only(top: 10),
-              decoration: BoxDecoration(border: Border(top: BorderSide(color: c.border))),
+              decoration: c.ruleAbove,
               child: Text(n, style: text.bodyMedium!.copyWith(color: c.textBody)),
             ),
           const SizedBox(height: 16),
@@ -581,7 +581,7 @@ class _DoneExercise extends StatelessWidget {
     var w = 0, s = 0;
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 10),
-      decoration: BoxDecoration(border: Border(top: BorderSide(color: c.border))),
+      decoration: c.ruleAbove,
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(name, style: text.titleMedium!.copyWith(color: row.status == ExerciseStatus.skipped ? c.textFaint : c.textStrong)),
         if (row.status == ExerciseStatus.skipped)
@@ -614,7 +614,7 @@ class _ExercisePreview extends StatelessWidget {
     final summary = last == null ? 'No history yet' : last!.workSets.map((s) => fmtSet(s, m, settings)).join('  ·  ');
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 10),
-      decoration: BoxDecoration(border: Border(top: BorderSide(color: c.border))),
+      decoration: c.ruleAbove,
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(exercise?.name ?? id.value, style: text.titleMedium),
         const SizedBox(height: 2),

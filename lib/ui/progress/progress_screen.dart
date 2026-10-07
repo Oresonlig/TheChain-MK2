@@ -104,7 +104,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
                 )),
                 child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 8),
-                decoration: BoxDecoration(border: Border(top: BorderSide(color: c.border))),
+                decoration: c.ruleAbove,
                 child: Row(children: [
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -145,7 +145,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text('Forced rest day', style: text.titleMedium),
-                      Text('${fmtDate(e.date)}${note == null ? '' : ' · $note'}', style: text.bodySmall),
+                      _dated(e.date, note == null ? '' : ' · $note', text.bodySmall!, c),
                     ]),
                   ),
                   IconButton(
@@ -158,7 +158,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text('${name(e)} — skipped', style: text.titleMedium!.copyWith(color: c.textMuted)),
-                      Text('${fmtDate(e.date)} · $reason', style: text.bodySmall),
+                      _dated(e.date, ' · $reason', text.bodySmall!, c),
                     ]),
                   ),
                   IconButton(
@@ -171,10 +171,12 @@ class _ProgressScreenState extends State<ProgressScreen> {
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text(name(e), style: text.titleMedium),
-                      Text(
-                        '${fmtDate(e.date)} · ${workout.exercises.where((x) => x.status == ExerciseStatus.done).length} exercises'
+                      _dated(
+                        e.date,
+                        ' · ${workout.exercises.where((x) => x.status == ExerciseStatus.done).length} exercises'
                         '${e.source == EntrySource.imported ? ' · imported' : ''}',
-                        style: text.bodySmall,
+                        text.bodySmall!,
+                        c,
                       ),
                       if (workout.note case final n?)
                         Padding(
@@ -205,6 +207,16 @@ class _ProgressScreenState extends State<ProgressScreen> {
     ];
   }
 
+  /// Historikens datumrad: datumet i temats stil ([ThemeDetails.historyDate]),
+  /// resten som vanlig text.
+  static Widget _dated(DateTime d, String rest, TextStyle style, ChainTheme c) => Text.rich(TextSpan(
+        style: style,
+        children: [
+          TextSpan(text: fmtDate(d), style: TextStyle(fontStyle: c.details.historyDate)),
+          if (rest.isNotEmpty) TextSpan(text: rest),
+        ],
+      ));
+
   Future<void> _editNote(BuildContext context, WorkoutEntry e) async {
     final note = await askSessionNote(context, title: 'Session note', confirmLabel: 'Save', initial: e.workout.note);
     if (note != null) await widget.app.setWorkoutNote(e, note);
@@ -232,7 +244,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
             padding: const EdgeInsets.all(16),
             child: ListView(shrinkWrap: true, children: [
               Text(sessionName.toUpperCase(), style: text.titleMedium),
-              Text(fmtDate(w.finishedAt ?? w.startedAt), style: text.bodySmall),
+              _dated(w.finishedAt ?? w.startedAt, '', text.bodySmall!, c),
               const SizedBox(height: 8),
               for (final ex in w.exercises.where((x) => x.status == ExerciseStatus.done)) ...[
                 const SizedBox(height: 8),
