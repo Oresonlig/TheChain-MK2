@@ -78,6 +78,18 @@ class _EyeTabState extends State<EyeTab> with TickerProviderStateMixin {
     for (var i = 0; i < _eyes; i++) AnimationController(vsync: this, duration: const Duration(milliseconds: 220)),
   ];
   late final AnimationController _slit = AnimationController(vsync: this, duration: const Duration(milliseconds: 750));
+
+  /// Springans blick glider mellan lägena (Niklas 2026-10-07: irisen
+  /// "teleporterar" när den hoppar rakt).
+  late final AnimationController _look = AnimationController(vsync: this, duration: const Duration(milliseconds: 380));
+  double _lookFrom = 0, _lookTo = 0;
+  double get _slitGaze => _lookFrom + (_lookTo - _lookFrom) * Curves.easeInOut.transform(_look.value);
+  void _lookAt(double g) {
+    _lookFrom = _slitGaze;
+    _lookTo = g;
+    _look.forward(from: 0);
+  }
+
   final _gaze = List<double>.filled(_eyes, 0);
   int _gen = 0;
   final _timers = <Timer>{};
@@ -103,6 +115,9 @@ class _EyeTabState extends State<EyeTab> with TickerProviderStateMixin {
       b.value = 0;
     }
     _gaze.fillRange(0, _eyes, 0);
+    _look.stop();
+    _look.value = 0;
+    _lookFrom = _lookTo = 0;
     if (!_moving) {
       _life.stop();
       _slit.value = .6; // stilla: springan halvöppen, ögat syns
@@ -165,11 +180,11 @@ class _EyeTabState extends State<EyeTab> with TickerProviderStateMixin {
       for (var k = 0, n = 2 + _r.nextInt(3); k < n; k++) {
         await _wait(Duration(milliseconds: 600 + _r.nextInt(900)));
         if (!_alive(gen)) return;
-        setState(() => _gaze[0] = _r.nextDouble() * 2 - 1); // tittar runt
+        _lookAt(_r.nextDouble() * 2 - 1); // tittar runt
       }
       await _wait(Duration(milliseconds: 500 + _r.nextInt(700)));
       if (!_alive(gen)) return;
-      setState(() => _gaze[0] = 0);
+      _lookAt(0);
       await _slit.reverse();
       if (!_alive(gen)) return;
     }
@@ -184,6 +199,7 @@ class _EyeTabState extends State<EyeTab> with TickerProviderStateMixin {
       b.dispose();
     }
     _slit.dispose();
+    _look.dispose();
     super.dispose();
   }
 
@@ -203,7 +219,7 @@ class _EyeTabState extends State<EyeTab> with TickerProviderStateMixin {
         Positioned.fill(
           child: RepaintBoundary(
             child: AnimatedBuilder(
-              animation: _slit,
+              animation: Listenable.merge([_slit, _look]),
               builder: (context, _) {
                 final lift = Curves.easeInOut.transform(_slit.value) * EyeTab.maxLift;
                 if (lift <= .3) return const SizedBox.shrink();
@@ -213,7 +229,7 @@ class _EyeTabState extends State<EyeTab> with TickerProviderStateMixin {
                     final slit = SlitGeometry(box.biggest, lift);
                     return Stack(children: [
                       Positioned.fill(
-                        child: CustomPaint(painter: _SlitPainter(slit: slit, membrane: widget.membrane, gaze: _gaze[0], theme: c)),
+                        child: CustomPaint(painter: _SlitPainter(slit: slit, membrane: widget.membrane, gaze: _slitGaze, theme: c)),
                       ),
                       // Ögonlocken: flikens två halvor, text och allt, i smala
                       // strimlor som var och en glider så långt mandeln är
@@ -474,10 +490,22 @@ class _EdgePainter extends CustomPainter {
       return 0;
     }
 
+    // Ögonen darrar inte (Niklas 2026-10-07: "ser så grötigt ut"): darret
+    // tonas ut över 8 px mot varje öga och är noll i det.
+    const fade = 8.0;
+    double calm(double d) {
+      var k = 1.0;
+      for (final e in spans) {
+        final out = math.max(e.from - d, d - (e.from + e.w));
+        k = math.min(k, (out / fade).clamp(0.0, 1.0));
+      }
+      return k;
+    }
+
     Offset at(double d, double lift) {
       final tan = metric.getTangentForOffset(d.clamp(0.0, len))!;
       final n = Offset(-tan.vector.dy, tan.vector.dx);
-      final j = s == null ? 0.0 : (math.sin(d * .9 + s * 47) * .6 + math.sin(d * .31 - s * 29) * .4) * amp;
+      final j = s == null ? 0.0 : (math.sin(d * .9 + s * 47) * .6 + math.sin(d * .31 - s * 29) * .4) * amp * calm(d);
       return tan.position + n * (j + lift);
     }
 
