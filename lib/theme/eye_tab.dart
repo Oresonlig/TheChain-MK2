@@ -17,8 +17,10 @@ library;
 
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:ui' show PathMetric;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 
 import 'chain_theme.dart';
 
@@ -95,6 +97,7 @@ class _EyeTabState extends State<EyeTab> with TickerProviderStateMixin {
   }
 
   final _gaze = List<Offset>.filled(_eyes, Offset.zero);
+  final _contour = ContourCache();
   int _gen = 0;
   final _timers = <Timer>{};
 
@@ -243,14 +246,9 @@ class _EyeTabState extends State<EyeTab> with TickerProviderStateMixin {
                       // strimlor som var och en glider så långt mandeln är
                       // öppen just där (Niklas 2026-10-07: "texten ska formas
                       // efter ögats form") — mest i mitten, inget i vrårna.
-                      for (final (x0, x1, d) in slit.strips)
-                        for (final upper in const [true, false])
-                          Positioned.fill(
-                            child: Transform.translate(
-                              offset: Offset(0, upper ? -d : d),
-                              child: ClipRect(clipper: _Strip(x0, x1, upper: upper), child: child),
-                            ),
-                          ),
+                      // EN kopia av fliken som målas en gång per strimla
+                      // (förr 80 kopior som byggdes och layoutades var för sig).
+                      Positioned.fill(child: StripCopies(strips: slit.strips.toList(), child: child)),
                       // Den fuktiga kanten ovanpå: döljer strimlornas trappsteg.
                       Positioned.fill(
                         child: CustomPaint(painter: _SlitRimPainter(slit: slit, theme: c)),
@@ -277,6 +275,7 @@ class _EyeTabState extends State<EyeTab> with TickerProviderStateMixin {
                     : null,
                 color: widget.membrane.edge,
                 theme: c,
+                contour: _contour,
               ),
             ),
           ),
@@ -286,17 +285,47 @@ class _EyeTabState extends State<EyeTab> with TickerProviderStateMixin {
   }
 }
 
-/// En lodrät strimla av ena halvan (övre eller nedre) av fliken.
-class _Strip extends CustomClipper<Rect> {
-  const _Strip(this.x0, this.x1, {required this.upper});
-  final double x0, x1;
-  final bool upper;
+/// Fliken i lodräta strimlor: varje (x0, x1, d) målar barnets övre halva
+/// förskjuten d uppåt och den nedre d nedåt, klippt till strimlan. Barnet
+/// byggs och layoutas en gång; bara målningen upprepas.
+@visibleForTesting
+class StripCopies extends SingleChildRenderObjectWidget {
+  const StripCopies({super.key, required this.strips, required super.child});
+  final List<(double, double, double)> strips;
 
   @override
-  Rect getClip(Size s) => upper ? Rect.fromLTRB(x0, 0, x1, s.height / 2) : Rect.fromLTRB(x0, s.height / 2, x1, s.height);
+  RenderObject createRenderObject(BuildContext context) => _RenderStripCopies(strips);
 
   @override
-  bool shouldReclip(_Strip old) => old.x0 != x0 || old.x1 != x1 || old.upper != upper;
+  void updateRenderObject(BuildContext context, _RenderStripCopies renderObject) => renderObject.strips = strips;
+}
+
+class _RenderStripCopies extends RenderProxyBox {
+  _RenderStripCopies(this._strips);
+  List<(double, double, double)> _strips;
+
+  set strips(List<(double, double, double)> v) {
+    _strips = v;
+    markNeedsPaint();
+  }
+
+  @override
+  void paint(PaintingContext context, Offset offset) {
+    final child = this.child;
+    if (child == null) return;
+    final mid = size.height / 2;
+    for (final (x0, x1, d) in _strips) {
+      context
+        ..pushClipRect(needsCompositing, offset.translate(0, -d), Rect.fromLTRB(x0, 0, x1, mid),
+            (ctx, o) => ctx.paintChild(child, o))
+        ..pushClipRect(needsCompositing, offset.translate(0, d), Rect.fromLTRB(x0, mid, x1, size.height),
+            (ctx, o) => ctx.paintChild(child, o));
+    }
+  }
+
+  // Strimlorna är bara bild — trycket går till fliken under.
+  @override
+  bool hitTest(BoxHitTestResult result, {required Offset position}) => false;
 }
 
 /// Springans mandel — EN geometri som både ögonlocken och öppningen följer.
@@ -452,6 +481,22 @@ class _SlitRimPainter extends CustomPainter {
   bool shouldRepaint(_SlitRimPainter old) => true;
 }
 
+/// Flikens kontur som [PathMetric] — sparad tills formen eller storleken ändras.
+class ContourCache {
+  ShapeBorder? _shape;
+  Size? _size;
+  PathMetric? _metric;
+
+  PathMetric of(ShapeBorder shape, Size size) {
+    if (_metric == null || _shape != shape || _size != size) {
+      _metric = shape.getOuterPath(Offset.zero & size).computeMetrics().first;
+      _shape = shape;
+      _size = size;
+    }
+    return _metric!;
+  }
+}
+
 /// Flikens kant, och kantögonen I den.
 ///
 /// Kanten mullrar (Niklas 2026-10-07: "linjerna skulle bara typ kunna
@@ -470,8 +515,12 @@ class _EdgePainter extends CustomPainter {
     required this.eyes,
     required this.color,
     required this.theme,
+    required this.contour,
   }) : super(repaint: repaint);
   final ShapeBorder shape;
+
+  /// Konturen mäts en gång per form och storlek, inte i varje bildruta.
+  final ContourCache contour;
   final double? Function() seconds;
 
   /// Kantögonens läge just nu; null = inga kantögon (springan).
@@ -490,7 +539,7 @@ class _EdgePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final metric = shape.getOuterPath(Offset.zero & size).computeMetrics().first;
+    final metric = contour.of(shape, size);
     final len = metric.length;
     final s = seconds();
     final amp = s == null ? 0.0 : 1.5 * rumble(s);

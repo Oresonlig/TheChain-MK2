@@ -242,6 +242,11 @@ class ChevronBorder extends OutlinedBorder {
   EdgeInsetsGeometry get dimensions => EdgeInsets.all(side.width);
   @override
   ShapeBorder scale(double t) => ChevronBorder(inset: inset * t, side: side.scale(t));
+
+  @override
+  bool operator ==(Object other) => other is ChevronBorder && other.inset == inset && other.side == side;
+  @override
+  int get hashCode => Object.hash(inset, side);
 }
 
 /// Stabilt frö ur en sträng (String.hashCode är inte stabilt mellan körningar).
@@ -291,6 +296,12 @@ class BlobBorder extends OutlinedBorder {
   EdgeInsetsGeometry get dimensions => EdgeInsets.all(side.width);
   @override
   ShapeBorder scale(double t) => BlobBorder(seed: seed, side: side.scale(t));
+
+  // Samma frö = samma form: klippare och cacher slipper räkna om vid ombygge.
+  @override
+  bool operator ==(Object other) => other is BlobBorder && other.seed == seed && other.side == side;
+  @override
+  int get hashCode => Object.hash(seed, side);
 }
 
 /// Temats form för en upphöjd yta: kedjans flikar ([seed] satt) följer

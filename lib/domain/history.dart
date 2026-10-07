@@ -74,6 +74,9 @@ WorkoutEntry? withoutSet(WorkoutEntry e, String rowId, SetId setId) {
   return found ? WorkoutEntry(workout: e.workout.copyWith(exercises: exercises), source: e.source) : null;
 }
 
+/// Finns övningen i passet? (Utan att bygga en kopia som [withoutExercise].)
+bool hasExercise(WorkoutEntry e, ExerciseId id) => e.workout.exercises.any((ex) => ex.exerciseId == id);
+
 /// Passet utan någon förekomst av övningen. Null = övningen fanns inte i passet.
 WorkoutEntry? withoutExercise(WorkoutEntry e, ExerciseId id) {
   final exercises = e.workout.exercises.where((ex) => ex.exerciseId != id).toList();

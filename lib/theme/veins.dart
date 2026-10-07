@@ -100,10 +100,25 @@ class _Network {
   final trunks = <_Vein>[];
   late final List<double> reachOf;
   late final List<({double speed, double offset})> pulses;
+
+  /// Ådrorna så långt de vuxit vid [growth] — byggs om bara när nätet växer
+  /// eller drar sig tillbaka (efter en LOG), inte i varje bildruta.
+  List<Path?> grown(double growth) {
+    if (growth != _grownAt) {
+      _grown = [for (final v in veins) v.between(0, growth * reachOf[v.system])];
+      _grownAt = growth;
+    }
+    return _grown;
+  }
+
+  double? _grownAt;
+  List<Path?> _grown = const [];
 }
 
-_Network? _net;
-Size _netSize = Size.zero;
+/// Ett nät per ytstorlek: kedjevyn (med menyraden) och passvyn är olika
+/// höga, och under övergången ritas båda — med ett enda sparat nät byggdes
+/// det om i varje bildruta.
+final _nets = <Size, _Network>{};
 
 /// Nätets hjärtslag: ett svagt lub-dub var 12:e sekund (360 steg à ~33 ms).
 double _networkBeat(int frame) {
@@ -115,11 +130,11 @@ double _networkBeat(int frame) {
 
 void paintVeins(Canvas canvas, Size size, int frame, ChainTheme theme, {required bool animated}) {
   if (size.isEmpty) return;
-  if (_net == null || _netSize != size) {
-    _net = _Network(size);
-    _netSize = size;
+  var net = _nets[size];
+  if (net == null) {
+    if (_nets.length >= 4) _nets.clear(); // rotation, tangentbord: släpp gamla storlekar
+    net = _nets[size] = _Network(size);
   }
-  final net = _net!;
   final beat = animated ? math.max(_networkBeat(frame), AmbientLife.beat()) : 0.0;
   final g = AmbientLife.growth(animated: animated);
 
@@ -128,8 +143,9 @@ void paintVeins(Canvas canvas, Size size, int frame, ChainTheme theme, {required
     ..style = PaintingStyle.stroke
     ..strokeCap = StrokeCap.round
     ..strokeJoin = StrokeJoin.round;
-  for (final v in net.veins) {
-    final path = v.between(0, g * net.reachOf[v.system]);
+  final grown = net.grown(g);
+  for (final (i, v) in net.veins.indexed) {
+    final path = grown[i];
     if (path == null) continue;
     stroke
       ..strokeWidth = (.35 + v.depth * .4) * (1 + .25 * beat)

@@ -121,7 +121,7 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> with ChartR
                   ),
               ]),
             ),
-            if (history.whereType<WorkoutEntry>().any((e) => withoutExercise(e, widget.exerciseId) != null))
+            if (history.whereType<WorkoutEntry>().any((e) => hasExercise(e, widget.exerciseId)))
               Padding(
                 padding: const EdgeInsets.only(top: 12),
                 child: TextButton(
@@ -167,7 +167,7 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> with ChartR
   Future<void> _deleteAll(BuildContext context, String name) async {
     final affected = [
       for (final e in widget.app.repo!.history().whereType<WorkoutEntry>())
-        if (withoutExercise(e, widget.exerciseId) != null) e,
+        if (hasExercise(e, widget.exerciseId)) e,
     ];
     final sets = affected
         .expand((e) => e.workout.exercises)
