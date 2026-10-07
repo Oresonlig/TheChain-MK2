@@ -2,10 +2,11 @@
 /// tar hela markören, och kanten lever i stället för att glöda.
 ///
 ///   * [EyeVariant.slit] — en springa öppnar sig INNANFÖR fliken (2026-10-07):
-///     texten delas, ett stort öga i springan tittar runt, och den sluter sig
-///     igen. Fliken själv rör sig aldrig utanför sina linjer.
-///   * [EyeVariant.many] — ögon utspridda runt flikens kant, grensle över den,
-///     som blinkar och tittar var för sig.
+///     texten delas och böjer sig efter mandeln, ett stort öga i springan
+///     tittar runt, och den sluter sig igen. Fliken själv rör sig aldrig
+///     utanför sina linjer.
+///   * [EyeVariant.many] — ögon utspridda I flikens kant (kantlinjen delar sig
+///     till ögonlock runt dem), som blinkar och tittar var för sig.
 ///   * Kanten (båda): konturen darrar, som något som mullrar under ytan.
 ///     Syns alltid, så markeringen finns kvar även när springan är sluten.
 ///     Ingen grön prick.
@@ -186,86 +187,127 @@ class _EyeTabState extends State<EyeTab> with TickerProviderStateMixin {
     super.dispose();
   }
 
+  /// Ögonlockens öppenhet ur blinkens klocka: stängs snabbt, öppnas lugnare.
+  static double _lid(double t) => (t < .4 ? 1 - t / .4 : (t - .4) / .6).clamp(0.0, 1.0);
+
   @override
   Widget build(BuildContext context) {
     final c = context.chain;
     final child = widget.child;
-    return AnimatedBuilder(
-      animation: Listenable.merge([_life, _slit, ..._blinks]),
-      builder: (context, _) {
-        final lift = widget.variant == EyeVariant.slit ? Curves.easeInOut.transform(_slit.value) * EyeTab.maxLift : 0.0;
-        double lid(double t) => (t < .4 ? 1 - t / .4 : (t - .4) / .6).clamp(0.0, 1.0);
-        return Stack(clipBehavior: Clip.none, children: [
-          child,
-          // Springan öppnar sig INNANFÖR fliken (Niklas 2026-10-07: "inte röra
-          // sig utanför linjerna"): fliken står still, och halvorna + ögat
-          // klipps till flikens kontur.
-          if (lift > .3)
-            Positioned.fill(
-              child: ClipPath(
-                clipper: ShapeBorderClipper(shape: widget.shape),
-                child: Stack(children: [
-                  Positioned.fill(
-                    child: CustomPaint(
-                      painter: _SlitPainter(shape: widget.shape, membrane: widget.membrane, lift: lift, gaze: _gaze[0], theme: c),
-                    ),
-                  ),
-                  // Ögonlocken: flikens två halvor, text och allt.
-                  Positioned.fill(
-                    child: Transform.translate(
-                      offset: Offset(0, -lift),
-                      child: ClipRect(clipper: const _Half(upper: true), child: child),
-                    ),
-                  ),
-                  Positioned.fill(
-                    child: Transform.translate(
-                      offset: Offset(0, lift),
-                      child: ClipRect(clipper: const _Half(upper: false), child: child),
-                    ),
-                  ),
-                ]),
-              ),
+    return Stack(clipBehavior: Clip.none, children: [
+      child,
+      // Springan öppnar sig INNANFÖR fliken (Niklas 2026-10-07: "inte röra
+      // sig utanför linjerna"): fliken står still, och ögonlocken + ögat
+      // klipps till flikens kontur.
+      if (widget.variant == EyeVariant.slit)
+        Positioned.fill(
+          child: RepaintBoundary(
+            child: AnimatedBuilder(
+              animation: _slit,
+              builder: (context, _) {
+                final lift = Curves.easeInOut.transform(_slit.value) * EyeTab.maxLift;
+                if (lift <= .3) return const SizedBox.shrink();
+                return ClipPath(
+                  clipper: ShapeBorderClipper(shape: widget.shape),
+                  child: LayoutBuilder(builder: (context, box) {
+                    final slit = SlitGeometry(box.biggest, lift);
+                    return Stack(children: [
+                      Positioned.fill(
+                        child: CustomPaint(painter: _SlitPainter(slit: slit, membrane: widget.membrane, gaze: _gaze[0], theme: c)),
+                      ),
+                      // Ögonlocken: flikens två halvor, text och allt, i smala
+                      // strimlor som var och en glider så långt mandeln är
+                      // öppen just där (Niklas 2026-10-07: "texten ska formas
+                      // efter ögats form") — mest i mitten, inget i vrårna.
+                      for (final (x0, x1, d) in slit.strips)
+                        for (final upper in const [true, false])
+                          Positioned.fill(
+                            child: Transform.translate(
+                              offset: Offset(0, upper ? -d : d),
+                              child: ClipRect(clipper: _Strip(x0, x1, upper: upper), child: child),
+                            ),
+                          ),
+                      // Den fuktiga kanten ovanpå: döljer strimlornas trappsteg.
+                      Positioned.fill(
+                        child: CustomPaint(painter: _SlitRimPainter(slit: slit, theme: c)),
+                      ),
+                    ]);
+                  }),
+                );
+              },
             ),
-          // Kanten mullrar: konturen darrar svagt, ibland lite mer.
-          Positioned.fill(
-            child: IgnorePointer(
-              child: CustomPaint(
-                painter: _TremorPainter(
-                  shape: widget.shape,
-                  seconds: _life.isAnimating ? _life.value * 6 : null,
-                  color: widget.membrane.edge,
-                ),
+          ),
+        ),
+      // Kanten mullrar: konturen darrar svagt, ibland lite mer. Kantögonen
+      // sitter I konturen — linjen delar sig till ögonlock runt dem.
+      Positioned.fill(
+        child: IgnorePointer(
+          child: RepaintBoundary(
+            child: CustomPaint(
+              painter: _EdgePainter(
+                repaint: Listenable.merge([_life, ..._blinks]),
+                shape: widget.shape,
+                seconds: () => _life.isAnimating ? _life.value * 6 : null,
+                eyes: widget.variant == EyeVariant.many
+                    ? () => [for (var i = 0; i < _eyes; i++) (open: _lid(_blinks[i].value), gaze: _gaze[i])]
+                    : null,
+                color: widget.membrane.edge,
+                theme: c,
               ),
             ),
           ),
-          if (widget.variant == EyeVariant.many)
-            Positioned.fill(
-              child: IgnorePointer(
-                child: CustomPaint(
-                  painter: _RimEyesPainter(
-                    shape: widget.shape,
-                    open: [for (final b in _blinks) lid(b.value)],
-                    gaze: List.of(_gaze),
-                    theme: c,
-                  ),
-                ),
-              ),
-            ),
-        ]);
-      },
-    );
+        ),
+      ),
+    ]);
   }
 }
 
-class _Half extends CustomClipper<Rect> {
-  const _Half({required this.upper});
+/// En lodrät strimla av ena halvan (övre eller nedre) av fliken.
+class _Strip extends CustomClipper<Rect> {
+  const _Strip(this.x0, this.x1, {required this.upper});
+  final double x0, x1;
   final bool upper;
 
   @override
-  Rect getClip(Size s) => upper ? Rect.fromLTWH(0, 0, s.width, s.height / 2) : Rect.fromLTWH(0, s.height / 2, s.width, s.height / 2);
+  Rect getClip(Size s) => upper ? Rect.fromLTRB(x0, 0, x1, s.height / 2) : Rect.fromLTRB(x0, s.height / 2, x1, s.height);
 
   @override
-  bool shouldReclip(_Half old) => old.upper != upper;
+  bool shouldReclip(_Strip old) => old.x0 != x0 || old.x1 != x1 || old.upper != upper;
+}
+
+/// Springans mandel — EN geometri som både ögonlocken och öppningen följer.
+/// Öppningen täcker 84 % av bredden; vid x är den [open] öppen åt vardera
+/// håll: lift · 4u(1−u), dvs samma parabel som mandelns bezierkurvor.
+class SlitGeometry {
+  SlitGeometry(this.size, this.lift);
+  final Size size;
+  final double lift;
+
+  static const stripCount = 40;
+
+  double get width => size.width * .84;
+  double get left => (size.width - width) / 2;
+  double get cy => size.height / 2;
+
+  double open(double x) {
+    final u = (x - left) / width;
+    return u <= 0 || u >= 1 ? 0 : lift * 4 * u * (1 - u);
+  }
+
+  /// (x0, x1, förskjutning) per strimla, mätt i strimlans mitt.
+  Iterable<(double, double, double)> get strips sync* {
+    final sw = width / stripCount;
+    for (var i = 0; i < stripCount; i++) {
+      final a = left + i * sw;
+      yield (a, a + sw, open(a + sw / 2));
+    }
+  }
+
+  Path get opening => Path()
+    ..moveTo(left, cy)
+    ..quadraticBezierTo(size.width / 2, cy - lift * 2, left + width, cy)
+    ..quadraticBezierTo(size.width / 2, cy + lift * 2, left, cy)
+    ..close();
 }
 
 /// Ett öga: mandel, mörkt sjukt vitöga med blodkärl, gulgrön iris och en
@@ -277,7 +319,6 @@ void drawEye(Canvas canvas, ChainTheme t, Offset c, double w, double h, double o
     ..quadraticBezierTo(c.dx, c.dy - lid * 2, c.dx + w / 2, c.dy)
     ..quadraticBezierTo(c.dx, c.dy + lid * 2, c.dx - w / 2, c.dy)
     ..close();
-  final iris = Color.lerp(t.success, t.restGold, .45)!; // sjuk gulgrön
   if (open < .08) {
     canvas.drawLine(Offset(c.dx - w / 2, c.dy), Offset(c.dx + w / 2, c.dy), Paint()
       ..strokeWidth = 1
@@ -285,11 +326,26 @@ void drawEye(Canvas canvas, ChainTheme t, Offset c, double w, double h, double o
       ..color = t.accent.withValues(alpha: .7));
     return;
   }
-  canvas.drawPath(almond, Paint()
-    ..color = iris.withValues(alpha: .35)
-    ..maskFilter = MaskFilter.blur(BlurStyle.normal, math.max(1.5, h * .25)));
+  _eyeGlow(canvas, t, almond, h);
   canvas.save();
   canvas.clipPath(almond);
+  _eyeball(canvas, t, c, w, h, gaze);
+  canvas.restore();
+  canvas.drawPath(almond, Paint()
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = .9
+    ..color = t.accent.withValues(alpha: .8));
+}
+
+Color _iris(ChainTheme t) => Color.lerp(t.success, t.restGold, .45)!; // sjuk gulgrön
+
+void _eyeGlow(Canvas canvas, ChainTheme t, Path almond, double h) => canvas.drawPath(almond, Paint()
+  ..color = _iris(t).withValues(alpha: .35)
+  ..maskFilter = MaskFilter.blur(BlurStyle.normal, math.max(1.5, h * .25)));
+
+/// Ögongloben kring [c], liggande längs x — anroparen klipper till mandeln.
+void _eyeball(Canvas canvas, ChainTheme t, Offset c, double w, double h, double gaze) {
+  final iris = _iris(t);
   final box = Rect.fromCenter(center: c, width: w, height: h);
   canvas.drawRect(
     box,
@@ -319,85 +375,77 @@ void drawEye(Canvas canvas, ChainTheme t, Offset c, double w, double h, double o
   );
   canvas.drawOval(Rect.fromCenter(center: ic, width: math.max(1.4, ir * .32), height: ir * 1.85), Paint()..color = t.background);
   canvas.drawCircle(ic + Offset(-ir * .4, -ir * .45), math.max(.8, ir * .14), Paint()..color = Colors.white.withValues(alpha: .5));
-  canvas.restore();
-  canvas.drawPath(almond, Paint()
-    ..style = PaintingStyle.stroke
-    ..strokeWidth = .9
-    ..color = t.accent.withValues(alpha: .8));
 }
 
-/// Springan mellan ögonlocken. Membranet sträcks i flikens egen färg, så att
-/// bara den mandelformade öppningen syns — med ett stort öga som tittar runt.
+/// Springan mellan ögonlocken: den mandelformade öppningen med ett stort öga
+/// som tittar runt. Bakom locken flikens egen färg, där strimlorna glipar.
 class _SlitPainter extends CustomPainter {
-  _SlitPainter({required this.shape, required this.membrane, required this.lift, required this.gaze, required this.theme});
-  final ShapeBorder shape;
+  _SlitPainter({required this.slit, required this.membrane, required this.gaze, required this.theme});
+  final SlitGeometry slit;
   final RaisedMaterial membrane;
-  final double lift, gaze;
+  final double gaze;
   final ChainTheme theme;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final t = theme;
-    final w = size.width, cy = size.height / 2;
-    final gap = Rect.fromLTRB(0, cy - lift, w, cy + lift);
-    // Det sträckta membranet — bara inom flikens kontur.
-    canvas.save();
-    canvas.clipPath(shape.getOuterPath(Offset.zero & size));
-    canvas.drawRect(gap.inflate(1), Paint()..color = Color.lerp(membrane.top, membrane.bottom, .5)!);
-    canvas.restore();
-    // Öppningen: en mandel som vidgas med ögonlocken.
-    final ow = w * .84, oh = lift * 2;
-    final opening = Path()
-      ..moveTo(w / 2 - ow / 2, cy)
-      ..quadraticBezierTo(w / 2, cy - oh, w / 2 + ow / 2, cy)
-      ..quadraticBezierTo(w / 2, cy + oh, w / 2 - ow / 2, cy)
-      ..close();
-    canvas.drawPath(opening, Paint()..color = Color.lerp(t.fail, t.background, .8)!);
-    drawEye(canvas, t, Offset(w / 2, cy), ow * .92, oh * .9, 1, gaze);
-    // Fuktig kant runt öppningen.
-    canvas.drawPath(opening, Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.3
-      ..color = t.accent.withValues(alpha: .7));
+    final t = theme, cy = slit.cy, lift = slit.lift;
+    canvas.drawRect(
+      Rect.fromLTRB(slit.left, cy - lift - 1, slit.left + slit.width, cy + lift + 1),
+      Paint()..color = Color.lerp(membrane.top, membrane.bottom, .5)!,
+    );
+    canvas.drawPath(slit.opening, Paint()..color = Color.lerp(t.fail, t.background, .8)!);
+    drawEye(canvas, t, Offset(size.width / 2, cy), slit.width * .92, lift * 2 * .9, 1, gaze);
   }
 
   @override
   bool shouldRepaint(_SlitPainter old) => true;
 }
 
-/// Ögon grensle över flikens kant, utspridda runt den.
-class _RimEyesPainter extends CustomPainter {
-  _RimEyesPainter({required this.shape, required this.open, required this.gaze, required this.theme});
+/// Fuktig kant runt springans öppning — ovanpå ögonlocken.
+class _SlitRimPainter extends CustomPainter {
+  _SlitRimPainter({required this.slit, required this.theme});
+  final SlitGeometry slit;
+  final ChainTheme theme;
+
+  @override
+  void paint(Canvas canvas, Size size) => canvas.drawPath(slit.opening, Paint()
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 1.3
+    ..color = theme.accent.withValues(alpha: .7));
+
+  @override
+  bool shouldRepaint(_SlitRimPainter old) => true;
+}
+
+/// Flikens kant, och kantögonen I den.
+///
+/// Kanten mullrar (Niklas 2026-10-07: "linjerna skulle bara typ kunna
+/// vibrera, lite som något mullrande under ytan"): konturen darrar svagt hela
+/// tiden och ibland lite kraftigare, som en stöt underifrån. Max ~1,5 px.
+/// Stilla ([seconds] ger null) = lugn kontur.
+///
+/// Kantögonen (Niklas 2026-10-07: kanterna "följer inte dem"): konturen delar
+/// sig vid varje öga till två ögonlock som böjer sig längs kanten och möts
+/// igen. Ett slutet öga är bara kantlinjen. Ögongloben vrids efter kanten.
+class _EdgePainter extends CustomPainter {
+  _EdgePainter({
+    required Listenable repaint,
+    required this.shape,
+    required this.seconds,
+    required this.eyes,
+    required this.color,
+    required this.theme,
+  }) : super(repaint: repaint);
   final ShapeBorder shape;
-  final List<double> open, gaze;
+  final double? Function() seconds;
+
+  /// Kantögonens läge just nu; null = inga kantögon (springan).
+  final List<({double open, double gaze})> Function()? eyes;
+  final Color color;
   final ChainTheme theme;
 
   /// (andel av konturen, bredd, höjd)
   static const _spots = [(.05, 15.0, 8.5), (.27, 20.0, 11.0), (.43, 12.0, 7.0), (.6, 18.0, 10.0), (.83, 13.0, 7.5)];
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final metric = shape.getOuterPath(Offset.zero & size).computeMetrics().first;
-    for (final (i, (at, w, h)) in _spots.indexed) {
-      final p = metric.getTangentForOffset(metric.length * at)?.position;
-      if (p == null) continue;
-      drawEye(canvas, theme, p, w, h, open[i], gaze[i]);
-    }
-  }
-
-  @override
-  bool shouldRepaint(_RimEyesPainter old) => true;
-}
-
-/// Kanten mullrar (Niklas 2026-10-07: "linjerna skulle bara typ kunna
-/// vibrera, lite som något mullrande under ytan"): flikens kontur darrar
-/// svagt hela tiden och ibland lite kraftigare, som en stöt underifrån.
-/// Max ~1,5 px — inget som tar över. Stilla ([seconds] null) = lugn kontur.
-class _TremorPainter extends CustomPainter {
-  _TremorPainter({required this.shape, required this.seconds, required this.color});
-  final ShapeBorder shape;
-  final double? seconds;
-  final Color color;
 
   /// Mullrets styrka 0–1: ett lågt grundmuller och glesa stötar.
   static double rumble(double s) {
@@ -407,32 +455,77 @@ class _TremorPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final path = shape.getOuterPath(Offset.zero & size);
-    final paint = Paint()
+    final metric = shape.getOuterPath(Offset.zero & size).computeMetrics().first;
+    final len = metric.length;
+    final s = seconds();
+    final amp = s == null ? 0.0 : 1.5 * rumble(s);
+    final state = eyes?.call() ?? const [];
+    final spans = [
+      for (final (i, (at, w, h)) in _spots.indexed)
+        if (i < state.length) (from: len * at - w / 2, w: w, h: h, lid: state[i].open < .08 ? 0.0 : h / 2 * state[i].open, gaze: state[i].gaze),
+    ];
+
+    // Hur långt ögonlocken buktar ut från kanten vid avståndet d.
+    double bulge(double d) {
+      for (final e in spans) {
+        final u = (d - e.from) / e.w;
+        if (u > 0 && u < 1) return e.lid * 4 * u * (1 - u);
+      }
+      return 0;
+    }
+
+    Offset at(double d, double lift) {
+      final tan = metric.getTangentForOffset(d.clamp(0.0, len))!;
+      final n = Offset(-tan.vector.dy, tan.vector.dx);
+      final j = s == null ? 0.0 : (math.sin(d * .9 + s * 47) * .6 + math.sin(d * .31 - s * 29) * .4) * amp;
+      return tan.position + n * (j + lift);
+    }
+
+    Iterable<double> samples(double from, double to, double step) sync* {
+      for (var d = from; d < to; d += step) {
+        yield d;
+      }
+      yield to;
+    }
+
+    final stroke = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.3
       ..strokeJoin = StrokeJoin.round
       ..color = color;
-    final s = seconds;
-    if (s == null) {
-      canvas.drawPath(path, paint);
-      return;
+
+    // Ögonen först (glöd + glob), sedan kantlinjen ovanpå.
+    final lower = Path();
+    for (final e in spans) {
+      if (e.lid <= 0) continue;
+      final ds = samples(e.from, e.from + e.w, 1).toList();
+      final almond = Path()..addPolygon([for (final d in ds) at(d, -bulge(d)), for (final d in ds.reversed) at(d, bulge(d))], true);
+      final mid = e.from + e.w / 2;
+      final tan = metric.getTangentForOffset(mid.clamp(0.0, len))!;
+      _eyeGlow(canvas, theme, almond, e.h);
+      canvas.save();
+      canvas.clipPath(almond);
+      canvas.translate(at(mid, 0).dx, at(mid, 0).dy);
+      canvas.rotate(math.atan2(tan.vector.dy, tan.vector.dx));
+      _eyeball(canvas, theme, Offset.zero, e.w, e.h, e.gaze);
+      canvas.restore();
+      lower.addPolygon([for (final d in ds) at(d, bulge(d))], false);
     }
-    final amp = 1.5 * rumble(s);
-    final metric = path.computeMetrics().first;
-    final shaky = Path();
-    for (var d = 0.0; d <= metric.length; d += 3) {
-      final tan = metric.getTangentForOffset(d);
-      if (tan == null) continue;
-      final n = Offset(-tan.vector.dy, tan.vector.dx);
-      final j = (math.sin(d * .9 + s * 47) * .6 + math.sin(d * .31 - s * 29) * .4) * amp;
-      final p = tan.position + n * j;
-      d == 0 ? shaky.moveTo(p.dx, p.dy) : shaky.lineTo(p.dx, p.dy);
+
+    // Kantlinjen = övre ögonlocken; finare steg där den buktar runt ett öga.
+    final edge = Path();
+    var first = true;
+    for (var d = 0.0; d < len; d += bulge(d) > 0 || bulge(d + 3) > 0 ? 1 : 3) {
+      final p = at(d, -bulge(d));
+      first ? edge.moveTo(p.dx, p.dy) : edge.lineTo(p.dx, p.dy);
+      first = false;
     }
-    shaky.close();
-    canvas.drawPath(shaky, paint);
+    edge.close();
+    canvas
+      ..drawPath(edge, stroke)
+      ..drawPath(lower, stroke);
   }
 
   @override
-  bool shouldRepaint(_TremorPainter old) => old.seconds != seconds || old.color != color;
+  bool shouldRepaint(_EdgePainter old) => true;
 }
