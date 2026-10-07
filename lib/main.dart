@@ -7,6 +7,7 @@ import 'app/rest_timer.dart';
 import 'theme/chain_theme.dart';
 import 'app/supabase_backend.dart';
 import 'app/updater.dart';
+import 'app/whats_new.dart';
 import 'theme/nanosuit.dart';
 import 'theme/themes.dart';
 import 'ui/home_shell.dart';
@@ -103,7 +104,15 @@ class _TheChainAppState extends State<TheChainApp> {
           Phase.signedOut => LoginScreen(app: app, versionLabel: kVersionLabel),
           Phase.loading => const Scaffold(body: Center(child: CircularProgressIndicator())),
           Phase.confirmDevice => OtherDeviceScreen(app: app),
-          Phase.ready => HomeShell(app: app, email: emailOf(), versionLabel: kVersionLabel, devTools: kChannel != 'stable'),
+          Phase.ready => HomeShell(
+              app: app,
+              email: emailOf(),
+              versionLabel: kVersionLabel,
+              devTools: kChannel != 'stable',
+              // "What's new" bara i STABLE (DEV: förhandsvisning på kedjevyn).
+              whatsNew: kChannel == 'stable' ? PrefsWhatsNewStore() : null,
+              build: int.tryParse(kBuild) ?? 0,
+            ),
         },
       ),
     );

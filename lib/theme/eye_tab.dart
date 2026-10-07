@@ -294,14 +294,15 @@ class StripCopies extends SingleChildRenderObjectWidget {
   final List<(double, double, double)> strips;
 
   @override
-  RenderObject createRenderObject(BuildContext context) => _RenderStripCopies(strips);
+  RenderObject createRenderObject(BuildContext context) => RenderStripCopies(strips);
 
   @override
-  void updateRenderObject(BuildContext context, _RenderStripCopies renderObject) => renderObject.strips = strips;
+  void updateRenderObject(BuildContext context, RenderStripCopies renderObject) => renderObject.strips = strips;
 }
 
-class _RenderStripCopies extends RenderProxyBox {
-  _RenderStripCopies(this._strips);
+@visibleForTesting
+class RenderStripCopies extends RenderProxyBox {
+  RenderStripCopies(this._strips);
   List<(double, double, double)> _strips;
 
   set strips(List<(double, double, double)> v) {

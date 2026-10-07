@@ -7,6 +7,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../app/app_controller.dart';
+import '../app/whats_new.dart';
 import '../domain/domain.dart';
 import '../theme/chain_theme.dart';
 import '../theme/surfaces.dart';
@@ -14,11 +15,20 @@ import 'chain/chain_screen.dart';
 import 'progress/progress_screen.dart';
 import 'settings/settings_screen.dart';
 import 'weight/weight_screen.dart';
+import 'whats_new_dialog.dart';
 import 'workout/rest_timer_bar.dart';
 import 'workout/workout_screen.dart';
 
 class HomeShell extends StatefulWidget {
-  const HomeShell({super.key, required this.app, required this.email, required this.versionLabel, this.devTools = false});
+  const HomeShell({
+    super.key,
+    required this.app,
+    required this.email,
+    required this.versionLabel,
+    this.devTools = false,
+    this.whatsNew,
+    this.build = 0,
+  });
 
   final AppController app;
   final String email;
@@ -26,6 +36,10 @@ class HomeShell extends StatefulWidget {
 
   /// DEV-/lokalt bygge (aldrig STABLE): testknappar som aldrig skriver data.
   final bool devTools;
+
+  /// "What's new" efter en uppdatering — bara STABLE sätter den.
+  final WhatsNewStore? whatsNew;
+  final int build;
 
   @override
   State<HomeShell> createState() => _HomeShellState();
@@ -42,6 +56,28 @@ class _HomeShellState extends State<HomeShell> {
     super.initState();
     _lifecycle = AppLifecycleListener(onResume: widget.app.onResume);
     widget.app.addListener(_onApp);
+    if (widget.whatsNew != null) WidgetsBinding.instance.addPostFrameCallback((_) => _whatsNew(widget.whatsNew!));
+  }
+
+  /// En gång efter en uppdatering, ovanpå kedjevyn.
+  Future<void> _whatsNew(WhatsNewStore store) async {
+    final d = decideWhatsNew(
+      build: widget.build,
+      lastSeen: await store.lastSeen(),
+      optedOut: await store.optedOut(),
+      hasHistory: widget.app.repo?.history().isNotEmpty ?? false,
+    );
+    switch (d) {
+      case WhatsNewNothing():
+        return;
+      case WhatsNewSilent(:final build):
+        await store.markSeen(build, optOut: false);
+      case WhatsNewShow(:final note):
+        if (!mounted) return;
+        final never = await showWhatsNew(context, note);
+        // Sett, oavsett OK eller SKIP — visas aldrig igen för det här bygget.
+        await store.markSeen(widget.build, optOut: never ?? false);
+    }
   }
 
   @override

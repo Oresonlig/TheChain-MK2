@@ -20,4 +20,9 @@ for (const j of jobs) {
     const secs = s.started_at && s.completed_at ? Math.round((new Date(s.completed_at) - new Date(s.started_at)) / 1000) : null;
     console.log(`  ${s.status}${s.conclusion ? '/' + s.conclusion : ''}  ${s.name}${secs == null ? '' : `  (${secs}s)`}`);
   }
+  // Fel/varningar som CI fäster vid koden (t.ex. analyze-fynd).
+  if (j.conclusion === 'failure') {
+    const notes = await gh(`check-runs/${j.id}/annotations`);
+    for (const a of notes) console.log(`  ! ${a.annotation_level}  ${a.path}:${a.start_line}  ${a.message}`);
+  }
 }

@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../app/app_controller.dart';
+import '../../app/whats_new.dart';
 import '../../domain/domain.dart';
 import '../../theme/eye_tab.dart';
 import '../../theme/chain_theme.dart';
@@ -16,6 +17,7 @@ import '../delete_ux.dart';
 import '../nanosuit_scaffold.dart';
 import '../onboarding/welcome_panel.dart';
 import '../units.dart';
+import '../whats_new_dialog.dart';
 import '../workout/workout_screen.dart';
 import 'chain_strip.dart';
 import 'round_complete.dart';
@@ -290,6 +292,13 @@ class _ChainScreenState extends State<ChainScreen> {
                         trained: program.sessions.length,
                         skipped: 0,
                       )),
+                ),
+                // Rutan som STABLE visar efter en uppdatering — sparar ingenting här.
+                const SizedBox(height: 8),
+                GhostButton(
+                  label: "DEV · WHAT'S NEW",
+                  color: c.textFaint,
+                  onTap: () => showWhatsNew(context, whatsNewNotes.last),
                 ),
                 // Cosmic Horrors två ögonvarianter (slumpas 50/50 per appstart).
                 if (c.activeMark == ActiveMark.eye) ...[
