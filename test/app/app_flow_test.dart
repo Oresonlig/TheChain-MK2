@@ -5,6 +5,8 @@ import 'package:the_chain/app/updater.dart';
 import 'package:the_chain/data/sync_engine.dart';
 import 'package:the_chain/domain/domain.dart';
 import 'package:the_chain/main.dart';
+import 'package:the_chain/theme/nanosuit.dart';
+import 'package:the_chain/ui/home_shell.dart';
 
 import 'fake_backend.dart';
 
@@ -289,6 +291,34 @@ void main() {
     expect(find.text('SIGN IN'), findsOneWidget);
     expect(find.text('FINISH SESSION'), findsNothing);
     expect(find.byType(CircularProgressIndicator), findsNothing);
+  });
+
+  testWidgets('STABLE (devTools av): inga DEV-knappar eller DEV-texter (Niklas 2026-10-07)', (tester) async {
+    tester.view.physicalSize = const Size(1080, 4000);
+    tester.view.devicePixelRatio = 2.625;
+    addTearDown(tester.view.reset);
+    final app = AppController(FakeBackend(mk1: mk1()));
+    await tester.runAsync(() async {
+      await app.start();
+      await app.signIn('x', 'secret');
+      await pumpEventQueue();
+      await app.importFromWebsite();
+    });
+    await tester.pumpWidget(MediaQuery(
+      data: const MediaQueryData(disableAnimations: true),
+      child: MaterialApp(
+        theme: nanosuitThemeData(),
+        home: HomeShell(app: app, email: '', versionLabel: 'MK2 STABLE · build 104', devTools: false),
+      ),
+    ));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('DEV'), findsNothing, reason: 'kedjan');
+    await tester.tap(find.text('SETTINGS'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Appearance'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('DEV'), findsNothing, reason: 'Appearance');
+    expect(find.text('COSMIC HORROR'), findsNothing, reason: 'DEV-only tema');
   });
 
   testWidgets('UI: FINISH via CONTINUE-raden från Settings → kedjan, inte Settings (Niklas 2026-10-07)', (tester) async {

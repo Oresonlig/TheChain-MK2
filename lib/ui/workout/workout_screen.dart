@@ -3,6 +3,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:flutter/services.dart';
 
 import '../../app/app_controller.dart';
@@ -138,7 +139,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                 // Alla kort hålls byggda (ett pass har ~10): ett kort som fälls
                 // ihop vid DONE hamnar annars långt ovanför skärmen, kastas av
                 // den lata listan — och scrollen dit och skimret dör med det.
-                cacheExtent: 5000,
+                scrollCacheExtent: const ScrollCacheExtent.pixels(5000),
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
                 children: [
                   for (final r in w.exercises) ...[
