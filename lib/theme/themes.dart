@@ -18,7 +18,7 @@ class ThemeChoice {
 
 const themeChoices = [
   ThemeChoice('nanosuit', 'NANOSUIT', nanosuit),
-  ThemeChoice('cosmic', 'COSMIC HORROR', cosmicHorror, devOnly: true),
+  ThemeChoice('cosmic', 'COSMIC HORROR', cosmicHorror), // släppt 2026-10-08
   // Arctic: borttaget 2026-10-06 (Niklas: för likt Nanosuit) — görs om i Claude Design.
 ];
 

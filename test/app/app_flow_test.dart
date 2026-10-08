@@ -318,7 +318,7 @@ void main() {
     await tester.tap(find.text('Appearance'));
     await tester.pumpAndSettle();
     expect(find.textContaining('DEV'), findsNothing, reason: 'Appearance');
-    expect(find.text('COSMIC HORROR'), findsNothing, reason: 'DEV-only tema');
+    expect(find.text('COSMIC HORROR'), findsOneWidget, reason: 'släppt till stable 2026-10-08');
   });
 
   testWidgets('UI: FINISH via CONTINUE-raden från Settings → kedjan, inte Settings (Niklas 2026-10-07)', (tester) async {

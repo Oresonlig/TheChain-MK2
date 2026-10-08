@@ -733,7 +733,7 @@ class AppController extends ChangeNotifier {
       newId: newId,
       clock: _now,
       onChanged: scheduleSync,
-      onWorkSetLogged: () {
+      onSetLogged: () {
         final s = r.settings();
         if (s.restTimerEnabled) restTimer.start(s.restTimerSecs, wakeScreen: s.restWakeScreen);
       },

@@ -12,6 +12,7 @@ import android.content.pm.ServiceInfo
 import android.graphics.PixelFormat
 import android.graphics.drawable.Icon
 import android.media.AudioAttributes
+import android.media.AudioDeviceInfo
 import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.media.MediaPlayer
@@ -48,6 +49,26 @@ class RestAlarmService : Service() {
         .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
         .build()
 
+    /// Android spelar ALLTID alarm i högtalaren, även med hörlurar i (LT
+    /// 2026-10-08: "Loud af"). Med hörlurar spelas pipet som media i stället —
+    /// det följer hörlurarna och mediavolymen.
+    private val mediaAttrs: AudioAttributes = AudioAttributes.Builder()
+        .setUsage(AudioAttributes.USAGE_MEDIA)
+        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+        .build()
+
+    private fun headphonesOn(am: AudioManager): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return false
+        val types = mutableSetOf(
+            AudioDeviceInfo.TYPE_WIRED_HEADSET,
+            AudioDeviceInfo.TYPE_WIRED_HEADPHONES,
+            AudioDeviceInfo.TYPE_BLUETOOTH_A2DP,
+        )
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) types.add(AudioDeviceInfo.TYPE_USB_HEADSET)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) types.add(AudioDeviceInfo.TYPE_BLE_HEADSET)
+        return am.getDevices(AudioManager.GET_DEVICES_OUTPUTS).any { it.type in types }
+    }
+
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -65,15 +86,16 @@ class RestAlarmService : Service() {
             startForeground(RestAlarm.ID_ALARM, n)
         }
         val am = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        val soundAttrs = if (headphonesOn(am)) mediaAttrs else alarmAttrs
         // Musiken pausas även i ljudlöst — som klockans larm (Niklas testade).
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             focus = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT)
-                .setAudioAttributes(alarmAttrs)
+                .setAudioAttributes(soundAttrs)
                 .setOnAudioFocusChangeListener { }
                 .build()
             am.requestAudioFocus(focus!!)
         }
-        if (am.ringerMode == AudioManager.RINGER_MODE_NORMAL) startBeep()
+        if (am.ringerMode == AudioManager.RINGER_MODE_NORMAL) startBeep(soundAttrs)
         startVibration()
         openOverOtherApps()
         handler.postDelayed(timeout, RestAlarm.RING_MAX_MS)
@@ -117,10 +139,10 @@ class RestAlarmService : Service() {
         }
     }
 
-    private fun startBeep() {
+    private fun startBeep(attrs: AudioAttributes) {
         try {
             player = MediaPlayer().apply {
-                setAudioAttributes(alarmAttrs)
+                setAudioAttributes(attrs)
                 setDataSource(this@RestAlarmService, Uri.parse("android.resource://$packageName/${R.raw.rest_beep}"))
                 isLooping = true
                 prepare()

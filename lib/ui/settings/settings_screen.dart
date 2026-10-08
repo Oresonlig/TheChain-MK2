@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 
 import '../../app/app_controller.dart';
 import '../../app/haptics.dart';
+import '../../app/report_problem.dart';
 import '../../app/rest_timer.dart';
 import '../../domain/domain.dart';
 import '../../theme/chain_theme.dart';
@@ -96,6 +97,16 @@ class SettingsScreen extends StatelessWidget {
                 title: 'Data & Sync',
                 subtitle: 'Sync status · backup · import from the website · move account',
                 onTap: openData,
+              ),
+              SettingsRow(
+                title: 'Report a problem',
+                subtitle: 'Opens your email app · build and phone are filled in',
+                onTap: () async {
+                  if (await ReportProblem.open(versionLabel) || !context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('No email app found. Write to $kReportEmail')),
+                  );
+                },
               ),
               // Bara Niklas — servern spärrar ändå alla andra (supabase/002).
               if (email.toLowerCase() == kAdminEmail)
@@ -565,7 +576,7 @@ class TrainingSettingsScreen extends StatelessWidget {
                   ),
                 ]),
                 const SizedBox(height: 8),
-                Text('Tap the time to type exact seconds. Starts when you log a work set. Signals with sound and '
+                Text('Tap the time to type exact seconds. Starts when you log a set, warm-ups included. Signals with sound and '
                     'vibration, also when the phone is locked or you are in another app.',
                     style: Theme.of(context).textTheme.bodySmall!.copyWith(color: context.chain.textMuted)),
               ],

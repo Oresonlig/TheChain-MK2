@@ -1,6 +1,7 @@
 /// Övningsväljare (byte, extraövning och programbyggaren): sök + grupper i
 /// alfabetisk ordning, egna övningar sist (MK1 3.85.0). Senast använda överst,
 /// flerval i byggaren och "Create" direkt från sökningen (Niklas 2026-10-04).
+/// "New exercise" överst i alla väljare (LT 2026-10-08).
 library;
 
 import 'package:flutter/material.dart';
@@ -114,8 +115,8 @@ class _PickerState extends State<_Picker> {
     setState(() => _picked.contains(id) ? _picked.remove(id) : _picked.add(id));
   }
 
-  Future<void> _create() async {
-    final e = await widget.onCreate!(context, _q.trim());
+  Future<void> _create(String name) async {
+    final e = await widget.onCreate!(context, name);
     if (e == null || !mounted) return;
     setState(() => _custom.add(e));
     _tap(e.id);
@@ -180,14 +181,23 @@ class _PickerState extends State<_Picker> {
         ),
         Expanded(
           child: ListView(padding: const EdgeInsets.only(bottom: 24), children: [
-            // Hittas inget exakt: skapa direkt med det som skrevs.
-            if (widget.onCreate != null && q.isNotEmpty && !exact)
-              ListTile(
-                minTileHeight: 52,
-                leading: Icon(Icons.add, color: c.accent),
-                title: Text('Create "${_q.trim()}"', style: text.bodyMedium!.copyWith(color: c.accent)),
-                onTap: _create,
-              ),
+            // Alltid överst (LT 2026-10-08: hittade inte hur man skapar en
+            // övning). Hittas inget exakt: skapa direkt med det som skrevs.
+            if (widget.onCreate != null)
+              if (q.isNotEmpty && !exact)
+                ListTile(
+                  minTileHeight: 52,
+                  leading: Icon(Icons.add, color: c.accent),
+                  title: Text('Create "${_q.trim()}"', style: text.bodyMedium!.copyWith(color: c.accent)),
+                  onTap: () => _create(_q.trim()),
+                )
+              else
+                ListTile(
+                  minTileHeight: 52,
+                  leading: Icon(Icons.add, color: c.accent),
+                  title: Text('New exercise', style: text.bodyMedium!.copyWith(color: c.accent)),
+                  onTap: () => _create(''),
+                ),
             if (recent.isNotEmpty) ..._group(_recentLabel, recent),
             for (final g in _groupOrder)
               if (lib.any((e) => e.group == g)) ..._group(groupLabel(g), lib.where((e) => e.group == g).toList()),

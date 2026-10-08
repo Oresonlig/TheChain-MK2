@@ -15,9 +15,9 @@ void main() {
     expect(themeFor(null, devTools: true), same(nanosuit));
   });
 
-  test('Cosmic Horror: bara i DEV tills Niklas släpper det', () {
+  test('Cosmic Horror: släppt till stable (Niklas 2026-10-08)', () {
     expect(themeFor('cosmic', devTools: true), same(cosmicHorror));
-    expect(themeFor('cosmic', devTools: false), same(nanosuit));
+    expect(themeFor('cosmic', devTools: false), same(cosmicHorror));
   });
 
   test('blobbens frö är stabilt och skiljer flikar åt', () {

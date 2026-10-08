@@ -36,5 +36,6 @@ test/fixtures/private/
 
 # Planeringsdokument — lokala, aldrig till GitHub
 BESLUTSUNDERLAG.md
+DECISIONS.md
 LESSONS_MK1_ANDROID.md
 VISION.md

@@ -165,23 +165,23 @@ void main() {
       return (app, alarm);
     }
 
-    test('startar vid loggat arbetsset, inte vid uppvärmning; stoppas vid avslut', () async {
+    test('startar vid loggat set, även uppvärmning (LT 2026-10-08); stoppas vid avslut', () async {
       final (app, alarm) = await ready(enabled: true);
       final wc = app.openWorkout(const SessionId('A'));
       final row = wc.workout.exercises.firstWhere((r) => r.sets.any((s) => s.kind == SetKind.warmup));
       final warm = row.sets.firstWhere((s) => s.kind == SetKind.warmup);
       wc.setValues(row.id, warm.id, const SetValues(weight: 40, reps: 8));
       wc.toggleLog(row.id, warm.id);
-      expect(app.restTimer.running, isFalse);
+      expect(app.restTimer.running, isTrue, reason: 'uppvärmning startar vilan');
+      expect(alarm.scheduled.length, 1);
+      expect(alarm.wakes.single, isFalse, reason: 'SCREEN WAKE-UP av i Settings');
       final work = row.sets.firstWhere((s) => s.kind == SetKind.work);
       wc.setValues(row.id, work.id, const SetValues(weight: 80, reps: 5));
       wc.toggleLog(row.id, work.id);
-      expect(app.restTimer.running, isTrue);
-      expect(alarm.scheduled.length, 1);
-      expect(alarm.wakes.single, isFalse, reason: 'SCREEN WAKE-UP av i Settings');
+      expect(alarm.scheduled.length, 2, reason: 'arbetsset startar om vilan');
       // Låsa upp ett set startar inte om timern.
       wc.toggleLog(row.id, work.id);
-      expect(alarm.scheduled.length, 1);
+      expect(alarm.scheduled.length, 2);
       await wc.discard();
       expect(app.restTimer.running, isFalse);
       app.restTimer.dispose();

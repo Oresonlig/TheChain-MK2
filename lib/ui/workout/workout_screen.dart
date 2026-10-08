@@ -16,6 +16,7 @@ import '../../theme/background_scope.dart';
 import '../../theme/surfaces.dart';
 import '../delete_ux.dart';
 import '../nanosuit_scaffold.dart';
+import '../program/exercise_sheet.dart';
 import '../units.dart';
 import 'exercise_picker.dart';
 import 'rest_timer_bar.dart';
@@ -146,6 +147,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                     ExerciseCard(
                       key: ValueKey(r.id),
                       controller: controller,
+                      app: widget.app,
                       row: r,
                       expanded: controller.expandedRowId == r.id,
                       now: (widget.now ?? DateTime.now)(),
@@ -161,7 +163,8 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                       final id = await pickExercise(context,
                           title: 'Add exercise (today only)',
                           custom: controller.repo.customExercises().values.toList(),
-                          recent: recentExercises(controller.repo.history()));
+                          recent: recentExercises(controller.repo.history()),
+                          onCreate: _creator(widget.app));
                       if (id != null) controller.addExtra(id);
                     },
                   ),
@@ -250,10 +253,17 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
   }
 }
 
+/// Egen övning direkt från passets väljare (LT 2026-10-08). Null utan app (tester).
+CreateExercise? _creator(AppController? app) =>
+    app == null ? null : (ctx, name) => showExerciseSheet(ctx, app: app, newName: name);
+
 class ExerciseCard extends StatelessWidget {
-  const ExerciseCard({super.key, required this.controller, required this.row, required this.expanded, required this.now, this.tour});
+  const ExerciseCard({super.key, required this.controller, required this.row, required this.expanded, required this.now, this.tour, this.app});
 
   final WorkoutController controller;
+
+  /// För att skapa en egen övning vid byte (null i tester).
+  final AppController? app;
   final WorkoutExercise row;
   final bool expanded;
   final DateTime now;
@@ -566,7 +576,8 @@ class ExerciseCard extends StatelessWidget {
     final id = await pickExercise(context,
         title: choice == 'perm' ? 'Swap permanently' : 'Swap for today',
         custom: custom,
-        recent: recentExercises(controller.repo.history()));
+        recent: recentExercises(controller.repo.history()),
+        onCreate: _creator(app));
     if (id == null) return;
     if (choice == 'perm') {
       await controller.swapPermanently(row.id, id);

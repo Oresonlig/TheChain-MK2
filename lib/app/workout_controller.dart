@@ -17,7 +17,7 @@ class WorkoutController extends ChangeNotifier {
     required this.newId,
     required this.onFinished,
     this.onChanged,
-    this.onWorkSetLogged,
+    this.onSetLogged,
     DateTime Function()? clock,
   }) : _now = clock ?? DateTime.now {
     expandedRowId = _firstOpen();
@@ -33,8 +33,8 @@ class WorkoutController extends ChangeNotifier {
   /// Anropas efter varje sparad ändring (appen schemalägger en synk).
   final void Function()? onChanged;
 
-  /// Ett arbetsset loggades (vilotimern startar). Inte vid uppvärmning (som MK1).
-  final void Function()? onWorkSetLogged;
+  /// Ett set loggades (vilotimern startar) — även uppvärmning (LT 2026-10-08).
+  final void Function()? onSetLogged;
 
   /// Passet avslutades eller kastades på en annan enhet — inga fler ändringar,
   /// annars skulle en sparning väcka det till liv igen.
@@ -129,7 +129,7 @@ class WorkoutController extends ChangeNotifier {
     final bw = r.measure.usesBodyweight ? (repo.bodyweight().lastOrNull?.kg) : null;
     final before = workout;
     _apply(() => logSet(workout, rowId, setId, bodyweightKg: bw));
-    if (!identical(workout, before) && s.kind == SetKind.work) onWorkSetLogged?.call();
+    if (!identical(workout, before)) onSetLogged?.call();
   }
 
   void cycleSide(String rowId, SetId setId) => _apply(() => cycleSideOp(workout, rowId, setId));

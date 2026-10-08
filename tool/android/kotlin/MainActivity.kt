@@ -81,6 +81,24 @@ class MainActivity : FlutterActivity() {
                         startActivity(Intent(Settings.ACTION_SOUND_SETTINGS))
                         result.success(null)
                     }
+                    // Report a problem (LT 2026-10-08): mejlappen med ett färdigt
+                    // mejl. Telefonens modell + Android-version läggs till här.
+                    "reportProblem" -> {
+                        val to = call.argument<String>("to") ?: ""
+                        val body = (call.argument<String>("body") ?: "") +
+                            "${Build.MANUFACTURER} ${Build.MODEL} · Android ${Build.VERSION.RELEASE}\n"
+                        val i = Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:$to")).apply {
+                            putExtra(Intent.EXTRA_EMAIL, arrayOf(to))
+                            putExtra(Intent.EXTRA_SUBJECT, call.argument<String>("subject") ?: "")
+                            putExtra(Intent.EXTRA_TEXT, body)
+                        }
+                        try {
+                            startActivity(i)
+                            result.success(true)
+                        } catch (_: android.content.ActivityNotFoundException) {
+                            result.success(false) // ingen mejlapp
+                        }
+                    }
                     else -> result.notImplemented()
                 }
             } catch (e: Exception) {
