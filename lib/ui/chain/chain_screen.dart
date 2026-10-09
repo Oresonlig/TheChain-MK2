@@ -8,7 +8,6 @@ import 'package:flutter/services.dart';
 import '../../app/app_controller.dart';
 import '../../app/whats_new.dart';
 import '../../domain/domain.dart';
-import '../../theme/eye_tab.dart';
 import '../../theme/chain_theme.dart';
 import '../../theme/background_scope.dart';
 import '../../theme/surfaces.dart';
@@ -277,47 +276,15 @@ class _ChainScreenState extends State<ChainScreen> {
                     showUndo(messenger, 'Skip undone', () => widget.app.restoreHistoryEntry(entry));
                   },
                 ),
-              // DEV-bygget: spela upp ROUND COMPLETE utan att något skrivs eller
-              // synkas (Niklas 2026-10-06). Tas bort när animationen är godkänd.
+              // DEV-bygget: rutan som STABLE visar efter en uppdatering —
+              // sparar ingenting här.
               if (widget.devTools) ...[
                 const SizedBox(height: 32),
-                GhostButton(
-                  label: 'DEV · TEST ROUND COMPLETE',
-                  color: c.textFaint,
-                  onTap: () => _celebrateNow(chain.lastRound ??
-                      RoundSummary(
-                        round: chain.round,
-                        start: _now.subtract(const Duration(days: 8)),
-                        end: _now,
-                        trained: program.sessions.length,
-                        skipped: 0,
-                      )),
-                ),
-                // Rutan som STABLE visar efter en uppdatering — sparar ingenting här.
-                const SizedBox(height: 8),
                 GhostButton(
                   label: "DEV · WHAT'S NEW",
                   color: c.textFaint,
                   onTap: () => showWhatsNew(context, whatsNewNotes.last),
                 ),
-                // Cosmic Horrors två ögonvarianter (slumpas 50/50 per appstart).
-                if (c.activeMark == ActiveMark.eye) ...[
-                  const SizedBox(height: 8),
-                  GhostButton(
-                    label: 'DEV · EYES: ${EyeChoice.current == EyeVariant.many ? 'MANY' : 'SLIT'}',
-                    color: c.textFaint,
-                    onTap: () => setState(EyeChoice.toggle),
-                  ),
-                ],
-                // Ärr/klösmärken: bläddra 1–5 på alla flikar, sedan AUTO (= per pass).
-                if (c.doneMark == DoneMark.scar || c.skippedMark == SkippedMark.claw) ...[
-                  const SizedBox(height: 8),
-                  GhostButton(
-                    label: 'DEV · MARKS: ${MarkChoice.forced == null ? 'AUTO' : '${MarkChoice.forced! + 1}/${MarkChoice.variants}'}',
-                    color: c.textFaint,
-                    onTap: () => setState(MarkChoice.cycle),
-                  ),
-                ],
               ],
             ],
           );

@@ -30,6 +30,13 @@ const whatsNewNotes = [
     'Vibration on/off under Settings › Training & App Functions.',
     'DONE moves the finished exercise to the top, with the next one right below.',
   ]),
+  WhatsNewNote(build: 109, points: [
+    'New theme: Cosmic Horror — pick it under Settings › Appearance.',
+    'Rest timer: the alarm plays in your headphones when they are connected, and the timer starts after every set, warm-ups included.',
+    'Tap the rest-over screen to jump straight into the app. DISMISS keeps you where you are, and a locked phone stays locked until you unlock it.',
+    'Create your own exercise from any exercise picker — "New exercise" at the top, or "Create" from the search.',
+    'Report a problem in Settings opens an email with your build and phone details filled in.',
+  ]),
 ];
 
 /// Det som sparas på telefonen.

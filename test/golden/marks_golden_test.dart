@@ -11,10 +11,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:the_chain/theme/cosmic_horror.dart';
 import 'package:the_chain/ui/chain/chain_strip.dart';
 
-/// Första frö som ger [variant].
-int _seedFor(int variant) {
+/// Frö nummer [nth] som ger [variant] (två per variant: spegelvändning och jitter syns).
+int _seedFor(int variant, [int nth = 0]) {
   for (var s = 0;; s++) {
-    if (MarkChoice.mix(s) % MarkChoice.variants == variant) return s;
+    if (MarkChoice.mix(s) % MarkChoice.variants == variant && nth-- == 0) return s;
   }
 }
 
@@ -50,10 +50,10 @@ void main() {
           child: RepaintBoundary(
             key: const ValueKey('marks'),
             child: Column(mainAxisSize: MainAxisSize.min, children: [
-              for (final short in [false, true])
+              for (final (short, nth) in [(false, 0), (false, 1), (true, 0)])
                 Row(mainAxisSize: MainAxisSize.min, children: [
                   for (var v = 0; v < 5; v++)
-                    tab(ScarPainter(c.accent, seed: _seedFor(v)), short ? 'C' : 'B  BACK', width: short ? 46 : 120),
+                    tab(ScarPainter(c.accent, seed: _seedFor(v, nth)), short ? 'C' : 'B  BACK', width: short ? 46 : 120),
                 ]),
               for (final short in [false, true])
                 Row(mainAxisSize: MainAxisSize.min, children: [

@@ -11,7 +11,7 @@
 ///     Syns alltid, så markeringen finns kvar även när springan är sluten.
 ///     Ingen grön prick.
 ///
-/// Varianten slumpas 50/50 per appstart ([EyeChoice]); DEV-knappen växlar.
+/// Varianten slumpas 50/50 per appstart ([EyeChoice]).
 /// Stilla (minska rörelse / ambient av): springan halvöppen, ögonen öppna.
 library;
 
@@ -37,7 +37,6 @@ enum EyeVariant { many, slit }
 class EyeChoice {
   EyeChoice._();
   static EyeVariant current = math.Random().nextBool() ? EyeVariant.many : EyeVariant.slit;
-  static void toggle() => current = current == EyeVariant.many ? EyeVariant.slit : EyeVariant.many;
 }
 
 /// Plats som behövs utanför fliken (kantögonen, darret) — kedjeremsan

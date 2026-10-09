@@ -228,14 +228,6 @@ class MarkChoice {
   MarkChoice._();
   static const variants = 5;
 
-  /// DEV-knappen: samma variant på alla flikar (null = följ posten).
-  static int? forced;
-  static void cycle() => forced = switch (forced) {
-        null => 0,
-        final f when f + 1 < variants => f + 1,
-        _ => null,
-      };
-
   /// Darts Random ger nästan samma första tal för närliggande frön — fröet
   /// (en tidsstämpel) blandas först (murmur3 fmix32).
   static int mix(int x) {
@@ -247,7 +239,7 @@ class MarkChoice {
 
   static (int, math.Random) pick(int seed) {
     final h = mix(seed);
-    return (forced ?? h % variants, math.Random(h));
+    return (h % variants, math.Random(h));
   }
 }
 
@@ -255,11 +247,10 @@ class MarkChoice {
 /// (grövre blad, lite bredare), annars över en bokstav. Varianter
 /// ([MarkChoice]): tre klor, fyra smala, två djupa, spegelvänt, hugg i kors.
 class ClawPainter extends CustomPainter {
-  ClawPainter(this.color, {this.tab = false, this.seed = 0}) : forced = MarkChoice.forced;
+  const ClawPainter(this.color, {this.tab = false, this.seed = 0});
   final Color color;
   final bool tab;
   final int seed;
-  final int? forced;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -315,24 +306,25 @@ class ClawPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(ClawPainter old) =>
-      old.color != color || old.tab != tab || old.seed != seed || old.forced != forced;
+      old.color != color || old.tab != tab || old.seed != seed;
 }
 
-/// Förseglat: läkt ärr med stygn över fliken — under textens mitt, så namnet
-/// går att läsa. Varianter ([MarkChoice]): lång linje, kors, kort snett ärr,
-/// sicksack, korsstygn.
+/// Förseglat: läkt ärr med stygn över fliken. Varianter ([MarkChoice]) i alla
+/// riktningar, som klösmärkena (Niklas 2026-10-09: inte bara tvärs över):
+/// lång linje tvärs över, snett hugg, lodrätt snitt, kors, blixt — de sneda
+/// spegelvänds på slump.
 class ScarPainter extends CustomPainter {
-  ScarPainter(this.color, {this.seed = 0}) : forced = MarkChoice.forced;
+  const ScarPainter(this.color, {this.seed = 0});
   final Color color;
   final int seed;
-  final int? forced;
 
   @override
   void paint(Canvas canvas, Size size) {
     final (variant, r) = MarkChoice.pick(seed);
     double j(double spread) => (r.nextDouble() * 2 - 1) * spread;
     final w = size.width, h = size.height;
-    final y = h * (.74 + j(.04));
+    final mirror = r.nextBool();
+    Offset at(double x, double y) => Offset(mirror ? w - x : x, y);
     final bend = 3 + j(1.2);
     final line = Paint()
       ..style = PaintingStyle.stroke
@@ -341,18 +333,20 @@ class ScarPainter extends CustomPainter {
       ..strokeJoin = StrokeJoin.round
       ..color = color.withValues(alpha: .7);
     switch (variant) {
-      case 0:
+      case 0: // tvärs över, under textens mitt
+        final y = h * (.74 + j(.04));
         _scar(canvas, Offset(-2, y + 2), Offset(w + 2, y - 2), bend, line);
-      case 1:
-        _scar(canvas, Offset(-2, h * .56), Offset(w + 2, h * .92), bend, line);
-        _scar(canvas, Offset(-2, h * .92), Offset(w + 2, h * .56), -bend, line);
-      case 2:
-        final x0 = w * (.38 + j(.08));
-        _scar(canvas, Offset(x0, h + 2), Offset(math.min(w + 2, x0 + w * .55), h * .5), bend * .6, line);
-      case 3:
-        _zigzag(canvas, w, y, line);
-      default:
-        _scar(canvas, Offset(-2, y + 2), Offset(w + 2, y - 2), bend, line, cross: true);
+      case 1: // snett hugg, kant till kant uppifrån och ned
+        _scar(canvas, at(w * (.2 + j(.08)), -2), at(w * (.75 + j(.08)), h + 2), bend, line);
+      case 2: // lodrätt snitt med korsstygn
+        final x = w * (.72 + j(.1));
+        _scar(canvas, at(x + j(4), -2), at(x + j(4), h + 2), bend * .7, line, cross: true);
+      case 3: // två sneda ärr i kors
+        final c = w * (.5 + j(.1)), spread = math.min(w * .3, 22.0);
+        _scar(canvas, Offset(c - spread, -2), Offset(c + spread, h + 2), bend * .6, line);
+        _scar(canvas, Offset(c + spread, -2), Offset(c - spread, h + 2), -bend * .6, line);
+      default: // blixt: taggig, snett uppifrån och ned
+        _zigzag(canvas, at(w * (.3 + j(.08)), -2), at(w * (.7 + j(.08)), h + 2), line);
     }
   }
 
@@ -378,22 +372,25 @@ class ScarPainter extends CustomPainter {
     }
   }
 
-  /// Taggig linje från kant till kant, stygn över varannan topp.
-  void _zigzag(Canvas canvas, double w, double y, Paint line) {
-    final n = math.max(4, (w / 9).floor());
-    double x(int i) => -2 + (w + 4) * i / n;
-    final path = Path()..moveTo(-2, y);
+  /// Taggig linje a → b, stygn över varannan topp.
+  void _zigzag(Canvas canvas, Offset a, Offset b, Paint line) {
+    final d = (b - a) / (b - a).distance;
+    final nrm = Offset(-d.dy, d.dx);
+    final n = math.max(4, ((b - a).distance / 9).floor());
+    Offset p(int i) => Offset.lerp(a, b, i / n)! + nrm * (i == n ? 0.0 : (i.isOdd ? -3.0 : 3.0));
+    final path = Path()..moveTo(a.dx, a.dy);
     for (var i = 1; i <= n; i++) {
-      path.lineTo(x(i), y + (i.isOdd ? -3.0 : 3.0));
+      path.lineTo(p(i).dx, p(i).dy);
     }
     canvas.drawPath(path, line);
     for (var i = 1; i < n; i += 2) {
-      canvas.drawLine(Offset(x(i) - 1.2, y - 7), Offset(x(i) + 1.2, y + 1), line);
+      final s = nrm * 4 + d * 1.2;
+      canvas.drawLine(p(i) - s, p(i) + s, line);
     }
   }
 
   @override
-  bool shouldRepaint(ScarPainter old) => old.color != color || old.seed != seed || old.forced != forced;
+  bool shouldRepaint(ScarPainter old) => old.color != color || old.seed != seed;
 }
 
 class _CrossPainter extends CustomPainter {
