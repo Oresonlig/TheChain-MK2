@@ -107,6 +107,8 @@ class RestAlarmService : Service() {
     /// som är öppet (Niklas 2026-10-05: "ska ställa sig i vägen"). Ett lager, inte
     /// en ny skärm: att starta en skärm från bakgrunden stoppar Android även med
     /// behörigheten (b66). DISMISS/+30 tar bort lagret — man är kvar där man var.
+    /// Tryck på rutan = appen öppnas (startas MEDAN lagret syns: ett synligt
+    /// lager är det som låter Android släppa fram appen), sedan larmet av.
     /// Låst telefon: helskärmsnotisen visar RestAlarmActivity, inget lager.
     private var overlay: View? = null
 
@@ -115,7 +117,18 @@ class RestAlarmService : Service() {
         if (!Settings.canDrawOverlays(this)) return
         if ((getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager).isKeyguardLocked) return
         try {
-            val v = RestAlarmView.build(this, onSnooze = { RestAlarm.snooze(this) }, onDismiss = { RestAlarm.dismiss(this) })
+            val v = RestAlarmView.build(
+                this,
+                onSnooze = { RestAlarm.snooze(this) },
+                onDismiss = { RestAlarm.dismiss(this) },
+                onOpen = {
+                    try {
+                        RestAlarm.launchIntent(this)?.let { startActivity(it) }
+                    } catch (_: Exception) {
+                    }
+                    RestAlarm.dismiss(this)
+                },
+            )
             val lp = WindowManager.LayoutParams(
                 WindowManager.LayoutParams.MATCH_PARENT,
                 WindowManager.LayoutParams.MATCH_PARENT,

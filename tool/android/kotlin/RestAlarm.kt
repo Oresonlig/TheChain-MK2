@@ -4,7 +4,8 @@
 // Flöde: Flutter schemalägger sluttiden → exakt larm (AlarmManager) →
 // RestAlarmReceiver → RestAlarmService (förgrundstjänst: pip i loop, vibration,
 // musiken pausas via tillfällig ljudfokus) + helskärmsnotis → RestAlarmActivity
-// över låsskärmen (bara REST OVER, DISMISS, +30 S — ingen åtkomst till appen).
+// över låsskärmen (REST OVER, DISMISS, +30 S; tryck på rutan = appen, men först
+// efter Androids egen upplåsning — telefonen förblir låst).
 // DISMISS/+30/60 s → fokus lämnas tillbaka → musiken fortsätter.
 package com.oresonlig.the_chain
 
@@ -110,8 +111,12 @@ object RestAlarm {
             FLAGS,
         )
 
+    /** Appens startskärm (MainActivity, singleTask → befintlig instans tas fram). */
+    fun launchIntent(ctx: Context): Intent? =
+        ctx.packageManager.getLaunchIntentForPackage(ctx.packageName)?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+
     private fun openAppPending(ctx: Context): PendingIntent? {
-        val i = ctx.packageManager.getLaunchIntentForPackage(ctx.packageName) ?: return null
+        val i = launchIntent(ctx) ?: return null
         return PendingIntent.getActivity(ctx, 5, i, FLAGS)
     }
 

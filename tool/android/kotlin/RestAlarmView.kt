@@ -1,6 +1,8 @@
 // Larmvyns utseende — EN källa för både låsskärmen (RestAlarmActivity) och
 // lagret ovanpå andra appar (RestAlarmService). REST OVER + +30 S / DISMISS, i
 // temats färger och typsnitt men utan hex-väv (Niklas 2026-10-05).
+// Tryck på rutan utanför knapparna = larmet av + appen öppnas (Niklas 2026-10-09);
+// knappraden sväljer sina egna missar så att ett slarvtryck där inte öppnar appen.
 package com.oresonlig.the_chain
 
 import android.content.Context
@@ -16,7 +18,7 @@ import android.widget.TextView
 object RestAlarmView {
     fun background(ctx: Context) = RestAlarm.color(ctx, "background", Color.parseColor("#05080C"))
 
-    fun build(ctx: Context, onSnooze: () -> Unit, onDismiss: () -> Unit): View {
+    fun build(ctx: Context, onSnooze: () -> Unit, onDismiss: () -> Unit, onOpen: () -> Unit): View {
         fun dp(v: Float) = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, v, ctx.resources.displayMetrics)
         fun c(key: String, fallback: String) = RestAlarm.color(ctx, key, Color.parseColor(fallback))
         val bg = background(ctx)
@@ -54,10 +56,15 @@ object RestAlarmView {
             setBackgroundColor(bg)
             val pad = dp(24f).toInt()
             setPadding(pad, pad, pad, pad)
+            setOnClickListener { onOpen() }
         }
         root.addView(label("REST OVER", 44f, accent, 0.12f))
         root.addView(label("Next set!", 18f, muted, 0.05f), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8f).toInt() })
-        val buttons = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL }
+        root.addView(label("Tap to open The Chain", 13f, muted, 0.05f), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4f).toInt() })
+        val buttons = LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            isClickable = true
+        }
         buttons.addView(
             button("+30 S", false, onSnooze),
             LinearLayout.LayoutParams(0, dp(64f).toInt(), 1f).apply { rightMargin = dp(12f).toInt() },
