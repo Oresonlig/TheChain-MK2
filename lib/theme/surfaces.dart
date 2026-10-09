@@ -2,6 +2,7 @@
 /// hexagon-chevron (LOG-formen). Färgerna kommer alltid från ChainTheme.
 library;
 
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -76,28 +77,76 @@ class Glass extends StatelessWidget {
 /// kortet (~1 s) i temats [ThemeDetails.doneTint]. Bara när [done] slår om
 /// från false till true — inte för övningar som redan var klara när passet
 /// öppnades. Tema utan doneTint, eller minska rörelse: inget.
+///
+/// [repeat] (pågående pass, Niklas 2026-10-09): skimret återkommer på ALLA
+/// klara kort, ~4 s paus mellan svepen, osynkat — varje kort börjar på en
+/// slumpad punkt och pausen varierar lite.
 class DoneSheen extends StatefulWidget {
-  const DoneSheen({super.key, required this.done, required this.child});
+  const DoneSheen({super.key, required this.done, required this.child, this.repeat = false, this.random});
 
   final bool done;
+  final bool repeat;
   final Widget child;
+
+  /// Slumpkälla för osynket (tester låser den — med frön långt isär: Darts
+  /// Random ger nästan samma första tal för närliggande frön).
+  final math.Random? random;
+
+  static const pause = Duration(seconds: 4);
 
   @override
   State<DoneSheen> createState() => _DoneSheenState();
 }
 
 class _DoneSheenState extends State<DoneSheen> with SingleTickerProviderStateMixin {
-  late final AnimationController _a = AnimationController(vsync: this, duration: const Duration(milliseconds: 1100));
+  late final AnimationController _a = AnimationController(vsync: this, duration: const Duration(milliseconds: 1100))
+    ..addStatusListener((s) {
+      if (s == AnimationStatus.completed) _later(_pause());
+    });
+  late final math.Random _r = widget.random ?? math.Random();
+
+  /// Avbrytbar (inte Future.delayed — hängande timers i tester).
+  Timer? _next;
+  bool _started = false;
+
+  bool get _still => MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+  bool get _tinted => context.chain.details.doneTint.a != 0;
+
+  Duration _pause() => DoneSheen.pause + Duration(milliseconds: _r.nextInt(800) - 400);
+
+  void _later(Duration d) {
+    _next?.cancel();
+    if (!widget.repeat || !widget.done || !_tinted) return;
+    _next = Timer(d, () {
+      if (mounted && widget.repeat && widget.done && !_still) _a.forward(from: 0);
+    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Redan klar när passet öppnas: första svepet på en slumpad punkt i pausen.
+    if (_started) return;
+    _started = true;
+    _later(Duration(milliseconds: _r.nextInt(DoneSheen.pause.inMilliseconds)));
+  }
 
   @override
   void didUpdateWidget(DoneSheen old) {
     super.didUpdateWidget(old);
-    final still = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
-    if (!old.done && widget.done && !still) _a.forward(from: 0);
+    if (!old.done && widget.done && !_still) {
+      _next?.cancel();
+      _a.forward(from: 0);
+    } else if (!widget.done || !widget.repeat) {
+      _next?.cancel();
+    } else if (!old.repeat && !_a.isAnimating) {
+      _later(_pause());
+    }
   }
 
   @override
   void dispose() {
+    _next?.cancel();
     _a.dispose();
     super.dispose();
   }

@@ -341,9 +341,9 @@ class _RoundCompleteState extends State<RoundComplete> with SingleTickerProvider
       child: TabMark(
         shape: raisedShape(c, seed: seed),
         painter: crossed
-            ? (c.skippedMark == SkippedMark.claw ? ClawPainter(c.fail, tab: true) : null)
+            ? (c.skippedMark == SkippedMark.claw ? ClawPainter(c.fail, tab: true, seed: widget.summary.marks[id] ?? 0) : null)
             : on && c.doneMark == DoneMark.scar
-                ? ScarPainter(c.accent)
+                ? ScarPainter(c.accent, seed: widget.summary.marks[id] ?? 0)
                 : null,
         child: Raised(
           material: on ? c.raisedActive : c.raisedIdle,

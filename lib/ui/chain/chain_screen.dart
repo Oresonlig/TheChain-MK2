@@ -309,6 +309,15 @@ class _ChainScreenState extends State<ChainScreen> {
                     onTap: () => setState(EyeChoice.toggle),
                   ),
                 ],
+                // Ärr/klösmärken: bläddra 1–5 på alla flikar, sedan AUTO (= per pass).
+                if (c.doneMark == DoneMark.scar || c.skippedMark == SkippedMark.claw) ...[
+                  const SizedBox(height: 8),
+                  GhostButton(
+                    label: 'DEV · MARKS: ${MarkChoice.forced == null ? 'AUTO' : '${MarkChoice.forced! + 1}/${MarkChoice.variants}'}',
+                    color: c.textFaint,
+                    onTap: () => setState(MarkChoice.cycle),
+                  ),
+                ],
               ],
             ],
           );

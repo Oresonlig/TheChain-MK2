@@ -21,10 +21,14 @@ class RoundSummary {
     this.restDays = 0,
     this.sets = 0,
     this.skippedIds = const {},
+    this.marks = const {},
   });
 
   /// Vilka pass som hoppades över — kryssas i fönstret (Niklas 2026-10-06).
   final Set<SessionId> skippedIds;
+
+  /// Frö för temats ärr/klösmärke per pass — se [ChainState.marks].
+  final Map<SessionId, int> marks;
   final int round;
   final DateTime start, end;
 
@@ -39,7 +43,19 @@ class RoundSummary {
 }
 
 class ChainState {
-  const ChainState({required this.round, required this.done, required this.next, this.skipped = const {}, this.lastRound});
+  const ChainState({
+    required this.round,
+    required this.done,
+    required this.next,
+    this.skipped = const {},
+    this.lastRound,
+    this.marks = const {},
+  });
+
+  /// Frö per hanterat pass = tiden för posten som gjorde det klart/överhoppat.
+  /// Temats ärr och klösmärken väljer variant ur det (Niklas 2026-10-09): nytt
+  /// utseende per runda, men samma pass ser likadant ut efter omstart.
+  final Map<SessionId, int> marks;
 
   /// Senast avslutade rundan (null = ingen avslutad, eller avslutad av en omstart).
   final RoundSummary? lastRound;
@@ -82,6 +98,7 @@ ChainState chainState(
   var completed = roundOffset;
   var done = <SessionId>{};
   var skipped = <SessionId>{};
+  var marks = <SessionId, int>{};
   var r = 0;
   var sets = 0;
   DateTime? start;
@@ -101,9 +118,11 @@ ChainState chainState(
             restDays: done.where(rests.contains).length,
             sets: sets,
             skippedIds: Set.unmodifiable(skipped),
+            marks: Map.unmodifiable(marks),
           );
     done = <SessionId>{};
     skipped = <SessionId>{};
+    marks = <SessionId, int>{};
     sets = 0;
     start = null;
   }
@@ -127,10 +146,13 @@ ChainState chainState(
       }
     }
     if (isSkip) {
-      if (!done.contains(id)) skipped.add(id);
+      if (!done.contains(id)) {
+        skipped.add(id);
+        marks[id] = e.date.millisecondsSinceEpoch;
+      }
     } else {
       skipped.remove(id);
-      done.add(id);
+      if (done.add(id)) marks[id] = e.date.millisecondsSinceEpoch;
     }
     if (all.isNotEmpty && done.length + skipped.length == all.length) closeCycle(end: e.date);
   }
@@ -146,5 +168,5 @@ ChainState chainState(
       break;
     }
   }
-  return ChainState(round: completed + 1, done: done, skipped: skipped, next: next, lastRound: last);
+  return ChainState(round: completed + 1, done: done, skipped: skipped, next: next, lastRound: last, marks: marks);
 }

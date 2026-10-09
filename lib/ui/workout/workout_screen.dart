@@ -272,9 +272,11 @@ class ExerciseCard extends StatelessWidget {
   final TourKeys? tour;
 
   // Skimret när DONE trycks (temats doneTint) — samma State oavsett om
-  // kortet är öppet eller ihopfällt.
+  // kortet är öppet eller ihopfällt. Återkommer så länge passet pågår
+  // (den här skärmen visar bara pågående pass).
   @override
-  Widget build(BuildContext context) => DoneSheen(done: row.status == ExerciseStatus.done, child: _card(context));
+  Widget build(BuildContext context) =>
+      DoneSheen(done: row.status == ExerciseStatus.done, repeat: true, child: _card(context));
 
   Widget _card(BuildContext context) {
     final c = context.chain;

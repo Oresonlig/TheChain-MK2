@@ -36,6 +36,18 @@ void main() {
     expect(restarted.lastRound, isNull);
   });
 
+  test('ärr/klösmärkets frö = posten som hanterade passet, följer med ROUND COMPLETE', () {
+    final st = chainState(program, [trained(a, 1), skippedOn(b, 2), trained(b, 3)]);
+    expect(st.marks, {a: day(1).millisecondsSinceEpoch, b: day(3).millisecondsSinceEpoch});
+    // Samma historik → samma frö (omstart ändrar inget utseende).
+    expect(chainState(program, [trained(a, 1)]).marks, chainState(program, [trained(a, 1)]).marks);
+    // Gjort två gånger i rundan: första posten står kvar.
+    expect(chainState(program, [trained(a, 1), trained(a, 2)]).marks[a], day(1).millisecondsSinceEpoch);
+    final closed = chainState(program, [trained(a, 1), skippedOn(b, 2), rested(v, 3), trained(c, 4)]);
+    expect(closed.marks, isEmpty, reason: 'ny runda, nya märken');
+    expect(closed.lastRound!.marks[b], day(2).millisecondsSinceEpoch);
+  });
+
   group('överhoppat pass (2026-10-04)', () {
     test('räknas som hanterat men inte gjort; nästa hoppar förbi', () {
       final st = chainState(program, [trained(a, 1), skippedOn(b, 2)]);
