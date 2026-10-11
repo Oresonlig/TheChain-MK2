@@ -237,6 +237,17 @@ class WorkoutController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Ändrad text/nål på samma anteckning (samma id). `createdAt` behålls, så
+  /// en "till nästa pass" arkiveras som förut. Tom text = ingen ändring (✕ tar bort).
+  Future<void> editNote(ExerciseNote n, String text, {required bool pinned}) async {
+    final t = text.trim();
+    if (t.isEmpty || (t == n.text && pinned == n.pinned)) return;
+    await repo.saveNote(
+        ExerciseNote(id: n.id, exerciseId: n.exerciseId, text: t, createdAt: n.createdAt, pinned: pinned), _now());
+    onChanged?.call();
+    notifyListeners();
+  }
+
   Future<void> deleteNote(ExerciseNote n) async {
     await repo.deleteNote(n.id, _now());
     onChanged?.call();

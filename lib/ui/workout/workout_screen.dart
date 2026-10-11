@@ -378,7 +378,14 @@ class ExerciseCard extends StatelessWidget {
                 child: Row(children: [
                   Icon(n.pinned ? Icons.push_pin : Icons.sticky_note_2_outlined, size: 16, color: c.restGold),
                   const SizedBox(width: 6),
-                  Expanded(child: Text(n.text, style: text.bodyMedium!.copyWith(color: c.restGold))),
+                  // Tryck på texten = redigera (Niklas 2026-10-11).
+                  Expanded(
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () => _noteDialog(context, edit: n),
+                      child: Text(n.text, style: text.bodyMedium!.copyWith(color: c.restGold)),
+                    ),
+                  ),
                   IconButton(
                     tooltip: 'Remove note',
                     visualDensity: VisualDensity.compact,
@@ -393,7 +400,7 @@ class ExerciseCard extends StatelessWidget {
                 ]),
               ),
             TextButton(
-              onPressed: () => _addNote(context),
+              onPressed: () => _noteDialog(context),
               style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(0, 40)),
               child: Text('+ Note for next time', style: text.bodySmall!.copyWith(color: c.restGold)),
             ),
@@ -410,8 +417,7 @@ class ExerciseCard extends StatelessWidget {
                 set: s,
                 label: 'W${i + 1}',
                 editable: editable,
-                logKey: i == 0 ? tour?.log : null,
-                lastGoal: _lastGoal(last, row.measure, SetKind.warmup, i)),
+                logKey: i == 0 ? tour?.log : null),
         ],
         const SizedBox(height: 12),
         Text('WORK', style: text.labelSmall!.copyWith(color: c.accent)),
@@ -423,8 +429,7 @@ class ExerciseCard extends StatelessWidget {
               set: s,
               label: 'S${i + 1}',
               editable: editable,
-              logKey: i == 0 && warm.isEmpty ? tour?.log : null,
-              lastGoal: _lastGoal(last, row.measure, SetKind.work, i)),
+              logKey: i == 0 && warm.isEmpty ? tour?.log : null),
         if (editable) ...[
           const SizedBox(height: 16),
           Row(children: [
@@ -502,23 +507,10 @@ class ExerciseCard extends StatelessWidget {
         ]),
       );
 
-  /// Målet förra gången för samma set (W2 ↔ förra W2), om det inte nåddes.
-  /// Bara när mätsättet är detsamma — annars betyder siffran något annat.
-  String? _lastGoal(LastPerformance? last, Measure m, SetKind kind, int index) {
-    if (last == null || last.exercise.measure != m) return null;
-    final sets = kind == SetKind.warmup ? last.warmupSets : last.workSets;
-    if (index >= sets.length) return null;
-    final prev = sets[index], t = prev.target;
-    if (t == null || !prev.missed(m)) return null;
-    final f = m.fields.contains(SetField.reps) ? InputField.reps : (m.fields.contains(SetField.secs) ? InputField.secs : null);
-    if (f == null) return null;
-    final v = displayValue(f, t, m, controller.repo.settings());
-    return v.isEmpty ? null : v;
-  }
-
-  Future<void> _addNote(BuildContext context) async {
-    final textCtl = TextEditingController();
-    var pinned = false;
+  /// Ny anteckning, eller [edit] = samma dialog ifylld med den befintliga.
+  Future<void> _noteDialog(BuildContext context, {ExerciseNote? edit}) async {
+    final textCtl = TextEditingController(text: edit?.text ?? '');
+    var pinned = edit?.pinned ?? false;
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => StatefulBuilder(
@@ -543,7 +535,12 @@ class ExerciseCard extends StatelessWidget {
       ),
     );
     // Ingen dispose: dialogens stängningsanimation läser fältet efter pop.
-    if (ok == true) await controller.addNote(row.exerciseId, textCtl.text, pinned: pinned);
+    if (ok != true) return;
+    if (edit != null) {
+      await controller.editNote(edit, textCtl.text, pinned: pinned);
+    } else {
+      await controller.addNote(row.exerciseId, textCtl.text, pinned: pinned);
+    }
   }
 
   Future<void> _menu(BuildContext context) async {
@@ -618,15 +615,11 @@ class SetRow extends StatefulWidget {
     required this.set,
     required this.label,
     required this.editable,
-    this.lastGoal,
     this.logKey,
   });
 
   /// Rundturens mål: LOG-knappen på passets första set.
   final GlobalKey? logKey;
-
-  /// Förra passets ej nådda mål för samma set, i fältets enhet ("4").
-  final String? lastGoal;
 
   final WorkoutController controller;
   final WorkoutExercise row;
@@ -743,9 +736,6 @@ class _SetRowState extends State<SetRow> {
             ),
             const SizedBox(height: 4),
             Text(fieldLabel(f, widget.row.measure, _settings), style: text.labelSmall),
-            // Förra gångens mål under rätt fält, tills setet är loggat.
-            if (!s.isLogged && f == _goalField && widget.lastGoal != null)
-              Text('goal ${widget.lastGoal}', style: text.labelSmall!.copyWith(color: c.fail)),
           ]),
         ),
         const SizedBox(width: 6),

@@ -276,10 +276,24 @@ class _ChainScreenState extends State<ChainScreen> {
                     showUndo(messenger, 'Skip undone', () => widget.app.restoreHistoryEntry(entry));
                   },
                 ),
-              // DEV-bygget: rutan som STABLE visar efter en uppdatering —
-              // sparar ingenting här.
               if (widget.devTools) ...[
                 const SizedBox(height: 32),
+                // DEV-bygget: spela upp ROUND COMPLETE utan att något skrivs
+                // eller synkas — för demo (Niklas 2026-10-11, tillbaka efter 112).
+                GhostButton(
+                  label: 'DEV · TEST ROUND COMPLETE',
+                  color: c.textFaint,
+                  onTap: () => _celebrateNow(chain.lastRound ??
+                      RoundSummary(
+                        round: chain.round,
+                        start: _now.subtract(const Duration(days: 8)),
+                        end: _now,
+                        trained: program.sessions.length,
+                        skipped: 0,
+                      )),
+                ),
+                // Rutan som STABLE visar efter en uppdatering — sparar ingenting här.
+                const SizedBox(height: 8),
                 GhostButton(
                   label: "DEV · WHAT'S NEW",
                   color: c.textFaint,

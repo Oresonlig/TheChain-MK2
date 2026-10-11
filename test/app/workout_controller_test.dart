@@ -181,6 +181,19 @@ void main() {
     expect(active, {'seat 4'});
   });
 
+  test('redigerad anteckning = samma id, ny text/nål; tom text ändrar inget', () async {
+    final app = await ready();
+    final bench = const ExerciseId('ex_bench_press_bb');
+    final wc = app.openWorkout(const SessionId('A'));
+    await wc.addNote(bench, 'seat 4');
+    final n = wc.notesFor(bench).single;
+    await wc.editNote(n, '  seat 5 ', pinned: true);
+    final edited = wc.notesFor(bench).single;
+    expect((edited.id, edited.text, edited.pinned, edited.createdAt), (n.id, 'seat 5', true, n.createdAt));
+    await wc.editNote(edited, '   ', pinned: false);
+    expect(wc.notesFor(bench).single.text, 'seat 5');
+  });
+
   test('UNDO: avslutat pass öppnas igen med allt loggat; nytt avslut ger INGEN dubblett', () async {
     final app = await ready();
     final wc = app.openWorkout(const SessionId('A'));

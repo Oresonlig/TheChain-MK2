@@ -112,9 +112,13 @@ class _ExerciseSheetState extends State<_ExerciseSheet> {
           focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: c.accent), borderRadius: c.fieldRadius),
         );
 
+    // useSafeArea skyddar bara toppen — botten lämnas åt bladet. Utan
+    // navigeringsfältets höjd hamnade SAVE under det (Niklas 2026-10-11).
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
-      child: SingleChildScrollView(
+      child: SafeArea(
+        top: false,
+        child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
           Text(_isNew ? 'NEW EXERCISE' : e!.name.toUpperCase(), style: text.titleMedium!.copyWith(letterSpacing: 2)),
@@ -221,6 +225,7 @@ class _ExerciseSheetState extends State<_ExerciseSheet> {
               ),
             ),
         ]),
+        ),
       ),
     );
   }
