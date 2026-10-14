@@ -100,6 +100,10 @@ enum TabShape {
 
   /// Cosmic Horror: organisk, asymmetrisk blob — egen per flik (frö).
   blob,
+
+  /// Nano Sakura: chevronen, men varje spets kluven av ett litet V
+  /// (körsbärsblad). Samma form för flikar, knappar och menyraden.
+  petalNotch,
 }
 
 /// Hur menyraden visar aktiv flik.
@@ -140,6 +144,57 @@ enum RoundStyle {
   /// Cosmic Horror: ett hjärtslag (lub-dub) tänder bokstäverna längs en
   /// åder, rundnumret blinkar fram bakom ett ögonlock, kedjan växer fram.
   heartbeat,
+}
+
+/// Var temats mörka kort ([ChainTheme.darkCard]) hamnar. Nano Sakura,
+/// Niklas 2026-10-14: prövas på gymgolvet med en DEV-knapp i passvyn
+/// ([CardRhythmDev]) innan ett blir temats val.
+enum CardRhythm {
+  /// Inga mörka kort.
+  none,
+
+  /// Det öppna övningskortet ljust, de ihopfällda mörka: färgen säger var
+  /// man är, och mönstret ändras bara när man själv öppnar ett annat kort.
+  focus,
+
+  /// Varannat kort (övningar och Settings-raderna), som i mockupen.
+  alternate,
+}
+
+/// DEV: åsidosätter temats [CardRhythm] tills Niklas valt (null = temats).
+/// Bara teman med [ChainTheme.darkCard] påverkas — i dag Nano Sakura, som
+/// är ett DEV-tema. Tas bort när valet är gjort.
+abstract final class CardRhythmDev {
+  static CardRhythm? override;
+}
+
+/// Temats mörka kort: eget glas och egen text-/knappskala, eftersom ljusa
+/// temats mörka text inte syns på mörk botten. Används via
+/// [ChainTheme.darkCardTheme] — allt inuti kortet läser sitt tema som vanligt.
+@immutable
+class DarkCard {
+  const DarkCard({
+    required this.top,
+    required this.bottom,
+    required this.edge,
+    required this.borderStrong,
+    required this.textStrong,
+    required this.textBody,
+    required this.textMuted,
+    required this.textFaint,
+    required this.accent,
+    required this.success,
+    required this.restGold,
+    required this.fail,
+    required this.secondaryAction,
+    required this.raisedIdle,
+    required this.raisedDone,
+  });
+
+  final Color top, bottom, edge, borderStrong;
+  final Color textStrong, textBody, textMuted, textFaint;
+  final Color accent, success, restGold, fail, secondaryAction;
+  final RaisedMaterial raisedIdle, raisedDone;
 }
 
 /// Temats småsaker — det som skiljer ett tema från en färgbyte (MK1 Cosmic
@@ -229,11 +284,82 @@ class ChainTheme extends ThemeExtension<ChainTheme> {
     required this.fonts,
     required this.cardShape,
     required this.details,
+    required this.darkCard,
+    required this.cardRhythm,
     Color? fail,
   }) : fail = fail ?? restGold;
 
   final CardShape cardShape;
   final ThemeDetails details;
+
+  /// Mörka kort (Nano Sakura); null = temat har inga.
+  final DarkCard? darkCard;
+  final CardRhythm cardRhythm;
+
+  CardRhythm get _rhythm => darkCard == null ? CardRhythm.none : (CardRhythmDev.override ?? cardRhythm);
+
+  /// Ska övningskort nr [index] i passet vara mörkt?
+  bool darkExercise(int index, {required bool expanded}) => switch (_rhythm) {
+        CardRhythm.none => false,
+        CardRhythm.focus => !expanded,
+        CardRhythm.alternate => index.isOdd,
+      };
+
+  /// Ska rad nr [index] i en kortlista (Settings) vara mörk? Fokus har inget
+  /// "öppet" kort där — listan förblir ljus.
+  bool darkRow(int index) => _rhythm == CardRhythm.alternate && index.isOdd;
+
+  /// Temat INUTI ett mörkt kort: samma tema med kortets glas, text och
+  /// knappar. Null om temat saknar mörka kort.
+  ChainTheme? get darkCardTheme {
+    final d = darkCard;
+    if (d == null) return null;
+    return ChainTheme(
+      name: name,
+      background: d.bottom, // → mörkt läge inuti kortet (isLight)
+      backgroundGlow: d.top,
+      accent: d.accent,
+      accentBright: accentBright,
+      onAccent: onAccent,
+      success: d.success,
+      restGold: d.restGold,
+      fail: d.fail,
+      textStrong: d.textStrong,
+      textBody: d.textBody,
+      textMuted: d.textMuted,
+      textFaint: d.textFaint,
+      surface: d.bottom,
+      border: d.edge,
+      borderStrong: d.borderStrong,
+      glassTop: d.top,
+      glassBottom: d.bottom,
+      glassBlur: glassBlur,
+      raisedActive: raisedActive,
+      raisedIdle: d.raisedIdle,
+      raisedDone: d.raisedDone,
+      secondaryAction: d.secondaryAction,
+      hexLine: hexLine,
+      hexEnergy: hexEnergy,
+      ambient: ambient,
+      activeMark: activeMark,
+      skippedMark: skippedMark,
+      doneMark: doneMark,
+      tabShape: tabShape,
+      navMark: navMark,
+      fonts: fonts,
+      cardShape: cardShape,
+      details: ThemeDetails(
+        warmupLabel: d.textMuted,
+        rule: details.rule,
+        doneTint: details.doneTint,
+        historyDate: details.historyDate,
+        rampColor: d.textMuted,
+        round: details.round,
+      ),
+      darkCard: null,
+      cardRhythm: CardRhythm.none,
+    );
+  }
 
   /// Avdelare ovanför en rad i en lista ([ThemeDetails.rule]).
   Decoration get ruleAbove => switch (details.rule) {
@@ -390,6 +516,8 @@ class ChainTheme extends ThemeExtension<ChainTheme> {
       fonts: t < 0.5 ? fonts : other.fonts,
       cardShape: t < 0.5 ? cardShape : other.cardShape,
       details: t < 0.5 ? details : other.details,
+      darkCard: t < 0.5 ? darkCard : other.darkCard,
+      cardRhythm: t < 0.5 ? cardRhythm : other.cardRhythm,
       fail: c(fail, other.fail),
     );
   }

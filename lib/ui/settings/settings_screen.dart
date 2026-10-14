@@ -87,16 +87,19 @@ class SettingsScreen extends StatelessWidget {
                 title: 'Training & App Functions',
                 subtitle: 'Units · finish note · rest timer · vibration',
                 onTap: () => open(TrainingSettingsScreen(app: app)),
+                index: 1,
               ),
               SettingsRow(
                 title: 'Appearance',
                 subtitle: 'Theme · moving background',
                 onTap: () => open(AppearanceSettingsScreen(app: app, devTools: devTools)),
+                index: 2,
               ),
               SettingsRow(
                 title: 'Data & Sync',
                 subtitle: 'Sync status · backup · import from the website · move account',
                 onTap: openData,
+                index: 3,
               ),
               SettingsRow(
                 title: 'Report a problem',
@@ -107,6 +110,7 @@ class SettingsScreen extends StatelessWidget {
                     const SnackBar(content: Text('No email app found. Write to $kReportEmail')),
                   );
                 },
+                index: 4,
               ),
               // Bara Niklas — servern spärrar ändå alla andra (supabase/002).
               if (email.toLowerCase() == kAdminEmail)
@@ -114,6 +118,7 @@ class SettingsScreen extends StatelessWidget {
                   title: 'Admin',
                   subtitle: 'Users · app vs website · builds',
                   onTap: () => open(AdminScreen(app: app)),
+                  index: 5,
                 ),
               const SizedBox(height: 28),
               GhostButton(
@@ -134,14 +139,20 @@ class SettingsScreen extends StatelessWidget {
 
 /// En rad i hubben: namn + vad som finns där + pil.
 class SettingsRow extends StatelessWidget {
-  const SettingsRow({super.key, required this.title, required this.subtitle, required this.onTap});
+  const SettingsRow({super.key, required this.title, required this.subtitle, required this.onTap, this.index = 0});
 
   final String title;
   final String subtitle;
   final VoidCallback onTap;
 
+  /// Plats i listan — för temats mörka kort ([ChainTheme.darkRow]).
+  final int index;
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) =>
+      DarkCardScope(dark: context.chain.darkRow(index), builder: _row);
+
+  Widget _row(BuildContext context) {
     final c = context.chain;
     final text = Theme.of(context).textTheme;
     return Padding(

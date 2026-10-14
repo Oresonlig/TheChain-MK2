@@ -85,7 +85,7 @@ class _ActiveMarkFrameState extends State<ActiveMarkFrame> with SingleTickerProv
         builder: (context, child) => CustomPaint(
           foregroundPainter: _TracePainter(
             color: c.accentBright,
-            inset: widget.inset,
+            shape: raisedShape(c, inset: widget.inset),
             head: moving ? _ctl.value : null,
           ),
           child: child,
@@ -96,10 +96,12 @@ class _ActiveMarkFrameState extends State<ActiveMarkFrame> with SingleTickerProv
 }
 
 class _TracePainter extends CustomPainter {
-  _TracePainter({required this.color, required this.inset, required this.head});
+  _TracePainter({required this.color, required this.shape, required this.head});
 
   final Color color;
-  final double inset;
+
+  /// Flikens kontur (temats [TabShape]) — spåret följer den.
+  final OutlinedBorder shape;
 
   /// Spårets huvud som andel av konturen; null = stillastående kant.
   final double? head;
@@ -110,7 +112,7 @@ class _TracePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final path = ChevronBorder(inset: inset).getOuterPath(Offset.zero & size);
+    final path = shape.getOuterPath(Offset.zero & size);
     final metric = path.computeMetrics().first;
     final total = metric.length;
     final h = head;
@@ -159,5 +161,5 @@ class _TracePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_TracePainter old) => old.head != head || old.color != color || old.inset != inset;
+  bool shouldRepaint(_TracePainter old) => old.head != head || old.color != color || old.shape != shape;
 }

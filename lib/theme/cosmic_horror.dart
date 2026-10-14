@@ -64,6 +64,8 @@ const cosmicHorror = ChainTheme(
   ambient: Ambient.veins,
   activeMark: ActiveMark.eye,
   cardShape: CardShape.leaf,
+  darkCard: null,
+  cardRhythm: CardRhythm.none,
   skippedMark: SkippedMark.claw,
   doneMark: DoneMark.scar,
   tabShape: TabShape.blob,

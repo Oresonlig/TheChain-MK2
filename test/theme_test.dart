@@ -37,6 +37,8 @@ ChainTheme _withFail(Color? fail) => ChainTheme(
       fonts: nanosuit.fonts,
       cardShape: CardShape.square,
       details: nanosuit.details,
+      darkCard: null,
+      cardRhythm: CardRhythm.none,
       fail: fail,
     );
 

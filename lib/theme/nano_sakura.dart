@@ -62,10 +62,42 @@ const nanoSakura = ChainTheme(
   activeMark: ActiveMark.tracePulse,
   skippedMark: SkippedMark.cross,
   doneMark: DoneMark.none,
-  tabShape: TabShape.chevron,
+  tabShape: TabShape.petalNotch,
   navMark: NavMark.raised,
   fonts: ThemeType(display: 'Quicksand', text: 'Quicksand', numbers: 'Saira'),
   cardShape: CardShape.square,
+  // Mörkt plommon (Claude Design: namn #FCEAF1, sekundärt #C9A7B8). Resten av
+  // skalan härledd för mörk botten — kontrasttestet prövar den.
+  darkCard: DarkCard(
+    top: Color(0xF03A1530),
+    bottom: Color(0xEB24091C),
+    edge: Color(0xFF4A1D3C),
+    borderStrong: Color(0xFF6B3459),
+    textStrong: Color(0xFFFCEAF1),
+    textBody: Color(0xFFE6CCD8),
+    textMuted: Color(0xFFC9A7B8),
+    textFaint: Color(0xFFA88798),
+    accent: _orchidBright,
+    success: Color(0xFF6FD39A),
+    restGold: Color(0xFFC9A2E0),
+    fail: Color(0xFFFF8A65),
+    secondaryAction: Color(0xFFD9A5C2),
+    raisedIdle: RaisedMaterial(
+      top: Color(0xFF4A1D3C),
+      bottom: Color(0xFF3A1530),
+      highlight: Color(0x14FFC8E1),
+      edge: Color(0xFF6B3459),
+      glow: Color(0x00000000),
+    ),
+    raisedDone: RaisedMaterial(
+      top: Color(0xFF341228),
+      bottom: Color(0xFF2A0D20),
+      highlight: Color(0x0FFFC8E1),
+      edge: Color(0xFF4A1D3C),
+      glow: Color(0x00000000),
+    ),
+  ),
+  cardRhythm: CardRhythm.focus, // DEV-knappen växlar (Niklas väljer)
   details: ThemeDetails(
     warmupLabel: _muted,
     rule: RuleStyle.solid,

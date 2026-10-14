@@ -261,19 +261,41 @@ class GhostButton extends StatelessWidget {
 }
 
 /// Nanosuits chevron: avfasade spetsar i vänster/höger kant (MK1 clip-path).
+/// [notch] > 0 (Nano Sakura, petal notch): varje spets kluven av ett litet V,
+/// som ett körsbärsblad — mellan 34 % och 66 % av höjden, [notch] djupt.
 class ChevronBorder extends OutlinedBorder {
-  const ChevronBorder({this.inset = 8, super.side});
+  const ChevronBorder({this.inset = 8, this.notch = 0, super.side});
 
   final double inset;
+  final double notch;
 
-  Path _path(Rect r) => Path()
-    ..moveTo(r.left + inset, r.top)
-    ..lineTo(r.right - inset, r.top)
-    ..lineTo(r.right, r.center.dy)
-    ..lineTo(r.right - inset, r.bottom)
-    ..lineTo(r.left + inset, r.bottom)
-    ..lineTo(r.left, r.center.dy)
-    ..close();
+  Path _path(Rect r) {
+    final p = Path()
+      ..moveTo(r.left + inset, r.top)
+      ..lineTo(r.right - inset, r.top);
+    final hi = r.top + r.height * .34, lo = r.top + r.height * .66;
+    if (notch > 0) {
+      // Spetsen trubbas där klyftan sitter: kanten når ytterlinjen vid 34/66 %.
+      p
+        ..lineTo(r.right, hi)
+        ..lineTo(r.right - notch, r.center.dy)
+        ..lineTo(r.right, lo);
+    } else {
+      p.lineTo(r.right, r.center.dy);
+    }
+    p
+      ..lineTo(r.right - inset, r.bottom)
+      ..lineTo(r.left + inset, r.bottom);
+    if (notch > 0) {
+      p
+        ..lineTo(r.left, lo)
+        ..lineTo(r.left + notch, r.center.dy)
+        ..lineTo(r.left, hi);
+    } else {
+      p.lineTo(r.left, r.center.dy);
+    }
+    return p..close();
+  }
 
   @override
   Path getOuterPath(Rect rect, {TextDirection? textDirection}) => _path(rect);
@@ -286,16 +308,17 @@ class ChevronBorder extends OutlinedBorder {
   }
 
   @override
-  ChevronBorder copyWith({BorderSide? side}) => ChevronBorder(inset: inset, side: side ?? this.side);
+  ChevronBorder copyWith({BorderSide? side}) => ChevronBorder(inset: inset, notch: notch, side: side ?? this.side);
   @override
   EdgeInsetsGeometry get dimensions => EdgeInsets.all(side.width);
   @override
-  ShapeBorder scale(double t) => ChevronBorder(inset: inset * t, side: side.scale(t));
+  ShapeBorder scale(double t) => ChevronBorder(inset: inset * t, notch: notch * t, side: side.scale(t));
 
   @override
-  bool operator ==(Object other) => other is ChevronBorder && other.inset == inset && other.side == side;
+  bool operator ==(Object other) =>
+      other is ChevronBorder && other.inset == inset && other.notch == notch && other.side == side;
   @override
-  int get hashCode => Object.hash(inset, side);
+  int get hashCode => Object.hash(inset, notch, side);
 }
 
 /// Stabilt frö ur en sträng (String.hashCode är inte stabilt mellan körningar).
@@ -358,6 +381,8 @@ class BlobBorder extends OutlinedBorder {
 OutlinedBorder raisedShape(ChainTheme c, {double inset = 8, int? seed, BorderSide side = BorderSide.none}) =>
     switch (c.tabShape) {
       TabShape.chevron => ChevronBorder(inset: inset, side: side),
+      // Klyftans djup följer avfasningen (Claude Design: 7 av 12).
+      TabShape.petalNotch => ChevronBorder(inset: inset, notch: inset * .58, side: side),
       TabShape.blob when seed != null => BlobBorder(seed: seed, side: side),
       TabShape.blob => RoundedRectangleBorder(borderRadius: c.buttonRadius, side: side),
     };

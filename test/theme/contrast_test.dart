@@ -37,10 +37,17 @@ List<(String, Color, Color, double)> pairs(ChainTheme c) => [
     ];
 
 void main() {
-  for (final choice in themeChoices) {
-    test('kontrast: ${choice.label}', () {
+  // Varje tema, och dess mörka kort (Nano Sakura) som ett eget tema.
+  final themes = [
+    for (final choice in themeChoices) ...[
+      (choice.label, choice.theme),
+      if (choice.theme.darkCardTheme case final d?) ('${choice.label} · mörkt kort', d),
+    ],
+  ];
+  for (final (label, theme) in themes) {
+    test('kontrast: $label', () {
       final fails = <String>[];
-      for (final (name, fg, bg, floor) in pairs(choice.theme)) {
+      for (final (name, fg, bg, floor) in pairs(theme)) {
         final r = contrast(fg, bg);
         if (r < floor) fails.add('$name ${r.toStringAsFixed(2)} < $floor');
       }

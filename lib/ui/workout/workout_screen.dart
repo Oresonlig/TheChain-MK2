@@ -14,6 +14,7 @@ import '../../theme/ambient_life.dart';
 import '../../theme/chain_theme.dart';
 import '../../theme/background_scope.dart';
 import '../../theme/surfaces.dart';
+import '../../theme/themes.dart';
 import '../delete_ux.dart';
 import '../nanosuit_scaffold.dart';
 import '../program/exercise_sheet.dart';
@@ -143,11 +144,12 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                 scrollCacheExtent: const ScrollCacheExtent.pixels(5000),
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
                 children: [
-                  for (final r in w.exercises) ...[
+                  for (final (i, r) in w.exercises.indexed) ...[
                     ExerciseCard(
                       key: ValueKey(r.id),
                       controller: controller,
                       app: widget.app,
+                      index: i,
                       row: r,
                       expanded: controller.expandedRowId == r.id,
                       now: (widget.now ?? DateTime.now)(),
@@ -168,6 +170,18 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                       if (id != null) controller.addExtra(id);
                     },
                   ),
+                  // DEV (Nano Sakura är ett DEV-tema): växla var de mörka korten
+                  // hamnar — Niklas väljer på gymgolvet, sedan bort (2026-10-14).
+                  if (c.darkCard != null) ...[
+                    const SizedBox(height: 8),
+                    GhostButton(
+                      label: 'DEV · CARDS: ${(CardRhythmDev.override ?? c.cardRhythm).name.toUpperCase()}',
+                      onTap: () => setState(() {
+                        final now = CardRhythmDev.override ?? c.cardRhythm;
+                        CardRhythmDev.override = CardRhythm.values[(now.index + 1) % CardRhythm.values.length];
+                      }),
+                    ),
+                  ],
                   const SizedBox(height: 16),
                   Glass(
                     padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
@@ -258,9 +272,20 @@ CreateExercise? _creator(AppController? app) =>
     app == null ? null : (ctx, name) => showExerciseSheet(ctx, app: app, newName: name);
 
 class ExerciseCard extends StatelessWidget {
-  const ExerciseCard({super.key, required this.controller, required this.row, required this.expanded, required this.now, this.tour, this.app});
+  const ExerciseCard(
+      {super.key,
+      required this.controller,
+      required this.row,
+      required this.expanded,
+      required this.now,
+      this.index = 0,
+      this.tour,
+      this.app});
 
   final WorkoutController controller;
+
+  /// Plats i passet — för temats mörka kort ([ChainTheme.darkExercise]).
+  final int index;
 
   /// För att skapa en egen övning vid byte (null i tester).
   final AppController? app;
@@ -275,8 +300,11 @@ class ExerciseCard extends StatelessWidget {
   // kortet är öppet eller ihopfällt. Återkommer så länge passet pågår
   // (den här skärmen visar bara pågående pass).
   @override
-  Widget build(BuildContext context) =>
-      DoneSheen(done: row.status == ExerciseStatus.done, repeat: true, child: _card(context));
+  Widget build(BuildContext context) => DoneSheen(
+        done: row.status == ExerciseStatus.done,
+        repeat: true,
+        child: DarkCardScope(dark: context.chain.darkExercise(index, expanded: expanded), builder: _card),
+      );
 
   Widget _card(BuildContext context) {
     final c = context.chain;

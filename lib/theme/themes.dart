@@ -36,3 +36,24 @@ final _cache = <ChainTheme, ThemeData>{};
 
 /// ThemeData byggs en gång per tema (MaterialApp ritas om ofta).
 ThemeData themeDataFor(ChainTheme c) => _cache.putIfAbsent(c, () => buildThemeData(c));
+
+/// Ett mörkt korts tema, en gång per bastema (getter:n bygger nytt varje gång).
+final _darkCards = <ChainTheme, ChainTheme>{};
+
+/// Bygger [builder] med temats mörka kort-tema när [dark] — allt inuti
+/// (glaset, texten, knapparna) läser sitt tema som vanligt och blir rätt.
+/// Tema utan mörka kort, eller [dark] falskt: oförändrat.
+class DarkCardScope extends StatelessWidget {
+  const DarkCardScope({super.key, required this.dark, required this.builder});
+
+  final bool dark;
+  final WidgetBuilder builder;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.chain;
+    if (!dark || c.darkCard == null) return Builder(builder: builder);
+    final inner = _darkCards.putIfAbsent(c, () => c.darkCardTheme!);
+    return Theme(data: themeDataFor(inner), child: Builder(builder: builder));
+  }
+}
