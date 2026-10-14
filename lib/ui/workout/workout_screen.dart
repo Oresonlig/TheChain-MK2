@@ -554,7 +554,7 @@ class ExerciseCard extends StatelessWidget {
             ListTile(leading: const Icon(Icons.swap_calls), title: const Text('Swap — permanently'), onTap: () => Navigator.pop(ctx, 'perm')),
             ListTile(
               leading: const Icon(Icons.delete_outline),
-              title: const Text('Remove from session — permanently'),
+              title: const Text('Remove permanently'),
               onTap: () => Navigator.pop(ctx, 'removePerm'),
             ),
           ],
