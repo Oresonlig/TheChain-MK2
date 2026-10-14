@@ -432,6 +432,16 @@ ThemeData buildThemeData(ChainTheme c) {
       displaySmall: _t(d, 34, 800, c.textStrong, spacing: 6, width: 110),
       titleLarge: _t(d, 20, 600, c.textStrong, spacing: 1.5),
       titleMedium: _t(d, 16, 600, c.textStrong, spacing: 1),
+      // Listrader (ListTile: menyer, bottenblad) och textfält. Saknades förut →
+      // Flutters 16 px utan temats skala: Cosmics Martian Mono blev stor och
+      // grötig i bladen (Niklas 2026-10-14). Färg/vikt/höjd = Flutters standard,
+      // så Nanosuit (k = 1, bredd 100) ser ut exakt som förut.
+      bodyLarge: TextStyle(
+        fontFamily: x,
+        fontSize: 16 * k,
+        letterSpacing: .5 * k,
+        fontVariations: [FontVariation.width(w)],
+      ),
       bodyMedium: _t(x, 15 * k, 400, c.textBody, width: w),
       bodySmall: _t(x, 12 * k, 400, c.textMuted, spacing: .5, width: w),
       labelLarge: _t(d, 14, 700, c.textStrong, spacing: 2, width: 105),

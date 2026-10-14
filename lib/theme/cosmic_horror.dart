@@ -31,9 +31,11 @@ const cosmicHorror = ChainTheme(
   surface: Color(0xFF0A1A17),
   border: Color(0xFF1A322C),
   borderStrong: Color(0xFF2A4A42),
-  glassTop: Color(0x260A1E1A), // 15 % (Niklas 2026-10-14: testa; för mycket → 30 %)
-  glassBottom: Color(0x120A1E1A), // 7 % (samma proportion som förut, 40 → 18)
-  glassBlur: 18,
+  glassTop: Color(0x4D0A1E1A), // 30 %
+  glassBottom: Color(0x240A1E1A), // 14 %
+  // Låg blur: ådrorna är tunna linjer — sigma 18 suddade bort dem helt bakom
+  // korten (Niklas 2026-10-14: ådror och glöd ska lysa igenom korten).
+  glassBlur: 4,
   raisedActive: RaisedMaterial(
     top: Color(0xFF2E6B58),
     bottom: Color(0xFF0E2A22),
