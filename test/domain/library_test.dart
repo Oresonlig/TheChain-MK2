@@ -44,4 +44,14 @@ void main() {
     expect(dl.scheme, SetScheme.ramp);
     expect(resolveExercise(const ExerciseId('ex_finns_inte')), isNull);
   });
+
+  test('2026-10-14: One-Arm Pulldown i biblioteket; arkiverad egen med samma id skuggar inte', () {
+    const id = ExerciseId('ex_one_arm_pulldown');
+    expect(libraryExercise(id)!.unilateral, isTrue);
+    expect(libraryExercise(id)!.group, MuscleGroup.back);
+    const gone = Exercise(id: id, name: 'One arm pulldown', group: MuscleGroup.back, measure: Measure.weight, isCustom: true, archived: true);
+    expect(resolveExercise(id, custom: {id: gone})!.isCustom, isFalse);
+    const live = Exercise(id: id, name: 'One arm pulldown', group: MuscleGroup.back, measure: Measure.weight, isCustom: true);
+    expect(resolveExercise(id, custom: {id: live})!.isCustom, isTrue);
+  });
 }

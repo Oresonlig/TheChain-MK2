@@ -73,6 +73,7 @@ final List<Exercise> exerciseLibrary = List.unmodifiable([
   _e('Lat Prayers', _back),
   _e('Lat Pulldown', _back),
   _e('Neutral Grip Pull-ups', _back, measure: Measure.bodyweight),
+  _e('One-Arm Pulldown', _back, unilateral: true),
   _e('One-Arm Row (DB)', _back, unilateral: true),
   _e('Pendlay Row', _back),
   _e('Power Clean', _back),
@@ -203,13 +204,15 @@ final Map<ExerciseId, Exercise> _byId = {for (final e in exerciseLibrary) e.id: 
 Exercise? libraryExercise(ExerciseId id) => _byId[id];
 
 /// Uppslag för pass och vyer: egna övningar först, sedan biblioteket, med
-/// användarens justeringar applicerade.
+/// användarens justeringar applicerade. En borttagen (arkiverad) egen övning
+/// skuggar inte en biblioteksövning med samma id — samma id = samma historik.
 Exercise? resolveExercise(
   ExerciseId id, {
   Map<ExerciseId, Exercise> custom = const {},
   Map<ExerciseId, ExerciseOverride> overrides = const {},
 }) {
-  final base = custom[id] ?? _byId[id];
+  final mine = custom[id], lib = _byId[id];
+  final base = (mine == null || (mine.archived && lib != null)) ? lib : mine;
   if (base == null) return null;
   final o = overrides[id];
   return o == null ? base : o.applyTo(base);

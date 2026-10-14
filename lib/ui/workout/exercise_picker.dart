@@ -95,7 +95,10 @@ class _Picker extends StatefulWidget {
 class _PickerState extends State<_Picker> {
   static const _recentLabel = 'Recent';
   String _q = '';
-  late final List<Exercise> _custom = [...widget.custom.where((e) => !e.archived)];
+  /// Egna övningar med ett id som finns i biblioteket listas där, inte två gånger.
+  late final List<Exercise> _custom = [
+    ...widget.custom.where((e) => !e.archived && libraryExercise(e.id) == null),
+  ];
 
   /// Valda, i den ordning de trycktes (= ordningen de läggs i passet).
   final _picked = <ExerciseId>[];
