@@ -31,8 +31,8 @@ const cosmicHorror = ChainTheme(
   surface: Color(0xFF0A1A17),
   border: Color(0xFF1A322C),
   borderStrong: Color(0xFF2A4A42),
-  glassTop: Color(0x660A1E1A), // 40 %
-  glassBottom: Color(0x2E0A1E1A), // 18 %
+  glassTop: Color(0x260A1E1A), // 15 % (Niklas 2026-10-14: testa; för mycket → 30 %)
+  glassBottom: Color(0x120A1E1A), // 7 % (samma proportion som förut, 40 → 18)
   glassBlur: 18,
   raisedActive: RaisedMaterial(
     top: Color(0xFF2E6B58),

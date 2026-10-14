@@ -25,6 +25,10 @@ class _Vein {
   final int depth;
   final int system;
 
+  /// Grenarna som skjuter ut från den här ådran, i ordning längs den
+  /// (grenens dist.first = avståndet där den lämnar ådran).
+  final branches = <_Vein>[];
+
   /// Delen av ådran mellan avstånden [from] och [to] från roten.
   Path? between(double from, double to) {
     if (to <= dist.first || from >= dist.last || to <= from) return null;
@@ -50,9 +54,9 @@ class _Network {
   _Network(Size s) {
     final r = math.Random(731);
     void grow(int system, Offset start, double angle, {int segs = 16, double reach = 1}) {
-      void walk(Offset p, double a, double d, int n, int depth, double branch) {
-        if (n <= 0 || depth < 0) return;
-        final pts = [p], ds = [d];
+      _Vein? walk(Offset p, double a, double d, int n, int depth, double branch) {
+        if (n <= 0 || depth < 0) return null;
+        final pts = [p], ds = [d], kids = <_Vein>[];
         var c = p, ca = a, cd = d;
         for (var i = 0; i < n; i++) {
           final step = ((depth > 1 ? 11 : 6) + r.nextDouble() * 7) * reach;
@@ -63,12 +67,15 @@ class _Network {
           ds.add(cd);
           if (r.nextDouble() < branch && i > 1 && i < n - 1 && depth > 0) {
             final side = r.nextBool() ? -1 : 1;
-            walk(c, ca + side * (.5 + r.nextDouble()), cd, math.max(2, (n * (.3 + r.nextDouble() * .35)).floor()), depth - 1,
-                branch * .7);
+            final kid = walk(c, ca + side * (.5 + r.nextDouble()), cd,
+                math.max(2, (n * (.3 + r.nextDouble() * .35)).floor()), depth - 1, branch * .7);
+            if (kid != null) kids.add(kid);
           }
         }
-        veins.add(_Vein(pts, ds, depth, system));
+        final v = _Vein(pts, ds, depth, system)..branches.addAll(kids);
+        veins.add(v);
         if (cd > reachOf[system]) reachOf[system] = cd;
+        return v;
       }
 
       walk(start, angle, 0, segs, 3, .45);
@@ -100,6 +107,36 @@ class _Network {
   final trunks = <_Vein>[];
   late final List<double> reachOf;
   late final List<({double speed, double offset})> pulses;
+  final _routes = <int, _Route>{};
+
+  /// Pulsens väg i varv [lap] för system [i]: stammen från roten, och vid
+  /// varje förgrening ett myntkast om den viker av ut i grenen (Niklas
+  /// 2026-10-14: glöden ska inte ta samma rutt varje gång). Fröad per varv —
+  /// ny väg varje varv, men samma bild för samma bildruta (golden-tester).
+  _Route route(int i, int lap) {
+    final cached = _routes[i];
+    if (cached != null && cached.lap == lap) return cached;
+    final r = math.Random(i * 7919 + lap);
+    final legs = <({_Vein vein, double from, double to})>[];
+    var cur = trunks[i];
+    var from = cur.dist.first;
+    turn:
+    while (true) {
+      for (final b in cur.branches) {
+        if (b.dist.first <= from) continue;
+        if (r.nextDouble() < .35) {
+          legs.add((vein: cur, from: from, to: b.dist.first));
+          cur = b;
+          from = b.dist.first;
+          continue turn;
+        }
+      }
+      legs.add((vein: cur, from: from, to: cur.dist.last));
+      break;
+    }
+    // Resten av varvet är paus — pulserna startar inte i takt.
+    return _routes[i] = _Route(lap, legs, active: .55 + r.nextDouble() * .45);
+  }
 
   /// Ådrorna så långt de vuxit vid [growth] — byggs om bara när nätet växer
   /// eller drar sig tillbaka (efter en LOG), inte i varje bildruta.
@@ -113,6 +150,33 @@ class _Network {
 
   double? _grownAt;
   List<Path?> _grown = const [];
+}
+
+/// En puls väg genom ett system: delsträckor på ådror, rot → spets.
+class _Route {
+  _Route(this.lap, this.legs, {required this.active})
+      : length = legs.fold(0.0, (s, l) => s + l.to - l.from);
+  final int lap;
+  final List<({_Vein vein, double from, double to})> legs;
+  final double length;
+
+  /// Andel av varvet som pulsen rör sig.
+  final double active;
+
+  /// Bitarna av vägen mellan [a] och [b] (avstånd längs vägen), bara så
+  /// långt nätet vuxit ([limit] = avstånd från roten).
+  Iterable<Path> slice(double a, double b, double limit) sync* {
+    var off = 0.0;
+    for (final l in legs) {
+      final len = l.to - l.from;
+      final s = math.max(a, off), e = math.min(b, off + len);
+      if (e > s) {
+        final p = l.vein.between(l.from + s - off, math.min(l.from + e - off, limit));
+        if (p != null) yield p;
+      }
+      off += len;
+    }
+  }
 }
 
 /// Ett nät per ytstorlek: kedjevyn (med menyraden) och passvyn är olika
@@ -165,17 +229,34 @@ void paintVeins(Canvas canvas, Size size, int frame, ChainTheme theme, {required
       ..strokeCap = StrokeCap.round
       ..strokeWidth = 1.6;
 
-    // Pulser längs stammarnas vuxna del, varannan inåt, varannan utåt.
-    for (final (i, t) in net.trunks.indexed) {
-      final grown = math.min(t.dist.last, g * net.reachOf[i]);
+    // Pulser längs en ny väg varje varv, varannan inåt, varannan utåt. Bred,
+    // mjuk glöd så att den lyser igenom glasets blur (Niklas 2026-10-14).
+    final pulseGlow = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeWidth = 8
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6)
+      ..color = theme.hexEnergy.withValues(alpha: .6);
+    final pulseCore = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeWidth = 2
+      ..color = theme.hexEnergy.withValues(alpha: .9);
+    const tail = 18.0;
+    for (var i = 0; i < net.trunks.length; i++) {
       final p = net.pulses[i];
-      var at = (p.offset + frame * p.speed) % 1.0;
-      if (i.isOdd) at = 1 - at;
-      final seg = t.between(at * grown - 12, at * grown);
-      if (seg == null) continue;
-      canvas
-        ..drawPath(seg, glow..color = theme.hexEnergy.withValues(alpha: .45))
-        ..drawPath(seg, core..color = theme.hexEnergy.withValues(alpha: .8));
+      final t = p.offset + frame * p.speed;
+      final lap = t.floor();
+      final route = net.route(i, lap);
+      final f = (t - lap) / route.active;
+      if (f >= 1) continue;
+      final head = (i.isOdd ? 1 - f : f) * route.length;
+      final segs = i.isOdd ? route.slice(head, head + tail, g * net.reachOf[i]) : route.slice(head - tail, head, g * net.reachOf[i]);
+      for (final seg in segs) {
+        canvas
+          ..drawPath(seg, pulseGlow)
+          ..drawPath(seg, pulseCore);
+      }
     }
 
     // LOG: en ljusvåg från rötterna ut genom hela det vuxna nätet.
