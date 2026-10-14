@@ -58,7 +58,8 @@ const nanoSakura = ChainTheme(
   secondaryAction: Color(0xFF9E5A7A),
   hexLine: Color(0x1F9C2A7A), // 12 %
   hexEnergy: _orchidBright,
-  ambient: Ambient.hexField,
+  waveWidth: 2.4, // bred, tydlig våg (mockup: ~560 dp band)
+  ambient: Ambient.hexFieldPetals,
   activeMark: ActiveMark.tracePulse,
   skippedMark: SkippedMark.cross,
   doneMark: DoneMark.none,

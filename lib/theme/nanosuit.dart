@@ -54,6 +54,7 @@ const nanosuit = ChainTheme(
   secondaryAction: Color(0xFF3F8FA8),
   hexLine: Color(0x1400D4FF), // 8 % — MK1 BASE
   hexEnergy: _cyanBright,
+  waveWidth: 1,
   ambient: Ambient.hexField,
   activeMark: ActiveMark.tracePulse,
   skippedMark: SkippedMark.cross,

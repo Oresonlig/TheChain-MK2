@@ -28,6 +28,7 @@ ChainTheme _withFail(Color? fail) => ChainTheme(
       secondaryAction: nanosuit.secondaryAction,
       hexLine: nanosuit.hexLine,
       hexEnergy: nanosuit.hexEnergy,
+      waveWidth: 1,
       ambient: Ambient.hexField,
       activeMark: ActiveMark.none,
       skippedMark: SkippedMark.cross,

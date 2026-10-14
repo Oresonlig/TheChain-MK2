@@ -122,6 +122,10 @@ enum Ambient {
   /// Nanosuit: hex-väv med energivågor.
   hexField,
 
+  /// Nano Sakura: hex-väven + ~7 körsbärsblad som driver nedåt/åt höger
+  /// bakom korten och får en vindpust när vågen passerar.
+  hexFieldPetals,
+
   /// Cosmic Horror: ådror från kanterna, bioluminiscenta pulser längs
   /// stammarna, ett svagt hjärtslag genom nätet ibland.
   veins,
@@ -275,6 +279,7 @@ class ChainTheme extends ThemeExtension<ChainTheme> {
     required this.secondaryAction,
     required this.hexLine,
     required this.hexEnergy,
+    required this.waveWidth,
     required this.ambient,
     required this.activeMark,
     required this.skippedMark,
@@ -340,6 +345,7 @@ class ChainTheme extends ThemeExtension<ChainTheme> {
       secondaryAction: d.secondaryAction,
       hexLine: hexLine,
       hexEnergy: hexEnergy,
+      waveWidth: waveWidth,
       ambient: ambient,
       activeMark: activeMark,
       skippedMark: skippedMark,
@@ -470,6 +476,10 @@ class ChainTheme extends ThemeExtension<ChainTheme> {
   final Color hexLine;
   final Color hexEnergy;
 
+  /// Energivågornas bredd i hex-väven, relativt Nanosuit (1). Nano Sakura:
+  /// bredare — Niklas 2026-10-14: "lika tydlig som Nanosuit 2.0".
+  final double waveWidth;
+
   final Ambient ambient;
 
   /// Temat har en rörlig bakgrund (och behöver då glas under kedjan, MK1 3.88.3).
@@ -507,6 +517,7 @@ class ChainTheme extends ThemeExtension<ChainTheme> {
       secondaryAction: c(secondaryAction, other.secondaryAction),
       hexLine: c(hexLine, other.hexLine),
       hexEnergy: c(hexEnergy, other.hexEnergy),
+      waveWidth: waveWidth + (other.waveWidth - waveWidth) * t,
       ambient: t < 0.5 ? ambient : other.ambient,
       activeMark: t < 0.5 ? activeMark : other.activeMark,
       skippedMark: t < 0.5 ? skippedMark : other.skippedMark,
