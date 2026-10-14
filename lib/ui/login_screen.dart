@@ -154,7 +154,7 @@ class _LoginScreenState extends State<LoginScreen> {
         child: Raised(
           material: c.raisedActive,
           padding: const EdgeInsets.symmetric(vertical: 14),
-          child: Center(child: Text(widget.app.busy ? busyLabel : label, style: text.labelLarge)),
+          child: Center(child: Text(widget.app.busy ? busyLabel : label, style: text.labelLarge!.copyWith(color: c.onAccent))),
         ),
       );
 

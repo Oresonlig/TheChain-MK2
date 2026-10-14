@@ -21,6 +21,7 @@ const cosmicHorror = ChainTheme(
   backgroundGlow: Color(0xFF0E2A24),
   accent: _mint,
   accentBright: Color(0xFFC8F5DA),
+  onAccent: Color(0xFFE8F7F0), // = textStrong
   success: Color(0xFFB6F09C),
   restGold: Color(0xFFD8B878),
   fail: Color(0xFFD0606C), // blodrött, ljust nog för etiketter på mörk botten

@@ -176,10 +176,15 @@ class ThemeDetails {
 /// knappar), [text] för det lilla (data, brödtext, etiketter).
 @immutable
 class ThemeType {
-  const ThemeType({required this.display, required this.text, this.textWidth = 100, this.textScale = 1});
+  const ThemeType({required this.display, required this.text, String? numbers, this.textWidth = 100, this.textScale = 1})
+      : numbers = numbers ?? display;
 
   final String display;
   final String text;
+
+  /// Siffrorna i set-radens fält (kg, reps …). Förval = [display].
+  /// Nano Sakura: Saira bland rundade Quicksand (Niklas 2026-10-14).
+  final String numbers;
 
   /// Bredd-axeln för [text] (variabla typsnitt; ignoreras annars).
   final double textWidth;
@@ -196,6 +201,7 @@ class ChainTheme extends ThemeExtension<ChainTheme> {
     required this.backgroundGlow,
     required this.accent,
     required this.accentBright,
+    required this.onAccent,
     required this.success,
     required this.restGold,
     required this.textStrong,
@@ -296,6 +302,16 @@ class ChainTheme extends ThemeExtension<ChainTheme> {
   final Color backgroundGlow;
   final Color accent;
   final Color accentBright;
+
+  /// Text och ikoner på accentytan ([raisedActive], [raisedFail]). Mörka teman:
+  /// = [textStrong]. Ljusa teman: en egen färg — mörk text på mörk accent syns
+  /// inte (Nano Sakura, Niklas 2026-10-14).
+  final Color onAccent;
+
+  /// Ljus botten (Nano Sakura): Material i ljust läge, mörka statusikoner,
+  /// energin i bakgrunden som mättnad i stället för additivt ljus.
+  bool get isLight => background.computeLuminance() > .5;
+
   final Color success;
 
   /// Vilodagens guld — samma tre tillstånd som passen, egen färg.
@@ -346,6 +362,7 @@ class ChainTheme extends ThemeExtension<ChainTheme> {
       backgroundGlow: c(backgroundGlow, other.backgroundGlow),
       accent: c(accent, other.accent),
       accentBright: c(accentBright, other.accentBright),
+      onAccent: c(onAccent, other.onAccent),
       success: c(success, other.success),
       restGold: c(restGold, other.restGold),
       textStrong: c(textStrong, other.textStrong),
@@ -418,16 +435,25 @@ TextStyle _t(String family, double size, double weight, Color color, {double spa
 ThemeData buildThemeData(ChainTheme c) {
   final d = c.fonts.display, x = c.fonts.text, w = c.fonts.textWidth, k = c.fonts.textScale;
   return ThemeData(
-    brightness: Brightness.dark,
+    brightness: c.isLight ? Brightness.light : Brightness.dark,
     scaffoldBackgroundColor: c.background,
     fontFamily: x,
-    colorScheme: ColorScheme.dark(
-      primary: c.accent,
-      secondary: c.accentBright,
-      surface: c.surface,
-      onPrimary: c.background,
-      onSurface: c.textStrong,
-    ),
+    colorScheme: c.isLight
+        ? ColorScheme.light(
+            primary: c.accent,
+            secondary: c.accentBright,
+            surface: c.surface,
+            onPrimary: c.onAccent,
+            onSurface: c.textStrong,
+            error: c.fail,
+          )
+        : ColorScheme.dark(
+            primary: c.accent,
+            secondary: c.accentBright,
+            surface: c.surface,
+            onPrimary: c.background,
+            onSurface: c.textStrong,
+          ),
     textTheme: TextTheme(
       displaySmall: _t(d, 34, 800, c.textStrong, spacing: 6, width: 110),
       titleLarge: _t(d, 20, 600, c.textStrong, spacing: 1.5),

@@ -332,7 +332,11 @@ class _RoundCompleteState extends State<RoundComplete> with SingleTickerProvider
     }
     final crossed = lit && skipped; // vågen har nått ett överhoppat pass
     final on = lit && !skipped;
-    final color = crossed ? c.textMuted : (rest ? c.restGold : (on ? c.textStrong : c.accent));
+    // Tänd böna = accentytan → onAccent. Vilodagen behåller sitt guld, utom på
+    // ljust tema där guld/plommon på mörk accent inte syns.
+    final color = crossed
+        ? c.textMuted
+        : (rest ? (on && c.isLight ? c.onAccent : c.restGold) : (on ? c.onAccent : c.accent));
     final glyph = Text(letter, style: text.titleMedium!.copyWith(color: color));
     final seed = shapeSeed(id.value);
     final bean = SizedBox(

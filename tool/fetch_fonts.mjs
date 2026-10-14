@@ -2,7 +2,7 @@
 // Körs en gång när ett typsnitt läggs till: `node tool/fetch_fonts.mjs`.
 // Skriver bara inom TheChain_MK2/assets/fonts/.
 // Saira = Nanosuit. Cinzel (stort) + Martian Mono (smått) = Cosmic Horror
-// (Niklas 2026-10-06).
+// (Niklas 2026-10-06). Quicksand = Nano Sakura (Niklas 2026-10-14).
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -20,6 +20,8 @@ const FILES = {
   'cinzel/OFL.txt': 'Cinzel-OFL.txt',
   'martianmono/MartianMono[wdth,wght].ttf': 'MartianMono-Variable.ttf',
   'martianmono/OFL.txt': 'MartianMono-OFL.txt',
+  'quicksand/Quicksand[wght].ttf': 'Quicksand-Variable.ttf',
+  'quicksand/OFL.txt': 'Quicksand-OFL.txt',
 };
 
 for (const [src, dst] of Object.entries(FILES)) {

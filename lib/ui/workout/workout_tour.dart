@@ -111,7 +111,7 @@ class _WorkoutTourState extends State<WorkoutTour> {
                     child: Raised(
                       material: c.raisedActive,
                       padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
-                      child: Text(last ? 'GOT IT' : 'NEXT', style: text.labelLarge!.copyWith(fontSize: 13)),
+                      child: Text(last ? 'GOT IT' : 'NEXT', style: text.labelLarge!.copyWith(fontSize: 13, color: c.onAccent)),
                     ),
                   ),
                 ]),

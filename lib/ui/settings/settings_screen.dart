@@ -254,7 +254,7 @@ Widget choiceButton(BuildContext context, String label, bool on, VoidCallback on
       child: SizedBox(
         height: 48,
         child: on
-            ? Raised(material: c.raisedActive, padding: EdgeInsets.zero, child: _fit(Text(label, style: text.labelLarge)))
+            ? Raised(material: c.raisedActive, padding: EdgeInsets.zero, child: _fit(Text(label, style: text.labelLarge!.copyWith(color: c.onAccent))))
             : DecoratedBox(
                 decoration: BoxDecoration(border: Border.all(color: c.borderStrong), borderRadius: c.buttonRadius),
                 child: _fit(Text(label, style: text.labelLarge!.copyWith(color: c.textMuted))),
@@ -292,7 +292,7 @@ class _ThemeButton extends StatelessWidget {
                   child: Raised(
                     material: on ? c.raisedActive : c.raisedIdle,
                     padding: EdgeInsets.zero,
-                    child: _fit(Text(choice.label, style: text.labelLarge!.copyWith(color: on ? c.textStrong : c.accent))),
+                    child: _fit(Text(choice.label, style: text.labelLarge!.copyWith(color: on ? c.onAccent : c.accent))),
                   ),
                 );
               }),

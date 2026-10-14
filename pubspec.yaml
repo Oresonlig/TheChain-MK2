@@ -52,3 +52,7 @@ flutter:
     - family: Martian Mono
       fonts:
         - asset: assets/fonts/MartianMono-Variable.ttf
+    # Nano Sakura (Niklas 2026-10-14): Quicksand överallt, Saira för siffrorna.
+    - family: Quicksand
+      fonts:
+        - asset: assets/fonts/Quicksand-Variable.ttf

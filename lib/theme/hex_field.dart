@@ -134,18 +134,22 @@ Path _hex(Offset c, double r) {
 
 /// Ritar väven (och vågorna om [animated]) i vävens egna koordinater. Delas
 /// av bakgrunden och glasets nedskalade kopia (background_scope.dart).
-void paintHexField(Canvas canvas, HexFieldModel model, {required Color line, required bool animated}) {
+void paintHexField(Canvas canvas, HexFieldModel model, ChainTheme theme, {required bool animated}) {
   const r = HexFieldModel.size - 1.2;
   final base = Paint()
     ..style = PaintingStyle.stroke
     ..strokeWidth = 1
-    ..color = line;
+    ..color = theme.hexLine;
   final weave = Path();
   for (final h in model.hexes) {
     weave.addPath(_hex(h, r), Offset.zero);
   }
   canvas.drawPath(weave, base);
   if (!animated) return;
+  if (theme.isLight) {
+    _paintEnergyLight(canvas, model, theme);
+    return;
+  }
 
   final fill = Paint()..blendMode = BlendMode.plus;
   final stroke = Paint()
@@ -171,6 +175,32 @@ void paintHexField(Canvas canvas, HexFieldModel model, {required Color line, req
   }
 }
 
+/// Ljus botten (Nano Sakura): additivt ljus (plus) blir vitt mot vitt och
+/// syns inte — energin visas som MÄTTNAD i temats [ChainTheme.hexEnergy],
+/// med kontur i [ChainTheme.accent] där vågen är som starkast.
+void _paintEnergyLight(Canvas canvas, HexFieldModel model, ChainTheme theme) {
+  const r = HexFieldModel.size - 1.2;
+  final fill = Paint();
+  final stroke = Paint()
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 1.2;
+  final t = model.frame;
+  for (var i = 0; i < model.hexes.length; i++) {
+    final h = model.hexes[i];
+    final idle = HexFieldModel.idleAmp * (0.5 + 0.5 * math.sin(t * 0.018 - model.phase[i] * 6));
+    var e = model.energyAt(h) * HexFieldModel.intensity + idle;
+    if (e < 0.06) continue;
+    if (e > 1.25) e = 1.25;
+    final path = _hex(h, r);
+    fill.color = theme.hexEnergy.withValues(alpha: math.min(0.5, e * 0.4));
+    canvas.drawPath(path, fill);
+    if (e > 0.6) {
+      stroke.color = theme.accent.withValues(alpha: math.min(0.7, (e - 0.6) * 1.2));
+      canvas.drawPath(path, stroke);
+    }
+  }
+}
+
 /// Temats rörliga bakgrund ritad i skärmens koordinater. Delas av bakgrunden
 /// och glasets nedskalade kopia.
 void paintAmbient(Canvas canvas, Size size, HexFieldModel model, ChainTheme theme, {required bool animated}) {
@@ -178,7 +208,7 @@ void paintAmbient(Canvas canvas, Size size, HexFieldModel model, ChainTheme them
     case Ambient.none:
       return;
     case Ambient.hexField:
-      if (model.hexes.isNotEmpty) paintHexField(canvas, model, line: theme.hexLine, animated: animated);
+      if (model.hexes.isNotEmpty) paintHexField(canvas, model, theme, animated: animated);
     case Ambient.veins:
       paintVeins(canvas, size, model.frame, theme, animated: animated);
   }

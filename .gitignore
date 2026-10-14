@@ -34,6 +34,9 @@ test/golden/goldens/
 test/fixtures/private/
 *.backup.json
 
+# Designkällor från Claude Design (mockups, handoff) — lokala
+/design/
+
 # Planeringsdokument — lokala, aldrig till GitHub
 BESLUTSUNDERLAG.md
 DECISIONS.md

@@ -218,7 +218,7 @@ class _PickerState extends State<_Picker> {
                 child: Center(
                   child: Text(
                     _picked.isEmpty ? 'SELECT EXERCISES' : 'ADD ${_picked.length}',
-                    style: text.labelLarge!.copyWith(color: _picked.isEmpty ? c.textFaint : c.textStrong),
+                    style: text.labelLarge!.copyWith(color: _picked.isEmpty ? c.textFaint : c.onAccent),
                   ),
                 ),
               ),

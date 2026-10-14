@@ -51,7 +51,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
                 child: SizedBox(
                   height: 48,
                   child: on
-                      ? Raised(material: c.raisedActive, padding: EdgeInsets.zero, child: Center(child: Text(label, style: text.labelLarge)))
+                      ? Raised(material: c.raisedActive, padding: EdgeInsets.zero, child: Center(child: Text(label, style: text.labelLarge!.copyWith(color: c.onAccent))))
                       : Center(child: Text(label, style: text.labelLarge!.copyWith(color: c.textMuted))),
                 ),
               ),

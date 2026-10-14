@@ -464,7 +464,7 @@ class RangeChips extends StatelessWidget {
                           material: c.raisedActive,
                           inset: 6,
                           padding: EdgeInsets.zero,
-                          child: Center(child: _label(r, c.textStrong, text)),
+                          child: Center(child: _label(r, c.onAccent, text)),
                         ),
                       )
                     : Center(child: _label(r, c.textMuted, text)),

@@ -214,7 +214,7 @@ class _ExerciseSheetState extends State<_ExerciseSheet> {
             child: Raised(
               material: c.raisedActive,
               padding: const EdgeInsets.symmetric(vertical: 16),
-              child: Center(child: Text(_isNew ? 'CREATE' : 'SAVE', style: text.labelLarge)),
+              child: Center(child: Text(_isNew ? 'CREATE' : 'SAVE', style: text.labelLarge!.copyWith(color: c.onAccent))),
             ),
           ),
           if (e != null && e.isCustom)
@@ -247,7 +247,7 @@ class _Choice extends StatelessWidget {
         child: SizedBox(
           height: 48,
           child: on
-              ? Raised(material: c.raisedActive, padding: EdgeInsets.zero, child: Center(child: Text(label, style: text.labelLarge!.copyWith(fontSize: 12))))
+              ? Raised(material: c.raisedActive, padding: EdgeInsets.zero, child: Center(child: Text(label, style: text.labelLarge!.copyWith(fontSize: 12, color: c.onAccent))))
               : DecoratedBox(
                   decoration: BoxDecoration(border: Border.all(color: c.borderStrong)),
                   child: Center(child: Text(label, style: text.labelLarge!.copyWith(fontSize: 12, color: c.textMuted))),

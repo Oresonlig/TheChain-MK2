@@ -43,7 +43,7 @@ class _WelcomePanelState extends State<WelcomePanel> {
             material: onTap == null ? c.raisedIdle : c.raisedActive,
             padding: const EdgeInsets.symmetric(vertical: 16),
             child: Center(
-              child: Text(label, style: text.labelLarge!.copyWith(color: onTap == null ? c.textFaint : c.textStrong)),
+              child: Text(label, style: text.labelLarge!.copyWith(color: onTap == null ? c.textFaint : c.onAccent)),
             ),
           ),
         );

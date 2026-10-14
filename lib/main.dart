@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'app/app_controller.dart';
 import 'app/haptics.dart';
@@ -100,6 +101,22 @@ class _TheChainAppState extends State<TheChainApp> {
         debugShowCheckedModeBanner: false,
         // Kontots tema (Settings › Appearance); utloggad = Nanosuit.
         theme: themeDataFor(themeFor(app.repo?.settings().theme, devTools: kChannel != 'stable')),
+        // Statusfältets ikoner följer temat: mörka på ljus botten (Nano Sakura).
+        builder: (context, child) => AnnotatedRegion<SystemUiOverlayStyle>(
+          // Bara ikonernas ljushet — inga färger på system-raderna.
+          value: context.chain.isLight
+              ? const SystemUiOverlayStyle(
+                  statusBarIconBrightness: Brightness.dark,
+                  statusBarBrightness: Brightness.light,
+                  systemNavigationBarIconBrightness: Brightness.dark,
+                )
+              : const SystemUiOverlayStyle(
+                  statusBarIconBrightness: Brightness.light,
+                  statusBarBrightness: Brightness.dark,
+                  systemNavigationBarIconBrightness: Brightness.light,
+                ),
+          child: child!,
+        ),
         home: switch (app.phase) {
           Phase.signedOut => LoginScreen(app: app, versionLabel: kVersionLabel),
           Phase.loading => const Scaffold(body: Center(child: CircularProgressIndicator())),

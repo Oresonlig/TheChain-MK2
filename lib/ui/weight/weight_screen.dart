@@ -200,7 +200,7 @@ class _WeightScreenState extends State<WeightScreen> with ChartRangeState {
                         child: Raised(
                           material: c.raisedActive,
                           padding: EdgeInsets.zero,
-                          child: Center(child: Text('LOG', style: text.labelLarge)),
+                          child: Center(child: Text('LOG', style: text.labelLarge!.copyWith(color: c.onAccent))),
                         ),
                       ),
                     ),

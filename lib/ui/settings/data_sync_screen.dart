@@ -74,7 +74,7 @@ class DataSyncScreen extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   child: Center(
                     child: Text(app.busy ? 'SYNCING…' : 'SYNC NOW',
-                        style: text.labelLarge!.copyWith(color: app.busy ? c.textFaint : c.textStrong)),
+                        style: text.labelLarge!.copyWith(color: app.busy ? c.textFaint : c.onAccent)),
                   ),
                 ),
               ),
@@ -167,7 +167,7 @@ class DataSyncScreen extends StatelessWidget {
             child: Raised(
               material: c.raisedActive,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: Text(downloading ? '…' : 'UPDATE', style: text.labelLarge!.copyWith(fontSize: 12)),
+              child: Text(downloading ? '…' : 'UPDATE', style: text.labelLarge!.copyWith(fontSize: 12, color: c.onAccent)),
             ),
           ),
       ]),

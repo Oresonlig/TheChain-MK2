@@ -9,6 +9,7 @@ ChainTheme _withFail(Color? fail) => ChainTheme(
       backgroundGlow: nanosuit.backgroundGlow,
       accent: nanosuit.accent,
       accentBright: nanosuit.accentBright,
+      onAccent: nanosuit.onAccent,
       success: nanosuit.success,
       restGold: const Color(0xFF9B6BFF), // ett tema med lila vilodag
       textStrong: nanosuit.textStrong,

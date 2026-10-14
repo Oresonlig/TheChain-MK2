@@ -17,6 +17,7 @@ const nanosuit = ChainTheme(
   backgroundGlow: Color(0xFF0A1828),
   accent: _cyan,
   accentBright: _cyanBright,
+  onAccent: _ink, // = textStrong
   success: Color(0xFF50FF88),
   restGold: Color(0xFFC9A35A),
   textStrong: _ink,

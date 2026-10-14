@@ -73,7 +73,7 @@ class OtherDeviceScreen extends StatelessWidget {
                   child: Raised(
                     material: c.raisedActive,
                     padding: const EdgeInsets.symmetric(vertical: 14),
-                    child: Center(child: Text(app.busy ? 'SIGNING IN…' : 'SIGN IN HERE', style: text.labelLarge)),
+                    child: Center(child: Text(app.busy ? 'SIGNING IN…' : 'SIGN IN HERE', style: text.labelLarge!.copyWith(color: c.onAccent))),
                   ),
                 ),
                 const SizedBox(height: 10),

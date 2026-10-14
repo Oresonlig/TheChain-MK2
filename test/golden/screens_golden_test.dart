@@ -27,7 +27,11 @@ Future<void> _loadSaira() async {
   final loader = FontLoader('Saira')
     ..addFont(Future.value(ByteData.sublistView(File('assets/fonts/Saira-Variable.ttf').readAsBytesSync())));
   await loader.load();
-  for (final (family, file) in const [('Cinzel', 'Cinzel-Variable.ttf'), ('Martian Mono', 'MartianMono-Variable.ttf')]) {
+  for (final (family, file) in const [
+    ('Cinzel', 'Cinzel-Variable.ttf'),
+    ('Martian Mono', 'MartianMono-Variable.ttf'),
+    ('Quicksand', 'Quicksand-Variable.ttf'),
+  ]) {
     await (FontLoader(family)..addFont(Future.value(ByteData.sublistView(File('assets/fonts/$file').readAsBytesSync()))))
         .load();
   }
@@ -241,6 +245,42 @@ void main() {
     });
     await tester.pumpAndSettle();
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/chain.png'));
+  });
+
+  testWidgets('Nano Sakura: kedjan (våg i rörelse), passvyn med loggat set', (tester) async {
+    await _loadSaira();
+    final b = FakeBackend(mk1: {...mk1(), 'restSlots': [2], 'sessionOrder': ['A', 'B', 'C', 'D']});
+    final app = _app(b);
+    tester.view.physicalSize = const Size(1080, 2340);
+    tester.view.devicePixelRatio = 2.625;
+    addTearDown(tester.view.reset);
+    // Animationer PÅ: energivågen ska synas i hex-väven.
+    await tester.pumpWidget(MediaQuery(
+      data: const MediaQueryData(size: Size(411.4, 891.4), devicePixelRatio: 2.625, padding: EdgeInsets.only(top: 36, bottom: 24)),
+      child: TheChainApp(app: app, emailOf: () => ''),
+    ));
+    await tester.runAsync(() async {
+      await app.start();
+      await app.signIn('x', 'secret');
+      await pumpEventQueue();
+      await app.importFromWebsite();
+      await _tourSeen(app);
+      await app.updateSettings(app.repo!.settings().copyWith(theme: 'sakura'));
+      await app.skipSession(const SessionId('C'), 'Travel');
+    });
+    Future<void> frames(int n) async {
+      for (var i = 0; i < n; i++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+    }
+
+    await frames(60);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/sakura_chain.png'));
+    await tester.tap(find.text('START SESSION'));
+    await frames(30);
+    await tester.tap(find.text('LOG').first);
+    await frames(30);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/sakura_workout.png'));
   });
 
   testWidgets('Cosmic Horror: kedjan (pågående, avklarat, överhoppat), passvyn, settings', (tester) async {

@@ -388,7 +388,7 @@ class _UpdateBanner extends StatelessWidget {
           child: Raised(
             material: c.raisedActive,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Text(busy ? '…' : 'UPDATE', style: text.labelLarge!.copyWith(fontSize: 12)),
+            child: Text(busy ? '…' : 'UPDATE', style: text.labelLarge!.copyWith(fontSize: 12, color: c.onAccent)),
           ),
         ),
       ]),
@@ -514,9 +514,9 @@ class _SessionPanel extends StatelessWidget {
                   material: c.raisedActive,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                    Icon(Icons.copy, size: 18, color: c.textStrong),
+                    Icon(Icons.copy, size: 18, color: c.onAccent),
                     const SizedBox(width: 8),
-                    Text('COPY', style: text.labelLarge),
+                    Text('COPY', style: text.labelLarge!.copyWith(color: c.onAccent)),
                   ]),
                 ),
               ),
@@ -539,7 +539,7 @@ class _SessionPanel extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 16),
               child: Center(
                 child: Text(inProgress ? 'CONTINUE SESSION' : 'START SESSION',
-                    style: text.labelLarge!.copyWith(color: canStart ? c.textStrong : c.textFaint)),
+                    style: text.labelLarge!.copyWith(color: canStart ? c.onAccent : c.textFaint)),
               ),
             ),
           ),
@@ -689,7 +689,7 @@ class _RestPanelState extends State<_RestPanel> {
             child: Raised(
               material: c.raisedActive,
               padding: const EdgeInsets.symmetric(vertical: 16),
-              child: Center(child: Text('MARK FORCED REST DAY DONE', style: text.labelLarge)),
+              child: Center(child: Text('MARK FORCED REST DAY DONE', style: text.labelLarge!.copyWith(color: c.onAccent))),
             ),
           ),
         ],

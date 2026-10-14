@@ -192,7 +192,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                           padding: const EdgeInsets.symmetric(vertical: 18),
                           child: Center(
                             child: Text('FINISH SESSION',
-                                style: text.labelLarge!.copyWith(color: canFinish ? c.textStrong : c.textFaint)),
+                                style: text.labelLarge!.copyWith(color: canFinish ? c.onAccent : c.textFaint)),
                           ),
                         ),
                       ),
@@ -471,9 +471,9 @@ class ExerciseCard extends StatelessWidget {
                     material: canDone ? c.raisedActive : c.raisedIdle,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                      Icon(Icons.check, size: 18, color: canDone ? c.textStrong : c.textFaint),
+                      Icon(Icons.check, size: 18, color: canDone ? c.onAccent : c.textFaint),
                       const SizedBox(width: 8),
-                      Text('DONE', style: text.labelLarge!.copyWith(color: canDone ? c.textStrong : c.textFaint)),
+                      Text('DONE', style: text.labelLarge!.copyWith(color: canDone ? c.onAccent : c.textFaint)),
                     ]),
                   ),
                 ),
@@ -686,7 +686,7 @@ class _SetRowState extends State<SetRow> {
 
   InputDecoration _box(ChainTheme c, TextTheme text, {String? hint}) => InputDecoration(
         hintText: hint,
-        hintStyle: text.titleMedium!.copyWith(color: c.textFaint),
+        hintStyle: text.titleMedium!.copyWith(fontFamily: c.fonts.numbers, color: c.textFaint),
         filled: true,
         fillColor: c.background,
         contentPadding: EdgeInsets.zero,
@@ -729,7 +729,7 @@ class _SetRowState extends State<SetRow> {
                 textAlign: TextAlign.center,
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))],
-                style: text.titleMedium!.copyWith(color: locked ? c.textMuted : c.textStrong),
+                style: text.titleMedium!.copyWith(fontFamily: c.fonts.numbers, color: locked ? c.textMuted : c.textStrong),
                 onChanged: (v) => _changed(f, v),
                 decoration: _box(c, text, hint: _hint(f)),
               ),
@@ -791,8 +791,8 @@ class _SetRowState extends State<SetRow> {
                     : failPending
                         ? Text('LOG\nFAIL',
                             textAlign: TextAlign.center,
-                            style: text.labelLarge!.copyWith(fontSize: 12, height: 1.1, letterSpacing: 1.5))
-                        : Text('LOG', style: text.labelLarge!.copyWith(fontSize: 13)),
+                            style: text.labelLarge!.copyWith(fontSize: 12, height: 1.1, letterSpacing: 1.5, color: c.onAccent))
+                        : Text('LOG', style: text.labelLarge!.copyWith(fontSize: 13, color: c.onAccent)),
               ),
             ),
           ),

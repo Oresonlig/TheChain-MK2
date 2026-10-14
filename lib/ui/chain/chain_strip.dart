@@ -102,7 +102,10 @@ class _ChainStripState extends State<ChainStrip> {
               final letterColor = s.isRest
                   ? (done ? c.restGold.withValues(alpha: .45) : c.restGold)
                   : (done ? c.textFaint : c.accent);
-              final letterText = Text(letter[s.id]!, style: base.copyWith(fontSize: 20, color: selected && !done ? c.textStrong : letterColor));
+              // På accentytan: temats onAccent. Avklarat + valt på ljust tema:
+              // onAccent dämpad (dämpad mörk text syns inte på mörk accent).
+              final onSelected = done ? (c.isLight ? c.onAccent.withValues(alpha: .6) : letterColor) : c.onAccent;
+              final letterText = Text(letter[s.id]!, style: base.copyWith(fontSize: 20, color: selected ? onSelected : letterColor));
               // NÄRHET → behållarens yta och hur mycket namn som visas.
               final material = selected ? c.raisedActive : (done ? c.raisedDone : c.raisedIdle);
               final name = s.isRest
@@ -136,7 +139,7 @@ class _ChainStripState extends State<ChainStrip> {
                       letterText,
                     if (name != null) ...[
                       const SizedBox(width: 10),
-                      Text(name, style: base.copyWith(color: selected ? c.textStrong : letterColor)),
+                      Text(name, style: base.copyWith(color: selected ? c.onAccent : letterColor)),
                     ],
                     // Grön prick = pågår. Ögonen (Cosmic) ersätter den.
                     if (running && !eyes) ...[

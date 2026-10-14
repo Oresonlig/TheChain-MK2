@@ -231,7 +231,7 @@ class _NavBar extends StatelessWidget {
                                 material: c.raisedActive,
                                 inset: 6,
                                 padding: EdgeInsets.zero,
-                                child: _content(icon, label, c.textStrong, text),
+                                child: _content(icon, label, c.onAccent, text),
                               ),
                             )
                           : _content(icon, label, c.textMuted, text),
