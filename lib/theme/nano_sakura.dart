@@ -41,7 +41,7 @@ const nanoSakura = ChainTheme(
     bottom: Color(0xFF842166),
     highlight: Color(0x80FFFFFF),
     edge: Color(0xFF66144F),
-    glow: Color(0x479C2A7A), // mjuk skugga, inte neon
+    glow: Color(0x00000000), // ingen skugga (Claude Design 2026-10-15: klipps bort i mockupen)
   ),
   raisedIdle: RaisedMaterial(
     top: Color(0xFFFFFFFF),
@@ -62,7 +62,7 @@ const nanoSakura = ChainTheme(
   hexEnergy: _orchidBright,
   waveWidth: 1, // Nanosuits våg rakt av, inverterad (Niklas 2026-10-15; 2.4 kändes inte som Nanosuit)
   ambient: Ambient.hexFieldPetals,
-  activeMark: ActiveMark.tracePulse,
+  activeMark: ActiveMark.rimSweep, // Claude Designs kant (petal_notch.dart), inte Nanosuits spår
   skippedMark: SkippedMark.cross,
   doneMark: DoneMark.none,
   tabShape: TabShape.petalNotch,

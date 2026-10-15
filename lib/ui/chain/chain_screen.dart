@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import '../../app/app_controller.dart';
 import '../../app/whats_new.dart';
 import '../../domain/domain.dart';
+import '../../theme/active_mark.dart';
 import '../../theme/chain_theme.dart';
 import '../../theme/background_scope.dart';
 import '../../theme/surfaces.dart';
@@ -551,12 +552,15 @@ class _SessionPanel extends StatelessWidget {
           // Ett tomt pass går inte att starta — och användaren får veta varför.
           GestureDetector(
             onTap: canStart ? onStart : null,
-            child: Raised(
-              material: canStart ? c.raisedActive : c.raisedIdle,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              child: Center(
-                child: Text(inProgress ? 'CONTINUE SESSION' : 'START SESSION',
-                    style: text.labelLarge!.copyWith(color: canStart ? c.onAccent : c.textFaint)),
+            child: PrimaryRim(
+              enabled: canStart,
+              child: Raised(
+                material: canStart ? c.raisedActive : c.raisedIdle,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                child: Center(
+                  child: Text(inProgress ? 'CONTINUE SESSION' : 'START SESSION',
+                      style: text.labelLarge!.copyWith(color: canStart ? c.onAccent : c.textFaint)),
+                ),
               ),
             ),
           ),

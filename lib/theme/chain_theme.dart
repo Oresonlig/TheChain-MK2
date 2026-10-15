@@ -57,6 +57,12 @@ enum ActiveMark {
   /// Nanosuit: ett kort ljusspår som löper runt flikens chevron-kontur.
   tracePulse,
 
+  /// Nano Sakura (Claude Design petal_notch.dart, 2026-10-15): en 1,5 dp
+  /// kant INNANFÖR formen med ett roterande ljusband — kanten följer V:et in
+  /// i spetsen. Ingen skugga, ingen glöd utanför. Primärknapparna (START,
+  /// aktiv FINISH) får samma kant stillastående ([PrimaryRim]).
+  rimSweep,
+
   /// Cosmic Horror: hela fliken blir ett öga — bokstaven är pupillen — som
   /// blinkar med slumpad takt (Niklas 2026-10-06). Ingen glöd att klippa.
   eye,

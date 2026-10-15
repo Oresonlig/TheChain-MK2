@@ -10,6 +10,7 @@ import '../../app/app_controller.dart';
 import '../../app/haptics.dart';
 import '../../app/workout_controller.dart';
 import '../../domain/domain.dart';
+import '../../theme/active_mark.dart';
 import '../../theme/ambient_life.dart';
 import '../../theme/chain_theme.dart';
 import '../../theme/background_scope.dart';
@@ -201,12 +202,15 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                               }
                             : null,
                         // Släckt = dämpat material, inte genomskinligt (alpha är ett fönster).
-                        child: Raised(
-                          material: canFinish ? c.raisedActive : c.raisedIdle,
-                          padding: const EdgeInsets.symmetric(vertical: 18),
-                          child: Center(
-                            child: Text('FINISH SESSION',
-                                style: text.labelLarge!.copyWith(color: canFinish ? c.onAccent : c.textFaint)),
+                        child: PrimaryRim(
+                          enabled: canFinish, // kanten kommer när passet går att avsluta
+                          child: Raised(
+                            material: canFinish ? c.raisedActive : c.raisedIdle,
+                            padding: const EdgeInsets.symmetric(vertical: 18),
+                            child: Center(
+                              child: Text('FINISH SESSION',
+                                  style: text.labelLarge!.copyWith(color: canFinish ? c.onAccent : c.textFaint)),
+                            ),
                           ),
                         ),
                       ),
