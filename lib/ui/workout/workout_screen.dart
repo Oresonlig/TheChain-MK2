@@ -14,6 +14,7 @@ import '../../theme/active_mark.dart';
 import '../../theme/ambient_life.dart';
 import '../../theme/chain_theme.dart';
 import '../../theme/background_scope.dart';
+import '../../theme/nano_sakura.dart';
 import '../../theme/surfaces.dart';
 import '../../theme/themes.dart';
 import '../delete_ux.dart';
@@ -171,15 +172,14 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                       if (id != null) controller.addExtra(id);
                     },
                   ),
-                  // DEV (Nano Sakura är ett DEV-tema): växla var de mörka korten
-                  // hamnar — Niklas väljer på gymgolvet, sedan bort (2026-10-14).
+                  // DEV (Nano Sakura är ett DEV-tema): växla de ihopfällda kortens
+                  // färg — Niklas väljer på gymgolvet, sedan bort (2026-10-15).
                   if (c.darkCard != null) ...[
                     const SizedBox(height: 8),
                     GhostButton(
-                      label: 'DEV · CARDS: ${(CardRhythmDev.override ?? c.cardRhythm).name.toUpperCase()}',
+                      label: 'DEV · CARDS: ${DarkCardDev.override == sakuraOrchidCard ? 'A · ORCHID' : 'B · DEEP ORCHID'}',
                       onTap: () => setState(() {
-                        final now = CardRhythmDev.override ?? c.cardRhythm;
-                        CardRhythmDev.override = CardRhythm.values[(now.index + 1) % CardRhythm.values.length];
+                        DarkCardDev.override = DarkCardDev.override == sakuraOrchidCard ? null : sakuraOrchidCard;
                       }),
                     ),
                   ],

@@ -14,6 +14,74 @@ const _orchidBright = Color(0xFFE06BC0);
 const _ink = Color(0xFF2A0F1E);
 const _muted = Color(0xFF7A5A6A);
 
+// De ihopfällda korten: lätt genomskinlig orchid i stället för nästan svart
+// plommon (Niklas 2026-10-15). Platta (topp ≈ botten) — knapparna har gradient
+// och spetsar, korten inte: det är så de skiljs åt trots samma färgfamilj.
+// Kontrasttestet prövar texten mot kortet blandat över den LJUSA botten
+// (sämsta läget). Mer genomskinligt än ~90 % klarar inte texten.
+
+/// B · djup orchid #6E1F58, 90 %.
+const sakuraDeepOrchidCard = DarkCard(
+  top: Color(0xE67A2462),
+  bottom: Color(0xE66E1F58),
+  edge: Color(0xFF8E3A78),
+  borderStrong: Color(0xFFA0548A),
+  textStrong: Color(0xFFFFFFFF),
+  textBody: Color(0xFFFCEAF1),
+  textMuted: Color(0xFFEBD3DF),
+  textFaint: Color(0xFFD2B0C3),
+  accent: Color(0xFFFFC2E6),
+  success: Color(0xFF8FE3B2),
+  restGold: Color(0xFFE2CBF2),
+  fail: Color(0xFFFFB9A3),
+  secondaryAction: Color(0xFFF0CDE0),
+  raisedIdle: RaisedMaterial(
+    top: Color(0xFF8A2C70),
+    bottom: Color(0xFF7A2462),
+    highlight: Color(0x1FFFFFFF),
+    edge: Color(0xFFA0548A),
+    glow: Color(0x00000000),
+  ),
+  raisedDone: RaisedMaterial(
+    top: Color(0xFF6A1E55),
+    bottom: Color(0xFF5E1A4B),
+    highlight: Color(0x14FFFFFF),
+    edge: Color(0xFF8E3A78),
+    glow: Color(0x00000000),
+  ),
+);
+
+/// A · Orchid #9C2A7A (accentens färg), 90 %.
+const sakuraOrchidCard = DarkCard(
+  top: Color(0xE6A2307F),
+  bottom: Color(0xE69C2A7A),
+  edge: Color(0xFFB4559A),
+  borderStrong: Color(0xFFC46FAB),
+  textStrong: Color(0xFFFFFFFF),
+  textBody: Color(0xFFFFF4F9),
+  textMuted: Color(0xFFFBE6F0),
+  textFaint: Color(0xFFF0D2E2),
+  accent: Color(0xFFFFE0F2),
+  success: Color(0xFFC2F5D6),
+  restGold: Color(0xFFF1E4FA),
+  fail: Color(0xFFFFDACE),
+  secondaryAction: Color(0xFFFBE3F0),
+  raisedIdle: RaisedMaterial(
+    top: Color(0xFF8E2470),
+    bottom: Color(0xFF7E1F63),
+    highlight: Color(0x1FFFFFFF),
+    edge: Color(0xFFB4559A),
+    glow: Color(0x00000000),
+  ),
+  raisedDone: RaisedMaterial(
+    top: Color(0xFF7A2060),
+    bottom: Color(0xFF6E1C56),
+    highlight: Color(0x14FFFFFF),
+    edge: Color(0xFF9C3A82),
+    glow: Color(0x00000000),
+  ),
+);
+
 const nanoSakura = ChainTheme(
   name: 'Nano Sakura',
   background: _bg,
@@ -69,38 +137,8 @@ const nanoSakura = ChainTheme(
   navMark: NavMark.raised,
   fonts: ThemeType(display: 'Quicksand', text: 'Quicksand', numbers: 'Saira'),
   cardShape: CardShape.square,
-  // Mörkt plommon (Claude Design: namn #FCEAF1, sekundärt #C9A7B8). Resten av
-  // skalan härledd för mörk botten — kontrasttestet prövar den.
-  darkCard: DarkCard(
-    top: Color(0xF03A1530),
-    bottom: Color(0xEB24091C),
-    edge: Color(0xFF4A1D3C),
-    borderStrong: Color(0xFF6B3459),
-    textStrong: Color(0xFFFCEAF1),
-    textBody: Color(0xFFE6CCD8),
-    textMuted: Color(0xFFC9A7B8),
-    textFaint: Color(0xFFA88798),
-    accent: _orchidBright,
-    success: Color(0xFF6FD39A),
-    restGold: Color(0xFFC9A2E0),
-    fail: Color(0xFFFF8A65),
-    secondaryAction: Color(0xFFD9A5C2),
-    raisedIdle: RaisedMaterial(
-      top: Color(0xFF4A1D3C),
-      bottom: Color(0xFF3A1530),
-      highlight: Color(0x14FFC8E1),
-      edge: Color(0xFF6B3459),
-      glow: Color(0x00000000),
-    ),
-    raisedDone: RaisedMaterial(
-      top: Color(0xFF341228),
-      bottom: Color(0xFF2A0D20),
-      highlight: Color(0x0FFFC8E1),
-      edge: Color(0xFF4A1D3C),
-      glow: Color(0x00000000),
-    ),
-  ),
-  cardRhythm: CardRhythm.focus, // DEV-knappen växlar (Niklas väljer)
+  darkCard: sakuraDeepOrchidCard, // DEV · CARDS växlar mot [sakuraOrchidCard] (Niklas väljer)
+  cardRhythm: CardRhythm.focus, // alla ihopfällda fyllda (Niklas 2026-10-15)
   details: ThemeDetails(
     warmupLabel: _muted,
     rule: RuleStyle.solid,

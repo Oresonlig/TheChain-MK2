@@ -7,6 +7,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:the_chain/theme/chain_theme.dart';
+import 'package:the_chain/theme/nano_sakura.dart';
 import 'package:the_chain/theme/themes.dart';
 
 double contrast(Color a, Color b) {
@@ -16,8 +17,9 @@ double contrast(Color a, Color b) {
 
 /// (namn, förgrund, bakgrund, golv). Texten ligger på glas över
 /// bakgrunden eller på [ChainTheme.surface] (blad, dialoger) — båda prövas.
-List<(String, Color, Color, double)> pairs(ChainTheme c) => [
-      for (final (bgName, bg) in [('background', c.background), ('surface', c.surface)]) ...[
+/// [grounds] ersätter dem (mörka kort: kortet blandat över botten).
+List<(String, Color, Color, double)> pairs(ChainTheme c, {List<(String, Color)>? grounds}) => [
+      for (final (bgName, bg) in grounds ?? [('background', c.background), ('surface', c.surface)]) ...[
         ('textStrong / $bgName', c.textStrong, bg, 7),
         ('textBody / $bgName', c.textBody, bg, 4.5),
         ('textMuted / $bgName', c.textMuted, bg, 4.5),
@@ -36,23 +38,44 @@ List<(String, Color, Color, double)> pairs(ChainTheme c) => [
       ('textStrong / raisedIdle.bottom', c.textStrong, c.raisedIdle.bottom, 4.5),
     ];
 
+/// [lowered]: par vars golv uttryckligen sänkts (namnprefix → nytt golv).
+void check(List<(String, Color, Color, double)> list, {Map<String, double> lowered = const {}}) {
+  final fails = <String>[];
+  for (final (name, fg, bg, floor) in list) {
+    final f = lowered.entries.where((e) => name.startsWith(e.key)).firstOrNull?.value ?? floor;
+    final r = contrast(fg, bg);
+    if (r < f) fails.add('$name ${r.toStringAsFixed(2)} < $f');
+  }
+  expect(fails, isEmpty, reason: fails.join('\n'));
+}
+
 void main() {
-  // Varje tema, och dess mörka kort (Nano Sakura) som ett eget tema.
-  final themes = [
-    for (final choice in themeChoices) ...[
-      (choice.label, choice.theme),
-      if (choice.theme.darkCardTheme case final d?) ('${choice.label} · mörkt kort', d),
-    ],
-  ];
-  for (final (label, theme) in themes) {
-    test('kontrast: $label', () {
-      final fails = <String>[];
-      for (final (name, fg, bg, floor) in pairs(theme)) {
-        final r = contrast(fg, bg);
-        if (r < floor) fails.add('$name ${r.toStringAsFixed(2)} < $floor');
-      }
-      expect(fails, isEmpty, reason: fails.join('\n'));
-    });
+  for (final choice in themeChoices) {
+    test('kontrast: ${choice.label}', () => check(pairs(choice.theme)));
+  }
+
+  // Mörka kort (Nano Sakura): genomskinliga — kortet blandas med det som
+  // ligger bakom. Ljus text → sämsta läget är den LJUSA botten bakom (vågen
+  // mörkar bara). Båda kortfärgerna på DEV-knappen prövas (2026-10-15).
+  for (final choice in themeChoices.where((t) => t.theme.darkCard != null)) {
+    // A (accentens orchid) når 5,4–5,8:1 för huvudtexten — AA (4,5), inte vårt
+    // golv 7. DEV-jämförelse; väljer Niklas A är det ett uttryckligt beslut
+    // att sänka golvet för kortens rubrik (2026-10-15). B klarar alla golv.
+    for (final (variant, card, lowered) in [
+      ('B · djup orchid', sakuraDeepOrchidCard, const <String, double>{}),
+      ('A · orchid', sakuraOrchidCard, const {'textStrong': 4.5}),
+    ]) {
+      test('kontrast: ${choice.label} · mörkt kort $variant (blandat över ljus botten)', () {
+        DarkCardDev.override = card;
+        addTearDown(() => DarkCardDev.override = null);
+        final d = choice.theme.darkCardTheme!;
+        final base = choice.theme.background;
+        check(pairs(d, grounds: [
+          ('kortets topp', Color.alphaBlend(card.top, base)),
+          ('kortets botten', Color.alphaBlend(card.bottom, base)),
+        ]), lowered: lowered);
+      });
+    }
   }
 
   test('ljust tema: Material i ljust läge, mörka teman i mörkt', () {

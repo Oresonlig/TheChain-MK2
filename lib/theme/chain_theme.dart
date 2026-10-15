@@ -156,9 +156,8 @@ enum RoundStyle {
   heartbeat,
 }
 
-/// Var temats mörka kort ([ChainTheme.darkCard]) hamnar. Nano Sakura,
-/// Niklas 2026-10-14: prövas på gymgolvet med en DEV-knapp i passvyn
-/// ([CardRhythmDev]) innan ett blir temats val.
+/// Var temats mörka kort ([ChainTheme.darkCard]) hamnar. Nano Sakura = focus
+/// (Niklas 2026-10-15); alternate sparas för Full Moon.
 enum CardRhythm {
   /// Inga mörka kort.
   none,
@@ -171,11 +170,11 @@ enum CardRhythm {
   alternate,
 }
 
-/// DEV: åsidosätter temats [CardRhythm] tills Niklas valt (null = temats).
+/// DEV: åsidosätter temats [DarkCard]-färg tills Niklas valt (null = temats).
 /// Bara teman med [ChainTheme.darkCard] påverkas — i dag Nano Sakura, som
-/// är ett DEV-tema. Tas bort när valet är gjort.
-abstract final class CardRhythmDev {
-  static CardRhythm? override;
+/// är ett DEV-tema. Tas bort när valet är gjort (2026-10-15: orchid A/B).
+abstract final class DarkCardDev {
+  static DarkCard? override;
 }
 
 /// Temats mörka kort: eget glas och egen text-/knappskala, eftersom ljusa
@@ -307,7 +306,7 @@ class ChainTheme extends ThemeExtension<ChainTheme> {
   final DarkCard? darkCard;
   final CardRhythm cardRhythm;
 
-  CardRhythm get _rhythm => darkCard == null ? CardRhythm.none : (CardRhythmDev.override ?? cardRhythm);
+  CardRhythm get _rhythm => darkCard == null ? CardRhythm.none : cardRhythm;
 
   /// Ska övningskort nr [index] i passet vara mörkt?
   bool darkExercise(int index, {required bool expanded}) => switch (_rhythm) {
@@ -323,8 +322,8 @@ class ChainTheme extends ThemeExtension<ChainTheme> {
   /// Temat INUTI ett mörkt kort: samma tema med kortets glas, text och
   /// knappar. Null om temat saknar mörka kort.
   ChainTheme? get darkCardTheme {
-    final d = darkCard;
-    if (d == null) return null;
+    if (darkCard == null) return null;
+    final d = DarkCardDev.override ?? darkCard!;
     return ChainTheme(
       name: name,
       background: d.bottom, // → mörkt läge inuti kortet (isLight)
