@@ -20,7 +20,8 @@ const _muted = Color(0xFF7A5A6A);
 // Kontrasttestet prövar texten mot kortet blandat över den LJUSA botten
 // (sämsta läget). Mer genomskinligt än ~90 % klarar inte texten.
 
-/// B · djup orchid #6E1F58, 90 %.
+/// Djup orchid #6E1F58, 90 % (Niklas valde den framför accentens orchid
+/// 2026-10-15 — den klarade inte kontrastgolvet 7 för kortrubriken).
 const sakuraDeepOrchidCard = DarkCard(
   top: Color(0xE67A2462),
   bottom: Color(0xE66E1F58),
@@ -47,37 +48,6 @@ const sakuraDeepOrchidCard = DarkCard(
     bottom: Color(0xFF5E1A4B),
     highlight: Color(0x14FFFFFF),
     edge: Color(0xFF8E3A78),
-    glow: Color(0x00000000),
-  ),
-);
-
-/// A · Orchid #9C2A7A (accentens färg), 90 %.
-const sakuraOrchidCard = DarkCard(
-  top: Color(0xE6A2307F),
-  bottom: Color(0xE69C2A7A),
-  edge: Color(0xFFB4559A),
-  borderStrong: Color(0xFFC46FAB),
-  textStrong: Color(0xFFFFFFFF),
-  textBody: Color(0xFFFFF4F9),
-  textMuted: Color(0xFFFBE6F0),
-  textFaint: Color(0xFFF0D2E2),
-  accent: Color(0xFFFFE0F2),
-  success: Color(0xFFC2F5D6),
-  restGold: Color(0xFFF1E4FA),
-  fail: Color(0xFFFFDACE),
-  secondaryAction: Color(0xFFFBE3F0),
-  raisedIdle: RaisedMaterial(
-    top: Color(0xFF8E2470),
-    bottom: Color(0xFF7E1F63),
-    highlight: Color(0x1FFFFFFF),
-    edge: Color(0xFFB4559A),
-    glow: Color(0x00000000),
-  ),
-  raisedDone: RaisedMaterial(
-    top: Color(0xFF7A2060),
-    bottom: Color(0xFF6E1C56),
-    highlight: Color(0x14FFFFFF),
-    edge: Color(0xFF9C3A82),
     glow: Color(0x00000000),
   ),
 );
@@ -137,7 +107,7 @@ const nanoSakura = ChainTheme(
   navMark: NavMark.raised,
   fonts: ThemeType(display: 'Quicksand', text: 'Quicksand', numbers: 'Saira'),
   cardShape: CardShape.square,
-  darkCard: sakuraDeepOrchidCard, // DEV · CARDS växlar mot [sakuraOrchidCard] (Niklas väljer)
+  darkCard: sakuraDeepOrchidCard,
   cardRhythm: CardRhythm.focus, // alla ihopfällda fyllda (Niklas 2026-10-15)
   details: ThemeDetails(
     warmupLabel: _muted,

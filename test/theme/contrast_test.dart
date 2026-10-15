@@ -7,7 +7,6 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:the_chain/theme/chain_theme.dart';
-import 'package:the_chain/theme/nano_sakura.dart';
 import 'package:the_chain/theme/themes.dart';
 
 double contrast(Color a, Color b) {
@@ -38,13 +37,11 @@ List<(String, Color, Color, double)> pairs(ChainTheme c, {List<(String, Color)>?
       ('textStrong / raisedIdle.bottom', c.textStrong, c.raisedIdle.bottom, 4.5),
     ];
 
-/// [lowered]: par vars golv uttryckligen sänkts (namnprefix → nytt golv).
-void check(List<(String, Color, Color, double)> list, {Map<String, double> lowered = const {}}) {
+void check(List<(String, Color, Color, double)> list) {
   final fails = <String>[];
   for (final (name, fg, bg, floor) in list) {
-    final f = lowered.entries.where((e) => name.startsWith(e.key)).firstOrNull?.value ?? floor;
     final r = contrast(fg, bg);
-    if (r < f) fails.add('$name ${r.toStringAsFixed(2)} < $f');
+    if (r < floor) fails.add('$name ${r.toStringAsFixed(2)} < $floor');
   }
   expect(fails, isEmpty, reason: fails.join('\n'));
 }
@@ -56,26 +53,17 @@ void main() {
 
   // Mörka kort (Nano Sakura): genomskinliga — kortet blandas med det som
   // ligger bakom. Ljus text → sämsta läget är den LJUSA botten bakom (vågen
-  // mörkar bara). Båda kortfärgerna på DEV-knappen prövas (2026-10-15).
+  // mörkar bara). Samma golv som allt annat (Niklas valde djup orchid, 2026-10-15).
   for (final choice in themeChoices.where((t) => t.theme.darkCard != null)) {
-    // A (accentens orchid) når 5,4–5,8:1 för huvudtexten — AA (4,5), inte vårt
-    // golv 7. DEV-jämförelse; väljer Niklas A är det ett uttryckligt beslut
-    // att sänka golvet för kortens rubrik (2026-10-15). B klarar alla golv.
-    for (final (variant, card, lowered) in [
-      ('B · djup orchid', sakuraDeepOrchidCard, const <String, double>{}),
-      ('A · orchid', sakuraOrchidCard, const {'textStrong': 4.5}),
-    ]) {
-      test('kontrast: ${choice.label} · mörkt kort $variant (blandat över ljus botten)', () {
-        DarkCardDev.override = card;
-        addTearDown(() => DarkCardDev.override = null);
-        final d = choice.theme.darkCardTheme!;
-        final base = choice.theme.background;
-        check(pairs(d, grounds: [
-          ('kortets topp', Color.alphaBlend(card.top, base)),
-          ('kortets botten', Color.alphaBlend(card.bottom, base)),
-        ]), lowered: lowered);
-      });
-    }
+    test('kontrast: ${choice.label} · mörkt kort (blandat över ljus botten)', () {
+      final card = choice.theme.darkCard!;
+      final d = choice.theme.darkCardTheme!;
+      final base = choice.theme.background;
+      check(pairs(d, grounds: [
+        ('kortets topp', Color.alphaBlend(card.top, base)),
+        ('kortets botten', Color.alphaBlend(card.bottom, base)),
+      ]));
+    });
   }
 
   test('ljust tema: Material i ljust läge, mörka teman i mörkt', () {

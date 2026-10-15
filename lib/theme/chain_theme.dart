@@ -170,13 +170,6 @@ enum CardRhythm {
   alternate,
 }
 
-/// DEV: åsidosätter temats [DarkCard]-färg tills Niklas valt (null = temats).
-/// Bara teman med [ChainTheme.darkCard] påverkas — i dag Nano Sakura, som
-/// är ett DEV-tema. Tas bort när valet är gjort (2026-10-15: orchid A/B).
-abstract final class DarkCardDev {
-  static DarkCard? override;
-}
-
 /// Temats mörka kort: eget glas och egen text-/knappskala, eftersom ljusa
 /// temats mörka text inte syns på mörk botten. Används via
 /// [ChainTheme.darkCardTheme] — allt inuti kortet läser sitt tema som vanligt.
@@ -323,7 +316,7 @@ class ChainTheme extends ThemeExtension<ChainTheme> {
   /// knappar. Null om temat saknar mörka kort.
   ChainTheme? get darkCardTheme {
     if (darkCard == null) return null;
-    final d = DarkCardDev.override ?? darkCard!;
+    final d = darkCard!;
     return ChainTheme(
       name: name,
       background: d.bottom, // → mörkt läge inuti kortet (isLight)
