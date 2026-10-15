@@ -235,14 +235,16 @@ void paintHexField(Canvas canvas, HexFieldModel model, ChainTheme theme, {requir
 }
 
 /// Ljus botten (Nano Sakura): additivt ljus (plus) blir vitt mot vitt och
-/// syns inte — energin visas som MÄTTNAD i temats [ChainTheme.hexEnergy],
-/// med kontur i [ChainTheme.accent] där vågen är som starkast.
+/// syns inte — energin visas MÖRK: linjerna i [ChainTheme.accent], en svag
+/// fyllning i [ChainTheme.hexEnergy]. Konturen är [lightWaveStroke] bred och
+/// täcker springan mellan grannarna — annars lyser den ljusa botten igenom
+/// och vågen läses som vita linjer (Niklas 2026-10-15).
 void _paintEnergyLight(Canvas canvas, HexFieldModel model, ChainTheme theme) {
   const r = HexFieldModel.size - 1.2;
   final fill = Paint();
   final stroke = Paint()
     ..style = PaintingStyle.stroke
-    ..strokeWidth = 1.2;
+    ..strokeWidth = lightWaveStroke;
   final t = model.frame;
   for (var i = 0; i < model.hexes.length; i++) {
     final h = model.hexes[i];
@@ -251,14 +253,18 @@ void _paintEnergyLight(Canvas canvas, HexFieldModel model, ChainTheme theme) {
     if (e < 0.06) continue;
     if (e > 1.25) e = 1.25;
     final path = _hex(h, r);
-    fill.color = theme.hexEnergy.withValues(alpha: math.min(0.5, e * 0.4));
+    fill.color = theme.hexEnergy.withValues(alpha: math.min(0.28, e * 0.22));
     canvas.drawPath(path, fill);
-    if (e > 0.6) {
-      stroke.color = theme.accent.withValues(alpha: math.min(0.7, (e - 0.6) * 1.2));
+    if (e > 0.2) {
+      stroke.color = theme.accent.withValues(alpha: math.min(0.75, (e - 0.2) * 0.9));
       canvas.drawPath(path, stroke);
     }
   }
 }
+
+/// Vågens kontur på ljus botten: 2 × 1,2 dp (indraget per hex) ≥ springan
+/// mellan två grannars kanter (2 × 1,2 × cos 30° ≈ 2,1 dp).
+const lightWaveStroke = 2.4;
 
 /// Körsbärsbladet (Claude Design, ambient-sakura.js): två bågar med ett litet
 /// V-hack i toppen, ~20 dp högt.

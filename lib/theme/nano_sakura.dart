@@ -31,9 +31,11 @@ const nanoSakura = ChainTheme(
   surface: Color(0xFFFFFFFF),
   border: Color(0xFFF0D6E1),
   borderStrong: Color(0xFFE3B5C8),
-  glassTop: Color(0xB3FFFFFF), // 70 %
-  glassBottom: Color(0x85FFF0F5), // 52 %
-  glassBlur: 18,
+  // Tunnare glas (Niklas 2026-10-15: "syns knappt något bakom"). Som Cosmic:
+  // blurren dolde mest — 18 → 4; vitt glas på ljus botten täcker dessutom.
+  glassTop: Color(0x73FFFFFF), // 45 %
+  glassBottom: Color(0x4DFFF0F5), // 30 %
+  glassBlur: 4,
   raisedActive: RaisedMaterial(
     top: Color(0xFFAE3D8B),
     bottom: Color(0xFF842166),
