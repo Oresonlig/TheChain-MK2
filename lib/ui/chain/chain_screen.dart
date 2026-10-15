@@ -81,27 +81,46 @@ class _ChainScreenState extends State<ChainScreen> {
 
   Future<void> _openWorkout(SessionId id) async {
     // Ett pass i taget (Niklas 2026-10-04: i MK1 glömde han ibland att avsluta).
-    final other = widget.app.repo?.activeWorkouts().where((w) => w.sessionId != id).firstOrNull;
+    // Spärren gäller bara NYA pass: ett pass som redan pågår öppnas alltid —
+    // annars låser två pågående (t.ex. från två enheter) varandra.
+    final active = widget.app.repo?.activeWorkouts() ?? const [];
+    final other = active.any((w) => w.sessionId == id) ? null : active.where((w) => w.sessionId != id).firstOrNull;
     if (other != null) {
-      final program = widget.app.repo!.program();
-      final name = program.sessionById(other.sessionId)?.name ?? other.sessionId.value;
-      final goThere = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: Text('${name.toUpperCase()} is in progress'),
-          content: Text('Finish or discard $name before you start ${program.sessionById(id)?.name ?? 'a new session'}.'),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-            TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text('Go to $name')),
-          ],
-        ),
-      );
-      if (goThere == true && mounted) await _openWorkout(other.sessionId);
+      final target = widget.app.repo!.program().sessionById(id)?.name ?? 'a new session';
+      await _inProgress(other, (name) => 'Finish or discard $name before you start $target.');
       return;
     }
     final wc = widget.app.openWorkout(id);
     await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => WorkoutScreen(controller: wc, app: widget.app)));
     if (mounted) setState(() => _selected = null); // tillbaka: visa nästa föreslagna
+  }
+
+  /// "X is in progress" — Cancel eller gå till det pågående passet.
+  Future<void> _inProgress(Workout other, String Function(String name) content) async {
+    final name = widget.app.repo!.program().sessionById(other.sessionId)?.name ?? other.sessionId.value;
+    final goThere = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('${name.toUpperCase()} is in progress'),
+        content: Text(content(name)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text('Go to $name')),
+        ],
+      ),
+    );
+    if (goThere == true && mounted) await _openWorkout(other.sessionId);
+  }
+
+  /// UNDO på ett avslutat pass: ett pass i taget gäller även här (2026-10-15).
+  Future<void> _undoWorkout(WorkoutEntry entry) async {
+    final other =
+        widget.app.repo?.activeWorkouts().where((w) => w.sessionId != entry.workout.sessionId).firstOrNull;
+    if (other != null) {
+      await _inProgress(other, (name) => 'Finish or discard $name before you undo this session.');
+      return;
+    }
+    if (await _confirmUndo(context)) await widget.app.undoWorkout(entry);
   }
 
   @override
@@ -262,9 +281,7 @@ class _ChainScreenState extends State<ChainScreen> {
                       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Copied')));
                     }
                   },
-                  onUndo: (entry) async {
-                    if (await _confirmUndo(context)) await widget.app.undoWorkout(entry);
-                  },
+                  onUndo: _undoWorkout,
                   onSkip: () async {
                     final reason = await _askSkipReason(context, session.name);
                     if (reason != null) await widget.app.skipSession(session.id, reason);

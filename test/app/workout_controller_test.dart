@@ -266,6 +266,34 @@ void main() {
     expect(app.repo!.activeWorkouts().length, 1);
   });
 
+  test('ett pass i taget gäller även UNDO; två pågående (äldre data) går ändå att öppna (2026-10-15)', () async {
+    final app = await ready();
+    final a = app.openWorkout(const SessionId('A'));
+    final first = a.workout.exercises.first;
+    logAll(a, first);
+    a.markDone(first.id);
+    for (final x in a.workout.exercises.skip(1)) {
+      a.skip(x.id);
+    }
+    await a.finish();
+    expect(a.error, isNull);
+    final repo = app.repo!;
+    final entryA = repo.history().whereType<WorkoutEntry>().firstWhere((e) => e.workout.sessionId == const SessionId('A'));
+    final b = app.openWorkout(const SessionId('B'));
+
+    await expectLater(app.undoWorkout(entryA), throwsA(isA<WorkoutError>()));
+    expect(repo.activeWorkouts().single.id, b.workout.id);
+    expect(repo.chain().isDone(const SessionId('A')), isTrue);
+
+    // Läget Niklas hamnade i (undo före spärren): båda pågår. Var för sig återupptas.
+    await repo.saveActiveWorkout(
+        Workout(id: entryA.workout.id, sessionId: entryA.workout.sessionId, startedAt: entryA.workout.startedAt, exercises: entryA.workout.exercises),
+        DateTime(2026, 10, 3));
+    expect(repo.activeWorkouts().length, 2);
+    expect(app.openWorkout(const SessionId('A')).workout.id, entryA.workout.id);
+    expect(app.openWorkout(const SessionId('B')).workout.id, b.workout.id);
+  });
+
   test('vikt: radera + UNDO ger tillbaka samma dag och vikt', () async {
     final app = await ready();
     final e = app.repo!.bodyweight().single;

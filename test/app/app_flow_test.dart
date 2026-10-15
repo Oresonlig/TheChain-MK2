@@ -371,6 +371,37 @@ void main() {
     expect(find.textContaining('sessions done').hitTestable(), findsOneWidget, reason: 'kedjan');
   });
 
+  testWidgets('UI: två pågående pass spärrar inte varandra — CONTINUE öppnar passet (2026-10-15)', (tester) async {
+    tester.view.physicalSize = const Size(1080, 4000);
+    tester.view.devicePixelRatio = 2.625;
+    addTearDown(tester.view.reset);
+    final app = AppController(FakeBackend(mk1: {...mk1(), 'sessionOrder': ['A', 'B'], 'restSlots': <int>[]}));
+    await tester.runAsync(() async {
+      await app.start();
+      await app.signIn('x', 'secret');
+      await pumpEventQueue();
+      await app.importFromWebsite();
+      await app.updateSettings(app.repo!.settings().copyWith(workoutTourSeen: true));
+      app.openWorkout(const SessionId('A'));
+      // Läget från undo före spärren: B pågår också.
+      await app.repo!.saveActiveWorkout(
+          Workout(id: const WorkoutId('b-active'), sessionId: const SessionId('B'), startedAt: DateTime(2026, 10, 14)), DateTime(2026, 10, 14));
+    });
+    expect(app.repo!.activeWorkouts().length, 2);
+    await tester.pumpWidget(MediaQuery(
+      data: const MediaQueryData(disableAnimations: true),
+      child: MaterialApp(
+        theme: nanosuitThemeData(),
+        home: HomeShell(app: app, email: '', versionLabel: 'MK2 DEV · build 1', devTools: false),
+      ),
+    ));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('CONTINUE SESSION'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('is in progress'), findsNothing);
+    expect(find.text('FINISH SESSION'), findsOneWidget);
+  });
+
   testWidgets('UI: helt pass — starta, logga, klar, avsluta, tillbaka till kedjan', (tester) async {
     tester.view.physicalSize = const Size(1080, 4000);
     tester.view.devicePixelRatio = 2.625;

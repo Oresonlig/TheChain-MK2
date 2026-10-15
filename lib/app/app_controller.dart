@@ -750,8 +750,15 @@ class AppController extends ChangeNotifier {
 
   /// Undo av ett avslutat pass: blir pågående igen med allt loggat kvar. Kedjan
   /// räknar det som ogjort tills det avslutas på nytt. Samma id → ingen dubblett.
+  /// Ett pass i taget gäller även här (2026-10-15: undo på A medan B pågick gav
+  /// två pågående pass som spärrade varandra).
   Future<void> undoWorkout(WorkoutEntry entry) async {
     final w = entry.workout;
+    final other = repo!.activeWorkouts().where((a) => a.sessionId != w.sessionId).firstOrNull;
+    if (other != null) {
+      final name = repo!.program().sessionById(other.sessionId)?.name ?? 'Another session';
+      throw WorkoutError('$name is in progress — finish or discard it first');
+    }
     await repo!.saveActiveWorkout(
       Workout(
           id: w.id, sessionId: w.sessionId, sessionName: w.sessionName, startedAt: w.startedAt, exercises: w.exercises, note: w.note),
