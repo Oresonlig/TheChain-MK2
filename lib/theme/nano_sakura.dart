@@ -60,7 +60,7 @@ const nanoSakura = ChainTheme(
   secondaryAction: Color(0xFF9E5A7A),
   hexLine: Color(0x1F9C2A7A), // 12 %
   hexEnergy: _orchidBright,
-  waveWidth: 2.4, // bred, tydlig våg (mockup: ~560 dp band)
+  waveWidth: 1, // Nanosuits våg rakt av, inverterad (Niklas 2026-10-15; 2.4 kändes inte som Nanosuit)
   ambient: Ambient.hexFieldPetals,
   activeMark: ActiveMark.tracePulse,
   skippedMark: SkippedMark.cross,

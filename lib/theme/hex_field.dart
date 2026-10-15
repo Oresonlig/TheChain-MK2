@@ -181,8 +181,10 @@ class _Petal {
   final double s, vx, vy, vr;
 }
 
-Path _hex(Offset c, double r) {
-  final p = Path();
+Path _hex(Offset c, double r) => _addHex(Path(), c, r);
+
+/// Lägger en hexagon som egen delpath i [p].
+Path _addHex(Path p, Offset c, double r) {
   for (var i = 0; i < 6; i++) {
     final a = math.pi / 180 * (60 * i);
     final pt = Offset(c.dx + r * math.cos(a), c.dy + r * math.sin(a));
@@ -234,37 +236,49 @@ void paintHexField(Canvas canvas, HexFieldModel model, ChainTheme theme, {requir
   }
 }
 
-/// Ljus botten (Nano Sakura): additivt ljus (plus) blir vitt mot vitt och
-/// syns inte — energin visas MÖRK: linjerna i [ChainTheme.accent], en svag
-/// fyllning i [ChainTheme.hexEnergy]. Konturen är [lightWaveStroke] bred och
-/// täcker springan mellan grannarna — annars lyser den ljusa botten igenom
-/// och vågen läses som vita linjer (Niklas 2026-10-15).
+/// Ljus botten (Nano Sakura): Nanosuits våg INVERTERAD (Niklas 2026-10-15).
+/// Samma energi, trösklar och alfa som mörk botten, men cellerna mörknar i
+/// stället för att tändas: [ChainTheme.hexEnergy] → [ChainTheme.accent] med
+/// stigande energi, kontur i mörk orchid där vågen är som starkast.
+///
+/// Prestanda: hexagonerna samlas i [lightWaveLevels] styrkenivåer och varje
+/// nivå ritas som EN path — ett tiotal ritanrop i stället för ett per hex
+/// (build 122 hackade; väven ritas dessutom två gånger, skärm + glasets bild).
 void _paintEnergyLight(Canvas canvas, HexFieldModel model, ChainTheme theme) {
-  const r = HexFieldModel.size - 1.2;
-  final fill = Paint();
-  final stroke = Paint()
-    ..style = PaintingStyle.stroke
-    ..strokeWidth = lightWaveStroke;
+  const r = HexFieldModel.size - 1.2, lo = 0.06, hi = 1.25;
+  final fills = List<Path?>.filled(lightWaveLevels, null);
+  final strokes = List<Path?>.filled(lightWaveLevels, null);
   final t = model.frame;
   for (var i = 0; i < model.hexes.length; i++) {
     final h = model.hexes[i];
     final idle = HexFieldModel.idleAmp * (0.5 + 0.5 * math.sin(t * 0.018 - model.phase[i] * 6));
-    var e = model.energyAt(h, widthScale: theme.waveWidth) * HexFieldModel.intensity + idle;
-    if (e < 0.06) continue;
-    if (e > 1.25) e = 1.25;
-    final path = _hex(h, r);
-    fill.color = theme.hexEnergy.withValues(alpha: math.min(0.28, e * 0.22));
-    canvas.drawPath(path, fill);
-    if (e > 0.2) {
-      stroke.color = theme.accent.withValues(alpha: math.min(0.75, (e - 0.2) * 0.9));
-      canvas.drawPath(path, stroke);
+    final e = model.energyAt(h, widthScale: theme.waveWidth) * HexFieldModel.intensity + idle;
+    if (e < lo) continue;
+    final level = math.min(lightWaveLevels - 1, ((e - lo) / (hi - lo) * lightWaveLevels).floor());
+    _addHex(fills[level] ??= Path(), h, r);
+    if (e > 0.6) _addHex(strokes[level] ??= Path(), h, r);
+  }
+  final fill = Paint();
+  final stroke = Paint()
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 1.2;
+  for (var l = 0; l < lightWaveLevels; l++) {
+    // Nivåns mittenergi (samma kurvor som mörk botten).
+    final e = lo + (l + 0.5) / lightWaveLevels * (hi - lo);
+    final k = math.min(1.0, e);
+    if (fills[l] case final p?) {
+      fill.color = Color.lerp(theme.hexEnergy, theme.accent, k * k)!.withValues(alpha: math.min(0.6, e * 0.42));
+      canvas.drawPath(p, fill);
+    }
+    if (strokes[l] case final p?) {
+      stroke.color = Color.lerp(theme.accent, const Color(0xFF000000), 0.3 * k)!.withValues(alpha: math.min(0.9, e * 0.55));
+      canvas.drawPath(p, stroke);
     }
   }
 }
 
-/// Vågens kontur på ljus botten: 2 × 1,2 dp (indraget per hex) ≥ springan
-/// mellan två grannars kanter (2 × 1,2 × cos 30° ≈ 2,1 dp).
-const lightWaveStroke = 2.4;
+/// Antal styrkenivåer i den ljusa vågen (alfa-steg ≈ 0,05 — syns inte).
+const lightWaveLevels = 12;
 
 /// Körsbärsbladet (Claude Design, ambient-sakura.js): två bågar med ett litet
 /// V-hack i toppen, ~20 dp högt.

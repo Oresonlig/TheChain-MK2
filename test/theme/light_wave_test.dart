@@ -5,45 +5,63 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:the_chain/theme/hex_field.dart';
 import 'package:the_chain/theme/nano_sakura.dart';
+import 'package:the_chain/theme/nanosuit.dart';
 
-/// Vågen på ljus botten ska MÖRKNA väven, inte lysa vit (Niklas 2026-10-15:
-/// den rosa fyllningen slutade innanför kanten, så den pärlvita botten lyste
-/// igenom springan mellan hexagonerna och vågen lästes som vita linjer).
-/// Mäter springan mellan två grannar mitt i vågen: den ska vara mörkare än botten.
+/// Nano Sakuras våg = Nanosuits våg INVERTERAD (Niklas 2026-10-15): på ljus
+/// botten ska vågen MÖRKA cellerna, inte lysa vit. Och den ska vara billig —
+/// build 122 hackade (ett ritanrop per hex, två gånger per vävsteg).
 void main() {
-  testWidgets('Nano Sakura: springan i vågen är mörkare än botten', (tester) async {
-    const area = Size(300, 300), scale = 4.0;
-    final model = HexFieldModel(random: math.Random(1))..layout(area);
-    const s = HexFieldModel.size;
+  /// En modell där vågen just nu är stark över [center].
+  (HexFieldModel, Offset) strongWave(double widthScale) {
+    final model = HexFieldModel(random: math.Random(1))..layout(const Size(300, 300));
     final center = model.hexes.reduce((a, b) => (a - const Offset(150, 150)).distance < (b - const Offset(150, 150)).distance ? a : b);
-    final neighbour = center + Offset(s * 1.5, math.sqrt(3) * s / 2);
-
-    // Kör tills vågen är stark över båda grannarna.
-    var found = false;
-    for (var i = 0; i < 2000 && !found; i++) {
+    for (var i = 0; i < 2000; i++) {
       model.step();
-      found = model.energyAt(center, widthScale: nanoSakura.waveWidth) > 0.9 &&
-          model.energyAt(neighbour, widthScale: nanoSakura.waveWidth) > 0.9;
+      if (model.energyAt(center, widthScale: widthScale) > 0.9) return (model, center);
     }
-    expect(found, isTrue, reason: 'ingen våg passerade');
+    fail('ingen våg passerade');
+  }
 
+  testWidgets('Nano Sakura: cellen mitt i vågen är tydligt mörkare än botten', (tester) async {
+    const scale = 4.0;
+    final (model, center) = strongWave(nanoSakura.waveWidth);
     final rec = ui.PictureRecorder();
     final canvas = Canvas(rec)
       ..scale(scale)
       ..drawColor(nanoSakura.background, BlendMode.src);
     paintHexField(canvas, model, nanoSakura, animated: true);
-    final image = await tester.runAsync(() => rec.endRecording().toImage((area.width * scale).round(), (area.height * scale).round()));
-    final bytes = (await tester.runAsync(() => image!.toByteData()))!;
+    final image = (await tester.runAsync(() => rec.endRecording().toImage(1200, 1200)))!;
+    final bytes = (await tester.runAsync(() => image.toByteData()))!;
 
-    double lum(Offset p) {
-      final x = (p.dx * scale).round(), y = (p.dy * scale).round();
-      final o = (y * image!.width + x) * 4;
-      return (bytes.getUint8(o) * 0.299 + bytes.getUint8(o + 1) * 0.587 + bytes.getUint8(o + 2) * 0.114) / 255;
-    }
-
-    final gap = lum((center + neighbour) / 2); // mitt på den delade kanten
+    final x = (center.dx * scale).round(), y = (center.dy * scale).round();
+    final o = (y * image.width + x) * 4;
+    final cell = (bytes.getUint8(o) * 0.299 + bytes.getUint8(o + 1) * 0.587 + bytes.getUint8(o + 2) * 0.114) / 255;
     final b = nanoSakura.background;
     final background = b.r * 0.299 + b.g * 0.587 + b.b * 0.114;
-    expect(gap, lessThan(background - 0.15), reason: 'springan ($gap) ska vara tydligt mörkare än botten ($background)');
+    expect(cell, lessThan(background - 0.15), reason: 'cellen ($cell) ska vara mörkare än botten ($background)');
   });
+
+  test('Nano Sakura: vågen ritas med ett fåtal anrop, inte ett per hex', () {
+    final (model, _) = strongWave(nanoSakura.waveWidth);
+    final counter = _CountingCanvas();
+    paintHexField(counter, model, nanoSakura, animated: true);
+    // 1 för väven + högst en fyllning och en kontur per styrkenivå.
+    expect(counter.paths, lessThanOrEqualTo(1 + 2 * lightWaveLevels));
+    expect(counter.paths, greaterThan(1), reason: 'vågen ska synas');
+  });
+
+  test('Nano Sakura och Nanosuit har samma vågbredd (Niklas 2026-10-15)', () {
+    expect(nanoSakura.waveWidth, nanosuit.waveWidth);
+  });
+}
+
+/// Räknar drawPath-anrop; allt annat ignoreras.
+class _CountingCanvas implements Canvas {
+  int paths = 0;
+
+  @override
+  void drawPath(Path path, Paint paint) => paths++;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
 }
