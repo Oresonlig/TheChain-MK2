@@ -29,6 +29,9 @@ class _Wave {
   double r = 0;
   double pos = 0;
   final double speed, width, strength;
+
+  /// Blad som svepet hittills fällt ([HexFieldModel.shedPerSweep]).
+  int shed = 0;
 }
 
 class HexFieldModel extends ChangeNotifier {
@@ -100,7 +103,11 @@ class HexFieldModel extends ChangeNotifier {
         if (w.r > w.maxR) waves.removeAt(i);
       } else {
         w.pos += w.speed;
-        if (w.pos > w.end) waves.removeAt(i);
+        if (w.pos > w.end) {
+          waves.removeAt(i);
+        } else if (petals.isNotEmpty) {
+          _maybeShed(w);
+        }
       }
     }
     if (petals.isNotEmpty) _stepPetals();
@@ -129,6 +136,39 @@ class HexFieldModel extends ChangeNotifier {
   final petals = <_Petal>[];
   double _petalWidth = 1;
 
+  /// Blad som det stora svepet fäller längs sin topp (Niklas 2026-10-15:
+  /// "vågen fäller blad"). De faller ut ur bild och försvinner — de fasta
+  /// bladen återvinns, de fällda inte, så antalet hålls nere.
+  static const shedPerSweep = 2;
+
+  /// Fällda blad som faller samtidigt, högst.
+  static const maxShed = 4;
+
+  int get shedCount => petals.where((q) => q.shed).length;
+
+  void _maybeShed(_Wave w) {
+    if (w.shed >= shedPerSweep || shedCount >= maxShed) return;
+    if (_rnd.nextDouble() > .03) return; // ~en gång per sekund medan svepet syns
+    // En punkt på toppens linje (p·d = pos) inne i bild.
+    final px = -w.dy, py = w.dx;
+    final u = (_rnd.nextDouble() - .5) * (_area.width + _area.height);
+    final x = w.dx * w.pos + px * u, y = w.dy * w.pos + py * u;
+    if (x < 0 || x > _area.width || y < 0 || y > _area.height * .8) return;
+    w.shed++;
+    double rand(double a, double b) => a + _rnd.nextDouble() * (b - a);
+    petals.add(_Petal(
+      x: x,
+      y: y,
+      s: rand(.6, .9),
+      vx: rand(.3, .6),
+      vy: rand(.35, .6),
+      rot: rand(0, 6.28),
+      vr: rand(-.03, .03),
+      ph: rand(0, 6.28),
+      shed: true,
+    ));
+  }
+
   void ensurePetals(double widthScale) {
     _petalWidth = widthScale;
     if (petals.isNotEmpty || _area.isEmpty) return;
@@ -150,7 +190,8 @@ class HexFieldModel extends ChangeNotifier {
 
   void _stepPetals() {
     final w = _area.width, h = _area.height;
-    for (final q in petals) {
+    for (var i = petals.length - 1; i >= 0; i--) {
+      final q = petals[i];
       // Vindpust när vågen passerar.
       q.gust = math.min(1.0, energyAt(Offset(q.x, q.y), widthScale: _petalWidth));
       q.ph += .03;
@@ -158,6 +199,10 @@ class HexFieldModel extends ChangeNotifier {
       q.y += q.vy;
       q.rot += q.vr + q.gust * .05;
       if (q.y > h + 20 || q.x > w + 20) {
+        if (q.shed) {
+          petals.removeAt(i);
+          continue;
+        }
         q.y = -16;
         q.x = -40 + _rnd.nextDouble() * (w * .8 + 40);
       }
@@ -175,7 +220,11 @@ class _Petal {
     required this.rot,
     required this.vr,
     required this.ph,
+    this.shed = false,
   });
+
+  /// Fällt av vågen: försvinner när det fallit ut ur bild.
+  final bool shed;
 
   double x, y, rot, ph, gust = 0;
   final double s, vx, vy, vr;
@@ -252,7 +301,7 @@ void _paintEnergyLight(Canvas canvas, HexFieldModel model, ChainTheme theme) {
   for (var i = 0; i < model.hexes.length; i++) {
     final h = model.hexes[i];
     final idle = HexFieldModel.idleAmp * (0.5 + 0.5 * math.sin(t * 0.018 - model.phase[i] * 6));
-    final e = model.energyAt(h, widthScale: theme.waveWidth) * HexFieldModel.intensity + idle;
+    final e = (model.energyAt(h, widthScale: theme.waveWidth) * HexFieldModel.intensity + idle) * lightWaveCalm(h.dy);
     if (e < lo) continue;
     final level = math.min(lightWaveLevels - 1, ((e - lo) / (hi - lo) * lightWaveLevels).floor());
     _addHex(fills[level] ??= Path(), h, r);
@@ -280,6 +329,17 @@ void _paintEnergyLight(Canvas canvas, HexFieldModel model, ChainTheme theme) {
 /// Antal styrkenivåer i den ljusa vågen (alfa-steg ≈ 0,05 — syns inte).
 const lightWaveLevels = 12;
 
+/// Den ljusa vågens styrka på höjden [y] (dp från skärmens topp): dämpad
+/// bakom rubrikerna (THE CHAIN, sidtitlar — mörk text direkt på väven, inget
+/// glas), full styrka nedanför (Niklas 2026-10-15: "dämpas lite").
+double lightWaveCalm(double y) {
+  const calm = .45, from = 110.0, to = 170.0;
+  if (y <= from) return calm;
+  if (y >= to) return 1;
+  final t = (y - from) / (to - from);
+  return calm + (1 - calm) * t * t * (3 - 2 * t);
+}
+
 /// Körsbärsbladet (Claude Design, ambient-sakura.js): två bågar med ett litet
 /// V-hack i toppen, ~20 dp högt.
 final Path _petal = Path()
@@ -290,14 +350,16 @@ final Path _petal = Path()
   ..cubicTo(8, -8, 9, 4, 0, 9)
   ..close();
 
-/// Bladen bakom korten: mättad energifärg (ljus botten — ljusa blad försvinner
-/// i den rosa väven), djupare i vindpusten, tunn kant i accent.
+/// Bladen — ÖVER korten ([PetalLayer], Niklas 2026-10-15: bakom korten syntes
+/// de bara i toppen, och där försvann de i vågen). Ljus kropp + tydlig kant i
+/// accent: syns mot vitt glas, orchid-kort och den mörka vågen. Genomskinliga
+/// så att text under ett blad fortfarande läses.
 void _paintPetals(Canvas canvas, HexFieldModel model, ChainTheme theme) {
   final fill = Paint();
   final edge = Paint()
     ..style = PaintingStyle.stroke
-    ..strokeWidth = .8
-    ..color = theme.accent.withValues(alpha: .35);
+    ..strokeWidth = 1
+    ..color = theme.accent.withValues(alpha: .6);
   for (final q in model.petals) {
     final s = q.s * 1.3;
     canvas
@@ -309,8 +371,8 @@ void _paintPetals(Canvas canvas, HexFieldModel model, ChainTheme theme) {
       begin: Alignment.topCenter,
       end: Alignment.bottomCenter,
       colors: [
-        Color.lerp(theme.hexEnergy, theme.accent, .35 * q.gust)!.withValues(alpha: .9),
-        Color.lerp(theme.hexEnergy, Colors.white, .45)!.withValues(alpha: .85),
+        Color.lerp(Color.lerp(theme.hexEnergy, Colors.white, .3)!, theme.accent, .3 * q.gust)!.withValues(alpha: .8),
+        Color.lerp(theme.hexEnergy, Colors.white, .65)!.withValues(alpha: .75),
       ],
     ).createShader(const Rect.fromLTRB(-9, -10, 9, 9));
     canvas
@@ -318,6 +380,42 @@ void _paintPetals(Canvas canvas, HexFieldModel model, ChainTheme theme) {
       ..drawPath(_petal, edge)
       ..restore();
   }
+}
+
+/// Bladlagret ovanpå skärmen (tar inte emot tryck). Teman utan blad, eller
+/// ambient av / minska rörelse: inget.
+class PetalLayer extends StatelessWidget {
+  const PetalLayer({super.key, required this.model, required this.theme, required this.animated});
+
+  final HexFieldModel model;
+  final ChainTheme theme;
+  final bool animated;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!animated || theme.ambient != Ambient.hexFieldPetals) return const SizedBox.shrink();
+    return IgnorePointer(
+      child: RepaintBoundary(
+        child: CustomPaint(painter: _PetalPainter(model, theme), size: Size.infinite),
+      ),
+    );
+  }
+}
+
+class _PetalPainter extends CustomPainter {
+  _PetalPainter(this.model, this.theme) : super(repaint: model);
+
+  final HexFieldModel model;
+  final ChainTheme theme;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    model.ensurePetals(theme.waveWidth);
+    _paintPetals(canvas, model, theme);
+  }
+
+  @override
+  bool shouldRepaint(_PetalPainter old) => old.theme != theme || old.model != model;
 }
 
 /// Temats rörliga bakgrund ritad i skärmens koordinater. Delas av bakgrunden
@@ -329,11 +427,8 @@ void paintAmbient(Canvas canvas, Size size, HexFieldModel model, ChainTheme them
     case Ambient.hexField:
       if (model.hexes.isNotEmpty) paintHexField(canvas, model, theme, animated: animated);
     case Ambient.hexFieldPetals:
+      // Bladen ritas ovanpå skärmen ([PetalLayer]), inte här.
       if (model.hexes.isNotEmpty) paintHexField(canvas, model, theme, animated: animated);
-      if (animated) {
-        model.ensurePetals(theme.waveWidth);
-        _paintPetals(canvas, model, theme);
-      }
     case Ambient.veins:
       paintVeins(canvas, size, model.frame, theme, animated: animated);
   }

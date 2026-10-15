@@ -51,6 +51,8 @@ class _ChainScaffoldState extends State<ChainScaffold> {
           animated: c.hasAmbient && animated,
           child: SafeArea(child: widget.child),
         ),
+        // Nano Sakura: bladen faller över korten (Niklas 2026-10-15).
+        Positioned.fill(child: PetalLayer(model: _model, theme: c, animated: c.hasAmbient && animated)),
       ]),
     );
   }

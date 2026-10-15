@@ -12,9 +12,11 @@ import 'package:the_chain/theme/nanosuit.dart';
 /// build 122 hackade (ett ritanrop per hex, två gånger per vävsteg).
 void main() {
   /// En modell där vågen just nu är stark över [center].
+  /// En modell där vågen just nu är stark över [center] (nedanför rubrikzonen).
   (HexFieldModel, Offset) strongWave(double widthScale) {
+    const target = Offset(150, 230);
     final model = HexFieldModel(random: math.Random(1))..layout(const Size(300, 300));
-    final center = model.hexes.reduce((a, b) => (a - const Offset(150, 150)).distance < (b - const Offset(150, 150)).distance ? a : b);
+    final center = model.hexes.reduce((a, b) => (a - target).distance < (b - target).distance ? a : b);
     for (var i = 0; i < 2000; i++) {
       model.step();
       if (model.energyAt(center, widthScale: widthScale) > 0.9) return (model, center);
@@ -52,6 +54,36 @@ void main() {
 
   test('Nano Sakura och Nanosuit har samma vågbredd (Niklas 2026-10-15)', () {
     expect(nanoSakura.waveWidth, nanosuit.waveWidth);
+  });
+
+  test('vågen dämpas bakom rubriken, full styrka nedanför (Niklas 2026-10-15)', () {
+    expect(lightWaveCalm(60), lessThanOrEqualTo(.5));
+    expect(lightWaveCalm(110), lessThanOrEqualTo(.5));
+    expect(lightWaveCalm(140), allOf(greaterThan(.5), lessThan(1)));
+    expect(lightWaveCalm(170), 1);
+    expect(lightWaveCalm(600), 1);
+  });
+
+  test('vågen fäller blad: högst två per svep, som faller ut och försvinner', () {
+    final model = HexFieldModel(random: math.Random(3))..layout(const Size(400, 800));
+    model.ensurePetals(1);
+    final fixed = model.petals.length;
+    var maxShed = 0, everShed = false;
+    for (var i = 0; i < 6000; i++) {
+      model.step();
+      maxShed = math.max(maxShed, model.shedCount);
+      everShed |= model.shedCount > 0;
+    }
+    expect(everShed, isTrue, reason: 'svepen ska fälla blad');
+    expect(maxShed, lessThanOrEqualTo(HexFieldModel.maxShed));
+    expect(model.petals.length - model.shedCount, fixed, reason: 'de fasta bladen återvinns, blir inte fler');
+    // Utan nya svep faller de fällda ut och försvinner.
+    model.waves.clear();
+    for (var i = 0; i < 4000; i++) {
+      model.waves.clear();
+      model.step();
+    }
+    expect(model.shedCount, 0);
   });
 }
 
