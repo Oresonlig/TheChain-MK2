@@ -568,12 +568,12 @@ class _SessionPanel extends StatelessWidget {
           // Ett tomt pass går inte att starta — och användaren får veta varför.
           GestureDetector(
             onTap: canStart ? onStart : null,
+            // Stilla kant bara på START — på CONTINUE roterar den (nedan).
             child: PrimaryRim(
-              enabled: canStart,
+              enabled: canStart && !inProgress,
               // Pågående pass: samma markör som fliken i kedjan, så ögat dras
               // till CONTINUE (Niklas 2026-10-23). Nanosuit: ljusspåret;
-              // Cosmic: flikens mullrande kant (inga ögon). Sakura väntar på
-              // Niklas genomgång.
+              // Cosmic: flikens mullrande kant (inga ögon); Sakura: ljusbandet.
               child: _ContinueMark(
                 active: inProgress,
                 animate: settings.ambientEffects,
@@ -622,9 +622,9 @@ class _ContinueMark extends StatelessWidget {
     final c = context.chain;
     if (!active) return child;
     return switch (c.activeMark) {
-      ActiveMark.tracePulse => ActiveMarkFrame(active: true, animate: animate, child: child),
+      ActiveMark.tracePulse || ActiveMark.rimSweep => ActiveMarkFrame(active: true, animate: animate, child: child),
       ActiveMark.eye => RumbleFrame(shape: raisedShape(c), color: c.raisedActive.edge, animate: animate, child: child),
-      ActiveMark.rimSweep || ActiveMark.none => child,
+      ActiveMark.none => child,
     };
   }
 }

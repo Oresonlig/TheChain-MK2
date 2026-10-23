@@ -9,6 +9,7 @@ import 'package:the_chain/theme/active_mark.dart';
 import 'package:the_chain/theme/chain_theme.dart';
 import 'package:the_chain/theme/cosmic_horror.dart';
 import 'package:the_chain/theme/eye_tab.dart';
+import 'package:the_chain/theme/nano_sakura.dart';
 import 'package:the_chain/theme/nanosuit.dart';
 import 'package:the_chain/ui/home_shell.dart';
 
@@ -458,6 +459,19 @@ void main() {
     ));
     await tester.pumpAndSettle();
     expect(find.ancestor(of: find.text('CONTINUE SESSION'), matching: find.byType(RumbleFrame)), findsOneWidget);
+    // Sakura: det roterande ljusbandet, inte den stilla START-kanten ovanpå.
+    await tester.pumpWidget(MediaQuery(
+      data: const MediaQueryData(disableAnimations: true),
+      child: MaterialApp(
+        theme: buildThemeData(nanoSakura),
+        home: HomeShell(app: app, email: '', versionLabel: 'MK2 DEV · build 1', devTools: false),
+      ),
+    ));
+    await tester.pumpAndSettle();
+    final sakura = find.ancestor(of: find.text('CONTINUE SESSION'), matching: find.byType(ActiveMarkFrame));
+    expect(tester.widget<ActiveMarkFrame>(sakura).active, isTrue);
+    final rim = find.ancestor(of: find.text('CONTINUE SESSION'), matching: find.byType(PrimaryRim));
+    expect(tester.widget<PrimaryRim>(rim).enabled, isFalse);
   });
 
   testWidgets('UI: helt pass — starta, logga, klar, avsluta, tillbaka till kedjan', (tester) async {
