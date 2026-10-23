@@ -20,7 +20,7 @@ class ThemeChoice {
 const themeChoices = [
   ThemeChoice('nanosuit', 'NANOSUIT', nanosuit),
   ThemeChoice('cosmic', 'COSMIC HORROR', cosmicHorror), // släppt 2026-10-08
-  ThemeChoice('sakura', 'NANO SAKURA', nanoSakura, devOnly: true), // 2026-10-14
+  ThemeChoice('sakura', 'NANO SAKURA', nanoSakura), // 2026-10-14, släppt 2026-10-23
   // Arctic: borttaget 2026-10-06 (Niklas: för likt Nanosuit) — görs om i Claude Design.
 ];
 

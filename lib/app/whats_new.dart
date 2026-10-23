@@ -37,6 +37,13 @@ const whatsNewNotes = [
     'Create your own exercise from any exercise picker — "New exercise" at the top, or "Create" from the search.',
     'Report a problem in Settings opens an email with your build and phone details filled in.',
   ]),
+  WhatsNewNote(build: 113, points: [
+    'New theme: Nano Sakura — a light theme with cherry blossoms. Pick it under Settings › Appearance.',
+    "The chain view shows the session you're in: swapped exercises, extras, and what's done.",
+    "CONTINUE SESSION carries the theme's in-progress mark, so it's easy to spot.",
+    'Tap a note in a session to edit it.',
+    'Fixed: SAVE in the exercise sheet could hide behind the navigation bar, and two sessions in progress could lock each other out.',
+  ]),
 ];
 
 /// Det som sparas på telefonen.
