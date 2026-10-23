@@ -57,11 +57,41 @@ void main() {
   });
 
   test('vågen dämpas bakom rubriken, full styrka nedanför (Niklas 2026-10-15)', () {
-    expect(lightWaveCalm(60), lessThanOrEqualTo(.5));
-    expect(lightWaveCalm(110), lessThanOrEqualTo(.5));
-    expect(lightWaveCalm(140), allOf(greaterThan(.5), lessThan(1)));
-    expect(lightWaveCalm(170), 1);
-    expect(lightWaveCalm(600), 1);
+    expect(waveCalm(60), lessThanOrEqualTo(.5));
+    expect(waveCalm(110), lessThanOrEqualTo(.5));
+    expect(waveCalm(140), allOf(greaterThan(.5), lessThan(1)));
+    expect(waveCalm(170), 1);
+    expect(waveCalm(600), 1);
+  });
+
+  testWidgets('Nanosuit: vågen lyser svagare bakom rubriken än nedanför (Niklas 2026-10-23)', (tester) async {
+    const scale = 2.0;
+    final model = HexFieldModel(random: math.Random(1))..layout(const Size(300, 400));
+    Offset? top, low;
+    for (var i = 0; i < 4000 && (top == null || low == null); i++) {
+      model.step();
+      top = low = null;
+      for (final h in model.hexes) {
+        final e = model.energyAt(h, widthScale: nanosuit.waveWidth);
+        if (e <= 0.9 || h.dx < 10 || h.dx > 290 || h.dy < 20 || h.dy > 380) continue;
+        if (h.dy < 90 && e < 1.2) top ??= h;
+        if (h.dy > 190) low ??= h;
+      }
+    }
+    if (top == null || low == null) fail('ingen våg täckte både rubriken och ytan nedanför');
+    final rec = ui.PictureRecorder();
+    final canvas = Canvas(rec)
+      ..scale(scale)
+      ..drawColor(nanosuit.background, BlendMode.src);
+    paintHexField(canvas, model, nanosuit, animated: true);
+    final image = (await tester.runAsync(() => rec.endRecording().toImage(600, 800)))!;
+    final bytes = (await tester.runAsync(() => image.toByteData()))!;
+    double lum(Offset p) {
+      final o = ((p.dy * scale).round() * image.width + (p.dx * scale).round()) * 4;
+      return (bytes.getUint8(o) * 0.299 + bytes.getUint8(o + 1) * 0.587 + bytes.getUint8(o + 2) * 0.114) / 255;
+    }
+
+    expect(lum(top), lessThan(lum(low)), reason: 'rubrikzonen ska vara dämpad');
   });
 
   test('vågen fäller blad: högst två per svep, som faller ut och försvinner', () {

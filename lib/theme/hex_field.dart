@@ -270,7 +270,7 @@ void paintHexField(Canvas canvas, HexFieldModel model, ChainTheme theme, {requir
   for (var i = 0; i < model.hexes.length; i++) {
     final h = model.hexes[i];
     final idle = HexFieldModel.idleAmp * (0.5 + 0.5 * math.sin(t * 0.018 - model.phase[i] * 6));
-    var e = model.energyAt(h, widthScale: theme.waveWidth) * HexFieldModel.intensity + idle;
+    var e = (model.energyAt(h, widthScale: theme.waveWidth) * HexFieldModel.intensity + idle) * waveCalm(h.dy);
     if (e < 0.06) continue;
     if (e > 1.25) e = 1.25;
     final k = math.min(1.0, e);
@@ -301,7 +301,7 @@ void _paintEnergyLight(Canvas canvas, HexFieldModel model, ChainTheme theme) {
   for (var i = 0; i < model.hexes.length; i++) {
     final h = model.hexes[i];
     final idle = HexFieldModel.idleAmp * (0.5 + 0.5 * math.sin(t * 0.018 - model.phase[i] * 6));
-    final e = (model.energyAt(h, widthScale: theme.waveWidth) * HexFieldModel.intensity + idle) * lightWaveCalm(h.dy);
+    final e = (model.energyAt(h, widthScale: theme.waveWidth) * HexFieldModel.intensity + idle) * waveCalm(h.dy);
     if (e < lo) continue;
     final level = math.min(lightWaveLevels - 1, ((e - lo) / (hi - lo) * lightWaveLevels).floor());
     _addHex(fills[level] ??= Path(), h, r);
@@ -329,10 +329,11 @@ void _paintEnergyLight(Canvas canvas, HexFieldModel model, ChainTheme theme) {
 /// Antal styrkenivåer i den ljusa vågen (alfa-steg ≈ 0,05 — syns inte).
 const lightWaveLevels = 12;
 
-/// Den ljusa vågens styrka på höjden [y] (dp från skärmens topp): dämpad
-/// bakom rubrikerna (THE CHAIN, sidtitlar — mörk text direkt på väven, inget
-/// glas), full styrka nedanför (Niklas 2026-10-15: "dämpas lite").
-double lightWaveCalm(double y) {
+/// Vågens styrka på höjden [y] (dp från skärmens topp): dämpad bakom
+/// rubrikerna (THE CHAIN, sidtitlar — text direkt på väven, inget glas), full
+/// styrka nedanför. Sakura 2026-10-15 ("dämpas lite"); Nanosuit samma kurva
+/// 2026-10-23 (Niklas: alla teman där bakgrunden "tar över").
+double waveCalm(double y) {
   const calm = .45, from = 110.0, to = 170.0;
   if (y <= from) return calm;
   if (y >= to) return 1;

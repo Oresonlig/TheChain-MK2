@@ -402,6 +402,48 @@ void main() {
     expect(find.text('FINISH SESSION'), findsOneWidget);
   });
 
+  testWidgets('UI: kedjevyn visar det PÅGÅENDE passet — byten, extra, status (Niklas 2026-10-23)', (tester) async {
+    tester.view.physicalSize = const Size(1080, 4000);
+    tester.view.devicePixelRatio = 2.625;
+    addTearDown(tester.view.reset);
+    final app = AppController(FakeBackend(mk1: {...mk1(), 'sessionOrder': ['A'], 'restSlots': <int>[]}));
+    const logged = SetEntry(
+        id: SetId('s1'), kind: SetKind.work, values: SetValues(weight: 120, reps: 3), isLogged: true);
+    await tester.runAsync(() async {
+      await app.start();
+      await app.signIn('x', 'secret');
+      await pumpEventQueue();
+      await app.importFromWebsite();
+      await app.repo!.saveActiveWorkout(
+          Workout(id: const WorkoutId('a-active'), sessionId: const SessionId('A'), startedAt: DateTime(2026, 10, 22), exercises: [
+            const WorkoutExercise(
+                id: 'w1', exerciseId: ExerciseId('ex_bench_press_bb'), measure: Measure.weight,
+                slotId: SlotId('A1'), status: ExerciseStatus.done, sets: [logged]),
+            const WorkoutExercise(
+                id: 'w2', exerciseId: ExerciseId('ex_swapped_in'), measure: Measure.weight,
+                slotId: SlotId('A2'), temporarySwapFrom: ExerciseId('ex_original')),
+            const WorkoutExercise(
+                id: 'w3', exerciseId: ExerciseId('ex_extra'), measure: Measure.weight, status: ExerciseStatus.skipped),
+          ]),
+          DateTime(2026, 10, 22));
+    });
+    await tester.pumpWidget(MediaQuery(
+      data: const MediaQueryData(disableAnimations: true),
+      child: MaterialApp(
+        theme: nanosuitThemeData(),
+        home: HomeShell(app: app, email: '', versionLabel: 'MK2 DEV · build 1', devTools: false),
+      ),
+    ));
+    await tester.pumpAndSettle();
+    expect(find.text('CONTINUE SESSION'), findsOneWidget);
+    expect(find.text('DONE'), findsOneWidget);
+    expect(find.textContaining('Today: 120'), findsOneWidget);
+    expect(find.text('ex_swapped_in'), findsOneWidget, reason: 'bytet syns, inte programmets övning');
+    expect(find.text('Swapped for today'), findsOneWidget);
+    expect(find.text('Extra · today only'), findsOneWidget);
+    expect(find.text('SKIPPED'), findsOneWidget);
+  });
+
   testWidgets('UI: helt pass — starta, logga, klar, avsluta, tillbaka till kedjan', (tester) async {
     tester.view.physicalSize = const Size(1080, 4000);
     tester.view.devicePixelRatio = 2.625;

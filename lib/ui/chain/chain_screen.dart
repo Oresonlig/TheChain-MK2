@@ -264,6 +264,7 @@ class _ChainScreenState extends State<ChainScreen> {
                           .firstOrNull
                       : null,
                   inProgress: inProgress.contains(session.id),
+                  active: repo.activeWorkoutFor(session.id),
                   history: history,
                   now: _now,
                   exerciseOf: (id) => repo.exercise(id),
@@ -422,6 +423,7 @@ class _SessionPanel extends StatelessWidget {
     required this.done,
     required this.skipped,
     required this.inProgress,
+    required this.active,
     required this.history,
     required this.now,
     required this.exerciseOf,
@@ -436,6 +438,10 @@ class _SessionPanel extends StatelessWidget {
   final Session session;
   final String letter;
   final bool isNext, done, inProgress;
+
+  /// Det pågående passet (null = inget pågår). Listan visar då PASSETS
+  /// övningar — byten, extra och status — inte programmets (2026-10-23).
+  final Workout? active;
 
   /// Överhoppat i den här rundan (null = inte överhoppat).
   final SkippedEntry? skipped;
@@ -541,6 +547,15 @@ class _SessionPanel extends StatelessWidget {
             ),
           ]),
         ] else ...[
+          if (active case final w? when w.exercises.isNotEmpty)
+            for (final row in w.exercises) _ActiveExercise(
+              name: exerciseOf(row.exerciseId)?.name ?? row.exerciseId.value,
+              row: row,
+              last: lastPerformance(history, row.exerciseId),
+              now: now,
+              settings: settings,
+            )
+          else
           for (final slot in session.slots) _ExercisePreview(
             exercise: exerciseOf(slot.exerciseId),
             id: slot.exerciseId,
@@ -554,12 +569,19 @@ class _SessionPanel extends StatelessWidget {
             onTap: canStart ? onStart : null,
             child: PrimaryRim(
               enabled: canStart,
-              child: Raised(
-                material: canStart ? c.raisedActive : c.raisedIdle,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                child: Center(
-                  child: Text(inProgress ? 'CONTINUE SESSION' : 'START SESSION',
-                      style: text.labelLarge!.copyWith(color: canStart ? c.onAccent : c.textFaint)),
+              // Pågående pass: samma ljusspår som fliken i kedjan, så ögat
+              // dras till CONTINUE (Niklas 2026-10-23). Bara Nanosuit tills
+              // vidare — Sakura väntar på Niklas genomgång, Cosmic obeslutat.
+              child: ActiveMarkFrame(
+                active: inProgress && c.activeMark == ActiveMark.tracePulse,
+                animate: settings.ambientEffects,
+                child: Raised(
+                  material: canStart ? c.raisedActive : c.raisedIdle,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  child: Center(
+                    child: Text(inProgress ? 'CONTINUE SESSION' : 'START SESSION',
+                        style: text.labelLarge!.copyWith(color: canStart ? c.onAccent : c.textFaint)),
+                  ),
                 ),
               ),
             ),
@@ -642,6 +664,65 @@ class _ExercisePreview extends StatelessWidget {
           last == null ? summary : 'Last (${daysAgo(last!.date, now)}): $summary',
           style: text.bodySmall,
         ),
+      ]),
+    );
+  }
+}
+
+/// En övning i det pågående passet: samma etiketter och status som passkortet
+/// (workout_screen `_card`), plus dagens loggade set eller "förra gången".
+/// Gjort/överhoppat dämpas — aldrig dolt.
+class _ActiveExercise extends StatelessWidget {
+  const _ActiveExercise({required this.name, required this.row, required this.last, required this.now, required this.settings});
+
+  final String name;
+  final WorkoutExercise row;
+  final LastPerformance? last;
+  final DateTime now;
+  final UserSettings settings;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.chain;
+    final text = Theme.of(context).textTheme;
+    final logged = row.sets.where((s) => s.isLogged).toList();
+    final statusText = switch (row.status) {
+      ExerciseStatus.done => 'DONE',
+      ExerciseStatus.skipped => 'SKIPPED',
+      ExerciseStatus.open => logged.isEmpty ? '' : '${logged.length}/${row.sets.length} LOGGED',
+    };
+    final open = row.status == ExerciseStatus.open;
+    final work = logged.where((s) => s.kind == SetKind.work).toList();
+    final String detail;
+    if (row.status == ExerciseStatus.skipped) {
+      detail = 'Skipped today';
+    } else if (work.isNotEmpty) {
+      detail = 'Today: ${work.map((s) => fmtSet(s, row.measure, settings)).join('  ·  ')}';
+    } else if (last case final l?) {
+      detail = 'Last (${daysAgo(l.date, now)}): ${l.workSets.map((s) => fmtSet(s, l.exercise.measure, settings)).join('  ·  ')}';
+    } else {
+      detail = 'No history yet';
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      decoration: c.ruleAbove,
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(name, style: text.titleMedium!.copyWith(color: open ? c.textStrong : c.textMuted)),
+            if (row.temporarySwapFrom != null)
+              Text('Swapped for today', style: text.labelSmall!.copyWith(color: c.accent)),
+            if (row.isExtra) Text('Extra · today only', style: text.labelSmall!.copyWith(color: c.accent)),
+            const SizedBox(height: 2),
+            Text(detail, style: text.bodySmall),
+          ]),
+        ),
+        if (statusText.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(left: 8, top: 2),
+            child: Text(statusText,
+                style: text.labelSmall!.copyWith(color: row.status == ExerciseStatus.done ? c.success : c.textFaint)),
+          ),
       ]),
     );
   }
