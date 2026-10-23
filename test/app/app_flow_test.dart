@@ -5,6 +5,10 @@ import 'package:the_chain/app/updater.dart';
 import 'package:the_chain/data/sync_engine.dart';
 import 'package:the_chain/domain/domain.dart';
 import 'package:the_chain/main.dart';
+import 'package:the_chain/theme/active_mark.dart';
+import 'package:the_chain/theme/chain_theme.dart';
+import 'package:the_chain/theme/cosmic_horror.dart';
+import 'package:the_chain/theme/eye_tab.dart';
 import 'package:the_chain/theme/nanosuit.dart';
 import 'package:the_chain/ui/home_shell.dart';
 
@@ -442,6 +446,18 @@ void main() {
     expect(find.text('Swapped for today'), findsOneWidget);
     expect(find.text('Extra · today only'), findsOneWidget);
     expect(find.text('SKIPPED'), findsOneWidget);
+    // CONTINUE bär temats markör: Nanosuit ljusspåret, Cosmic den mullrande kanten.
+    final cont = find.ancestor(of: find.text('CONTINUE SESSION'), matching: find.byType(ActiveMarkFrame));
+    expect(tester.widget<ActiveMarkFrame>(cont).active, isTrue);
+    await tester.pumpWidget(MediaQuery(
+      data: const MediaQueryData(disableAnimations: true),
+      child: MaterialApp(
+        theme: buildThemeData(cosmicHorror),
+        home: HomeShell(app: app, email: '', versionLabel: 'MK2 DEV · build 1', devTools: false),
+      ),
+    ));
+    await tester.pumpAndSettle();
+    expect(find.ancestor(of: find.text('CONTINUE SESSION'), matching: find.byType(RumbleFrame)), findsOneWidget);
   });
 
   testWidgets('UI: helt pass — starta, logga, klar, avsluta, tillbaka till kedjan', (tester) async {

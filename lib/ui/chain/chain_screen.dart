@@ -11,6 +11,7 @@ import '../../domain/domain.dart';
 import '../../theme/active_mark.dart';
 import '../../theme/chain_theme.dart';
 import '../../theme/background_scope.dart';
+import '../../theme/eye_tab.dart';
 import '../../theme/surfaces.dart';
 import '../copy_text.dart';
 import '../delete_ux.dart';
@@ -569,11 +570,12 @@ class _SessionPanel extends StatelessWidget {
             onTap: canStart ? onStart : null,
             child: PrimaryRim(
               enabled: canStart,
-              // Pågående pass: samma ljusspår som fliken i kedjan, så ögat
-              // dras till CONTINUE (Niklas 2026-10-23). Bara Nanosuit tills
-              // vidare — Sakura väntar på Niklas genomgång, Cosmic obeslutat.
-              child: ActiveMarkFrame(
-                active: inProgress && c.activeMark == ActiveMark.tracePulse,
+              // Pågående pass: samma markör som fliken i kedjan, så ögat dras
+              // till CONTINUE (Niklas 2026-10-23). Nanosuit: ljusspåret;
+              // Cosmic: flikens mullrande kant (inga ögon). Sakura väntar på
+              // Niklas genomgång.
+              child: _ContinueMark(
+                active: inProgress,
                 animate: settings.ambientEffects,
                 child: Raised(
                   material: canStart ? c.raisedActive : c.raisedIdle,
@@ -606,6 +608,24 @@ class _SessionPanel extends StatelessWidget {
         ],
       ]),
     );
+  }
+}
+
+/// Temats pågående-markör runt CONTINUE SESSION.
+class _ContinueMark extends StatelessWidget {
+  const _ContinueMark({required this.active, required this.animate, required this.child});
+  final bool active, animate;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.chain;
+    if (!active) return child;
+    return switch (c.activeMark) {
+      ActiveMark.tracePulse => ActiveMarkFrame(active: true, animate: animate, child: child),
+      ActiveMark.eye => RumbleFrame(shape: raisedShape(c), color: c.raisedActive.edge, animate: animate, child: child),
+      ActiveMark.rimSweep || ActiveMark.none => child,
+    };
   }
 }
 

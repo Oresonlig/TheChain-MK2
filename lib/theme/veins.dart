@@ -15,7 +15,9 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import 'ambient_life.dart';
+import 'background_scope.dart' show backgroundGradient;
 import 'chain_theme.dart';
+import 'hex_field.dart' show waveCalm;
 
 /// En ådra: punkter med avstånd från sitt systems rot (för tillväxten).
 class _Vein {
@@ -276,8 +278,19 @@ void paintVeins(Canvas canvas, Size size, int frame, ChainTheme theme, {required
     }
   }
 
-  // Vinjett: kanterna sjunker in i mörkret.
+  // Dämpat bakom rubrikerna, samma kurva som hex-vågen ([waveCalm], Niklas
+  // 2026-10-23). Ådrorna är linjer över hela höjden — de kan inte dämpas per
+  // punkt som hexagonerna — så bakgrunden själv (samma gradient, med det
+  // gröna skenet) läggs över dem igen, i band om 5 dp med fallande täckning.
   final area = Offset.zero & size;
+  final cover = Paint()..shader = backgroundGradient(theme).createShader(area);
+  canvas.drawRect(Rect.fromLTWH(0, 0, size.width, 110), cover..color = Color.fromRGBO(0, 0, 0, 1 - waveCalm(0)));
+  for (var y = 110.0; y < 170; y += 5) {
+    cover.color = Color.fromRGBO(0, 0, 0, 1 - waveCalm(y + 2.5));
+    canvas.drawRect(Rect.fromLTWH(0, y, size.width, 5), cover);
+  }
+
+  // Vinjett: kanterna sjunker in i mörkret.
   canvas.drawRect(
     area,
     Paint()

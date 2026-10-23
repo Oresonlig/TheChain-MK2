@@ -284,6 +284,75 @@ class _EyeTabState extends State<EyeTab> with TickerProviderStateMixin {
   }
 }
 
+/// Flikens mullrande kant runt något annat — CONTINUE SESSION (Niklas
+/// 2026-10-23: "den där vibrationen runt markören" på knappen). Bara kanten,
+/// inga ögon. Stilla = lugn kontur.
+class RumbleFrame extends StatefulWidget {
+  const RumbleFrame({super.key, required this.shape, required this.color, required this.child, this.animate = true});
+
+  final ShapeBorder shape;
+  final Color color;
+  final Widget child;
+  final bool animate;
+
+  @override
+  State<RumbleFrame> createState() => _RumbleFrameState();
+}
+
+class _RumbleFrameState extends State<RumbleFrame> with SingleTickerProviderStateMixin {
+  late final AnimationController _life = AnimationController(vsync: this, duration: const Duration(seconds: 6));
+  final _contour = ContourCache();
+
+  void _sync() {
+    final moving = widget.animate && !(MediaQuery.maybeDisableAnimationsOf(context) ?? false);
+    if (moving && !_life.isAnimating) {
+      _life.repeat();
+    } else if (!moving && _life.isAnimating) {
+      _life.stop();
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _sync();
+  }
+
+  @override
+  void didUpdateWidget(RumbleFrame old) {
+    super.didUpdateWidget(old);
+    _sync();
+  }
+
+  @override
+  void dispose() {
+    _life.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Stack(clipBehavior: Clip.none, children: [
+        widget.child,
+        Positioned.fill(
+          child: IgnorePointer(
+            child: RepaintBoundary(
+              child: CustomPaint(
+                painter: _EdgePainter(
+                  repaint: _life,
+                  shape: widget.shape,
+                  seconds: () => _life.isAnimating ? _life.value * 6 : null,
+                  eyes: null,
+                  color: widget.color,
+                  theme: context.chain,
+                  contour: _contour,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ]);
+}
+
 /// Fliken i lodräta strimlor: varje (x0, x1, d) målar barnets övre halva
 /// förskjuten d uppåt och den nedre d nedåt, klippt till strimlan. Barnet
 /// byggs och layoutas en gång; bara målningen upprepas.
