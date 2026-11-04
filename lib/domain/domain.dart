@@ -1,5 +1,5 @@
 /// Domänmodellen för The Chain MK2. Ren Dart — inga Flutter-beroenden.
-/// Bakgrund och beslut: domänöversynen (Claude Doc) och BESLUTSUNDERLAG.md.
+/// Bakgrund och beslut: domänöversynen (Claude Doc).
 library;
 
 export 'body.dart';
