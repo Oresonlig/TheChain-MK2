@@ -11,6 +11,7 @@ import 'package:the_chain/theme/cosmic_horror.dart';
 import 'package:the_chain/theme/eye_tab.dart';
 import 'package:the_chain/theme/nano_sakura.dart';
 import 'package:the_chain/theme/nanosuit.dart';
+import 'package:the_chain/ui/chain/round_complete.dart';
 import 'package:the_chain/ui/home_shell.dart';
 
 import 'fake_backend.dart';
@@ -472,6 +473,55 @@ void main() {
     expect(tester.widget<ActiveMarkFrame>(sakura).active, isTrue);
     final rim = find.ancestor(of: find.text('CONTINUE SESSION'), matching: find.byType(PrimaryRim));
     expect(tester.widget<PrimaryRim>(rim).enabled, isFalse);
+  });
+
+  testWidgets('UI: DEV · TEST NEXT ROUND visar knappen och animationen, kedjan rörs inte (Niklas 2026-11-04)', (tester) async {
+    tester.view.physicalSize = const Size(1080, 4000);
+    tester.view.devicePixelRatio = 2.625;
+    addTearDown(tester.view.reset);
+    final app = AppController(FakeBackend(mk1: mk1()));
+    await tester.runAsync(() async {
+      await app.start();
+      await app.signIn('x', 'secret');
+      await pumpEventQueue();
+      await app.importFromWebsite();
+    });
+    final round = app.repo!.chain().round;
+    final history = app.repo!.history().length;
+    await tester.pumpWidget(MediaQuery(
+      data: const MediaQueryData(disableAnimations: true),
+      child: MaterialApp(
+        theme: nanosuitThemeData(),
+        home: HomeShell(app: app, email: '', versionLabel: 'MK2 DEV · build 1', devTools: true),
+      ),
+    ));
+    await tester.pumpAndSettle();
+    expect(find.text('NEXT ROUND'), findsNothing);
+    expect(find.text('DEV · TEST ROUND COMPLETE'), findsNothing);
+
+    // Av och på igen: inget händer.
+    await tester.tap(find.text('DEV · TEST NEXT ROUND'));
+    await tester.pumpAndSettle();
+    expect(find.text('NEXT ROUND'), findsOneWidget);
+    await tester.tap(find.text('DEV · TEST NEXT ROUND'));
+    await tester.pumpAndSettle();
+    expect(find.text('NEXT ROUND'), findsNothing);
+    expect(find.byType(RoundComplete), findsNothing);
+
+    await tester.tap(find.text('DEV · TEST NEXT ROUND'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('NEXT ROUND'));
+    await tester.pump();
+    expect(find.byType(RoundComplete), findsOneWidget);
+    expect(find.text('NEXT ROUND'), findsNothing);
+    await tester.pump(const Duration(seconds: 5)); // stilla: 4 s
+    await tester.pumpAndSettle();
+    expect(find.byType(RoundComplete), findsNothing);
+
+    final chain = app.repo!.chain();
+    expect(chain.round, round);
+    expect(chain.awaitingNext, isNull);
+    expect(app.repo!.history().length, history);
   });
 
   testWidgets('UI: helt pass — starta, logga, klar, avsluta, tillbaka till kedjan', (tester) async {

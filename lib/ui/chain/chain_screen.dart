@@ -55,6 +55,9 @@ class _ChainScreenState extends State<ChainScreen> {
   RoundSummary? _celebrate;
   int _newPrs = 0;
 
+  /// DEV-bygget: visa NEXT ROUND utan att rundan är klar. Bara på skärmen.
+  bool _previewNextRound = false;
+
   DateTime get _now => (widget.now ?? DateTime.now)();
 
   /// AppController säger när en egen handling stängde rundan (alla vägar:
@@ -238,12 +241,27 @@ class _ChainScreenState extends State<ChainScreen> {
               ),
               // Rundan är klar: gå vidare, eller backa och ändra ett pass först
               // (Niklas 2026-11-04). ROUND COMPLETE spelas när man trycker.
-              if (chain.awaitingNext != null) ...[
+              if (chain.awaitingNext != null || _previewNextRound) ...[
                 const SizedBox(height: 16),
                 GestureDetector(
                   onTap: () async {
-                    setState(() => _selected = null);
-                    await widget.app.startNextRound();
+                    final preview = chain.awaitingNext == null;
+                    setState(() {
+                      _selected = null;
+                      _previewNextRound = false;
+                    });
+                    if (preview) {
+                      _celebrateNow(chain.lastRound ??
+                          RoundSummary(
+                            round: chain.round,
+                            start: _now.subtract(const Duration(days: 8)),
+                            end: _now,
+                            trained: program.sessions.length,
+                            skipped: 0,
+                          ));
+                    } else {
+                      await widget.app.startNextRound();
+                    }
                   },
                   child: PrimaryRim(
                     enabled: true,
@@ -319,19 +337,12 @@ class _ChainScreenState extends State<ChainScreen> {
                 ),
               if (widget.devTools) ...[
                 const SizedBox(height: 32),
-                // DEV-bygget: spela upp ROUND COMPLETE utan att något skrivs
-                // eller synkas — för demo (Niklas 2026-10-11, tillbaka efter 112).
+                // DEV-bygget: visa NEXT ROUND och spela ROUND COMPLETE utan att
+                // något skrivs eller synkas (Niklas 2026-11-04).
                 GhostButton(
-                  label: 'DEV · TEST ROUND COMPLETE',
+                  label: 'DEV · TEST NEXT ROUND',
                   color: c.textFaint,
-                  onTap: () => _celebrateNow(chain.lastRound ??
-                      RoundSummary(
-                        round: chain.round,
-                        start: _now.subtract(const Duration(days: 8)),
-                        end: _now,
-                        trained: program.sessions.length,
-                        skipped: 0,
-                      )),
+                  onTap: () => setState(() => _previewNextRound = !_previewNextRound),
                 ),
                 // Rutan som STABLE visar efter en uppdatering — sparar ingenting här.
                 const SizedBox(height: 8),
