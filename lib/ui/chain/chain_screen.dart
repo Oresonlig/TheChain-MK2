@@ -11,7 +11,6 @@ import '../../domain/domain.dart';
 import '../../theme/active_mark.dart';
 import '../../theme/chain_theme.dart';
 import '../../theme/background_scope.dart';
-import '../../theme/eye_tab.dart';
 import '../../theme/surfaces.dart';
 import '../copy_text.dart';
 import '../delete_ux.dart';
@@ -237,6 +236,28 @@ class _ChainScreenState extends State<ChainScreen> {
                 animate: repo.settings().ambientEffects,
                 onSelect: (id) => setState(() => _selected = id),
               ),
+              // Rundan är klar: gå vidare, eller backa och ändra ett pass först
+              // (Niklas 2026-11-04). ROUND COMPLETE spelas när man trycker.
+              if (chain.awaitingNext != null) ...[
+                const SizedBox(height: 16),
+                GestureDetector(
+                  onTap: () async {
+                    setState(() => _selected = null);
+                    await widget.app.startNextRound();
+                  },
+                  child: PrimaryRim(
+                    enabled: true,
+                    child: Raised(
+                      material: c.raisedActive,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      child: Center(child: Text('NEXT ROUND', style: text.labelLarge!.copyWith(color: c.onAccent))),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text('Round ${chain.round} is done. Need to change something? Open the session and tap UNDO.',
+                    style: text.labelSmall, textAlign: TextAlign.center),
+              ],
               const SizedBox(height: 20),
               if (session.isRest)
                 _RestPanel(
@@ -572,9 +593,8 @@ class _SessionPanel extends StatelessWidget {
             child: PrimaryRim(
               enabled: canStart && !inProgress,
               // Pågående pass: samma markör som fliken i kedjan, så ögat dras
-              // till CONTINUE (Niklas 2026-10-23). Nanosuit: ljusspåret;
-              // Cosmic: flikens mullrande kant (inga ögon); Sakura: ljusbandet.
-              child: _ContinueMark(
+              // till CONTINUE (Niklas 2026-10-23).
+              child: PrimaryActiveMark(
                 active: inProgress,
                 animate: settings.ambientEffects,
                 child: Raised(
@@ -608,24 +628,6 @@ class _SessionPanel extends StatelessWidget {
         ],
       ]),
     );
-  }
-}
-
-/// Temats pågående-markör runt CONTINUE SESSION.
-class _ContinueMark extends StatelessWidget {
-  const _ContinueMark({required this.active, required this.animate, required this.child});
-  final bool active, animate;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.chain;
-    if (!active) return child;
-    return switch (c.activeMark) {
-      ActiveMark.tracePulse || ActiveMark.rimSweep => ActiveMarkFrame(active: true, animate: animate, child: child),
-      ActiveMark.eye => RumbleFrame(shape: raisedShape(c), color: c.raisedActive.edge, animate: animate, child: child),
-      ActiveMark.none => child,
-    };
   }
 }
 

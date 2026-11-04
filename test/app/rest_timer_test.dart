@@ -9,11 +9,13 @@ import 'workout_controller_test.dart' show mk1;
 class RecordingAlarm implements RestAlarm {
   final scheduled = <DateTime>[];
   final wakes = <bool>[];
+  final autoStops = <bool>[];
   int cancels = 0;
   @override
-  Future<void> schedule(DateTime end, {bool wakeScreen = true}) async {
+  Future<void> schedule(DateTime end, {bool wakeScreen = true, bool autoStop = false}) async {
     scheduled.add(end);
     wakes.add(wakeScreen);
+    autoStops.add(autoStop);
   }
   @override
   Future<void> cancel() async => cancels++;
@@ -164,6 +166,20 @@ void main() {
       await app.updateSettings(UserSettings(restTimerEnabled: enabled, restTimerSecs: 90, restWakeScreen: false));
       return (app, alarm);
     }
+
+    test('auto-stopp följer inställningen till larmet (LT 2026-11-04)', () async {
+      final (app, alarm) = await ready(enabled: true);
+      await app.updateSettings(app.repo!.settings().copyWith(restAutoStop: true));
+      expect(app.repo!.settings().restAutoStop, isTrue);
+      final wc = app.openWorkout(const SessionId('A'));
+      final row = wc.workout.exercises.first;
+      final set = row.sets.first;
+      wc.setValues(row.id, set.id, const SetValues(weight: 40, reps: 8));
+      wc.toggleLog(row.id, set.id);
+      expect(alarm.autoStops.single, isTrue);
+      await wc.discard();
+      app.restTimer.dispose();
+    });
 
     test('startar vid loggat set, även uppvärmning (LT 2026-10-08); stoppas vid avslut', () async {
       final (app, alarm) = await ready(enabled: true);

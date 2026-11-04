@@ -6,7 +6,7 @@
 // musiken pausas via tillfällig ljudfokus) + helskärmsnotis → RestAlarmActivity
 // över låsskärmen (REST OVER, DISMISS, +30 S; tryck på rutan = appen, men först
 // efter Androids egen upplåsning — telefonen förblir låst).
-// DISMISS/+30/60 s → fokus lämnas tillbaka → musiken fortsätter.
+// DISMISS/+30/60 s (3 s med auto-stopp) → fokus lämnas tillbaka → musiken fortsätter.
 package com.oresonlig.the_chain
 
 import android.app.AlarmManager
@@ -31,6 +31,7 @@ object RestAlarm {
     const val ACTION_SNOOZE = "com.oresonlig.the_chain.REST_SNOOZE"
     const val SNOOZE_SECS = 30
     const val RING_MAX_MS = 60_000L
+    const val AUTO_STOP_MS = 3_000L
 
     /** Kanaler från bygge 58–62 (flutter_local_notifications). */
     private val OLD_CHANNELS = listOf("rest_done", "rest_alert", "rest_countdown", "rest_alert_v2", "rest_countdown_v2")
@@ -42,11 +43,13 @@ object RestAlarm {
 
     fun endMs(ctx: Context): Long = prefs(ctx).getLong("end", 0L)
     fun wakeScreen(ctx: Context): Boolean = prefs(ctx).getBoolean("wake", true)
+    fun autoStop(ctx: Context): Boolean = prefs(ctx).getBoolean("autoStop", false)
+    fun ringMs(ctx: Context): Long = if (autoStop(ctx)) AUTO_STOP_MS else RING_MAX_MS
     fun color(ctx: Context, key: String, fallback: Int): Int = prefs(ctx).getInt("c_$key", fallback)
 
-    fun schedule(ctx: Context, endMs: Long, wake: Boolean, look: Map<String, Int>?) {
+    fun schedule(ctx: Context, endMs: Long, wake: Boolean, autoStop: Boolean, look: Map<String, Int>?) {
         stopRinging(ctx)
-        val e = prefs(ctx).edit().putLong("end", endMs).putBoolean("wake", wake)
+        val e = prefs(ctx).edit().putLong("end", endMs).putBoolean("wake", wake).putBoolean("autoStop", autoStop)
         look?.forEach { (k, v) -> e.putInt("c_$k", v) }
         e.apply()
         ensureChannels(ctx)
@@ -68,7 +71,7 @@ object RestAlarm {
         prefs(ctx).edit().putLong("end", 0L).apply()
     }
 
-    /** DISMISS (larmvyn, notisknappen, Flutter) eller 60 s utan svar. */
+    /** DISMISS (larmvyn, notisknappen, Flutter) eller [ringMs] utan svar. */
     fun dismiss(ctx: Context) {
         cancel(ctx)
         tellFlutter("stopped", null)
@@ -77,7 +80,7 @@ object RestAlarm {
     /** +30 S: tyst nu, ny vila på 30 s. */
     fun snooze(ctx: Context) {
         val end = System.currentTimeMillis() + SNOOZE_SECS * 1000L
-        schedule(ctx, end, wakeScreen(ctx), null)
+        schedule(ctx, end, wakeScreen(ctx), autoStop(ctx), null)
         tellFlutter("snoozed", end)
     }
 

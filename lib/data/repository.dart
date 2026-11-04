@@ -10,11 +10,13 @@ import 'sync_engine.dart';
 const _programId = 'program';
 const _settingsId = 'settings';
 
-/// Kedjans metadata från MK1 (omstarter + rundans startvärde).
+/// Kedjans metadata: från MK1 (omstarter + rundans startvärde) och när NEXT
+/// ROUND senast trycktes.
 class ChainMeta {
-  const ChainMeta({this.restarts = const [], this.roundOffset = 0});
+  const ChainMeta({this.restarts = const [], this.roundOffset = 0, this.nextRoundAt});
   final List<DateTime> restarts;
   final int roundOffset;
+  final DateTime? nextRoundAt;
 }
 
 class Repository {
@@ -76,12 +78,23 @@ class Repository {
         return ChainMeta(
           restarts: [for (final ms in (c['restarts'] as List?) ?? const []) DateTime.fromMillisecondsSinceEpoch((ms as num).toInt())],
           roundOffset: (c['roundOffset'] as num?)?.toInt() ?? 0,
+          nextRoundAt: switch (c['nextRoundAt']) {
+            final num ms => DateTime.fromMillisecondsSinceEpoch(ms.toInt()),
+            _ => null,
+          },
         );
       });
 
   ChainState chain() => _cached('chain', const [Tables.program, Tables.workouts], () {
         final m = chainMeta();
-        return chainState(program(), history(), manualRestarts: m.restarts, roundOffset: m.roundOffset);
+        return chainState(
+          program(),
+          history(),
+          manualRestarts: m.restarts,
+          roundOffset: m.roundOffset,
+          holdCompleted: true,
+          nextRoundAt: m.nextRoundAt,
+        );
       });
 
   List<BodyweightEntry> bodyweight() => _cached('bodyweight', const [Tables.bodyweight], () {
@@ -196,6 +209,7 @@ class Repository {
       'chain': {
         'restarts': [for (final d in m.restarts) d.millisecondsSinceEpoch],
         'roundOffset': m.roundOffset,
+        if (m.nextRoundAt case final at?) 'nextRoundAt': at.millisecondsSinceEpoch,
       },
     }, now);
   }

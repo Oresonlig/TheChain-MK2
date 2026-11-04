@@ -166,6 +166,12 @@ void main() {
     expect(server.table(Tables.workouts).containsKey('w-new'), isTrue);
     // A och vilodagen var redan gjorda — B fullbordar cykeln.
     expect(before.done, {const SessionId('A'), const SessionId('V')});
+    // Rundan står kvar tills NEXT ROUND trycks.
+    expect(repo.chain().round, before.round);
+    expect(repo.chain().awaitingNext, isNotNull);
+    expect(repo.chain().done, containsAll(<SessionId>[const SessionId('A'), const SessionId('B'), const SessionId('V')]));
+    await repo.saveProgram(repo.program(), now.add(const Duration(hours: 3)),
+        meta: ChainMeta(nextRoundAt: now.add(const Duration(hours: 3))));
     expect(repo.chain().round, before.round + 1);
     expect(repo.chain().done, isEmpty);
   });

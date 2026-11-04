@@ -190,8 +190,9 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                               }
                             : null,
                         // Släckt = dämpat material, inte genomskinligt (alpha är ett fönster).
-                        child: PrimaryRim(
-                          enabled: canFinish, // kanten kommer när passet går att avsluta
+                        child: PrimaryActiveMark(
+                          active: canFinish, // markören kommer när passet går att avsluta
+                          animate: controller.repo.settings().ambientEffects,
                           child: Raised(
                             material: canFinish ? c.raisedActive : c.raisedIdle,
                             padding: const EdgeInsets.symmetric(vertical: 18),

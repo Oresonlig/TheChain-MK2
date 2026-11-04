@@ -30,7 +30,8 @@ class MainActivity : FlutterActivity() {
                         val end = (call.argument<Number>("end") ?: 0).toLong()
                         val wake = call.argument<Boolean>("wake") ?: true
                         val look = call.argument<Map<String, Number>>("look")?.mapValues { it.value.toInt() }
-                        RestAlarm.schedule(applicationContext, end, wake, look)
+                        val autoStop = call.argument<Boolean>("autoStop") ?: false
+                        RestAlarm.schedule(applicationContext, end, wake, autoStop, look)
                         result.success(null)
                     }
                     "cancel" -> {

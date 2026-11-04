@@ -33,7 +33,7 @@ class NativeRestAlarm implements RestAlarm {
       };
 
   @override
-  Future<void> schedule(DateTime end, {bool wakeScreen = true}) async {
+  Future<void> schedule(DateTime end, {bool wakeScreen = true, bool autoStop = false}) async {
     try {
       // Android 13+: fråga om notiser första gången timern används.
       if (!_askedNotifications) {
@@ -43,6 +43,7 @@ class NativeRestAlarm implements RestAlarm {
       await _ch.invokeMethod<void>('schedule', {
         'end': end.millisecondsSinceEpoch,
         'wake': wakeScreen,
+        'autoStop': autoStop,
         'look': _colors(),
       });
     } catch (e) {

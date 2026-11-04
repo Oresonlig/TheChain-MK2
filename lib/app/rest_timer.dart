@@ -1,7 +1,8 @@
 /// Vilotimern. Startar när ett arbetsset loggas (om den är på i Settings), som
 /// i MK1. Signalen vid noll är en egen larmmotor i Android (som klockans larm,
 /// Niklas 2026-10-05): pip i loop, musiken pausas, skärmen tänds med en liten
-/// larmvy över låsskärmen — DISMISS / +30 S, tystnar själv efter 60 s.
+/// larmvy över låsskärmen — DISMISS / +30 S, tystnar själv efter 60 s (3 s med
+/// auto-stopp i Settings, LT 2026-11-04).
 /// Sluttiden är absolut: nedräkningen överlever att appen pausas.
 library;
 
@@ -22,7 +23,8 @@ class RestAlarmState {
 abstract class RestAlarm {
   /// Nedräkning i notisfältet + larm vid [end]. Ersätter en tidigare vila och
   /// tystar ett larm som ringer. [wakeScreen] = skärmen tänds (larmvyn).
-  Future<void> schedule(DateTime end, {bool wakeScreen = true});
+  /// [autoStop] = larmet tystnar självt efter 3 s i stället för 60 s.
+  Future<void> schedule(DateTime end, {bool wakeScreen = true, bool autoStop = false});
 
   /// Ingen vila längre: tar bort larm, nedräkning och ett larm som ringer.
   Future<void> cancel();
@@ -47,7 +49,7 @@ abstract class RestAlarm {
 class SilentRestAlarm implements RestAlarm {
   const SilentRestAlarm();
   @override
-  Future<void> schedule(DateTime end, {bool wakeScreen = true}) async {}
+  Future<void> schedule(DateTime end, {bool wakeScreen = true, bool autoStop = false}) async {}
   @override
   Future<void> cancel() async {}
   @override
@@ -82,6 +84,7 @@ class RestTimer extends ChangeNotifier {
   DateTime? _end;
   Timer? _ticker;
   bool _wakeScreen = true;
+  bool _autoStop = false;
 
   bool get running => _end != null;
 
@@ -96,8 +99,9 @@ class RestTimer extends ChangeNotifier {
   /// Vilan är slut och larmet ringer (REST OVER + DISMISS / +30).
   bool get done => running && remainingSecs <= 0;
 
-  void start(int secs, {bool wakeScreen = true}) {
+  void start(int secs, {bool wakeScreen = true, bool autoStop = false}) {
     _wakeScreen = wakeScreen;
+    _autoStop = autoStop;
     _end = _now().add(Duration(seconds: secs));
     _arm();
   }
@@ -108,7 +112,7 @@ class RestTimer extends ChangeNotifier {
     final e = _end;
     if (e == null) return;
     if (done) {
-      if (d > Duration.zero) start(d.inSeconds, wakeScreen: _wakeScreen);
+      if (d > Duration.zero) start(d.inSeconds, wakeScreen: _wakeScreen, autoStop: _autoStop);
       return;
     }
     final next = e.add(d);
@@ -169,7 +173,7 @@ class RestTimer extends ChangeNotifier {
   }
 
   void _arm() {
-    unawaited(alarm.schedule(_end!, wakeScreen: _wakeScreen));
+    unawaited(alarm.schedule(_end!, wakeScreen: _wakeScreen, autoStop: _autoStop));
     _startTicker();
     notifyListeners();
   }

@@ -98,7 +98,7 @@ class RestAlarmService : Service() {
         if (am.ringerMode == AudioManager.RINGER_MODE_NORMAL) startBeep(soundAttrs)
         startVibration()
         openOverOtherApps()
-        handler.postDelayed(timeout, RestAlarm.RING_MAX_MS)
+        handler.postDelayed(timeout, RestAlarm.ringMs(this))
         return START_NOT_STICKY
     }
 

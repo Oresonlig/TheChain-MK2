@@ -25,6 +25,7 @@ class UserSettings {
     this.ambientEffects = true,
     this.finishNote = true,
     this.restWakeScreen = true,
+    this.restAutoStop = false,
     this.workoutTourSeen = false,
     this.appBuild,
     this.importedFromWebsite = false,
@@ -56,6 +57,9 @@ class UserSettings {
   /// Vilotimerns signal tänder skärmen (helskärmsnotis).
   final bool restWakeScreen;
 
+  /// Larmet tystnar självt efter några sekunder, musiken fortsätter (LT 2026-11-04).
+  final bool restAutoStop;
+
   /// Rundturen i passvyn (LOG / DONE / ⋮) är visad — en gång, på alla enheter.
   final bool workoutTourSeen;
 
@@ -76,6 +80,7 @@ class UserSettings {
     bool? ambientEffects,
     bool? finishNote,
     bool? restWakeScreen,
+    bool? restAutoStop,
     bool? workoutTourSeen,
     String? appBuild,
     bool? importedFromWebsite,
@@ -91,6 +96,7 @@ class UserSettings {
         ambientEffects: ambientEffects ?? this.ambientEffects,
         finishNote: finishNote ?? this.finishNote,
         restWakeScreen: restWakeScreen ?? this.restWakeScreen,
+        restAutoStop: restAutoStop ?? this.restAutoStop,
         workoutTourSeen: workoutTourSeen ?? this.workoutTourSeen,
         appBuild: appBuild ?? this.appBuild,
         importedFromWebsite: importedFromWebsite ?? this.importedFromWebsite,

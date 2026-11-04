@@ -20,6 +20,45 @@ HistoryEntry rested(SessionId s, int d) => RestEntry(date: day(d), sessionId: s)
 HistoryEntry skippedOn(SessionId s, int d) => SkippedEntry(date: day(d), sessionId: s, reason: 'tattoo');
 
 void main() {
+  group('klar runda väntar på NEXT ROUND (Niklas 2026-11-04)', () {
+    final all = [trained(a, 1), trained(b, 2), rested(v, 3), skippedOn(c, 4)];
+
+    test('rundan står kvar med passen avklarade tills knappen trycks', () {
+      final st = chainState(program, all, holdCompleted: true);
+      expect(st.round, 1);
+      expect(st.awaitingNext!.round, 1);
+      expect(st.done, {a, b, v});
+      expect(st.skipped, {c});
+      expect(st.next, isNull);
+      expect(st.marks[a], day(1).millisecondsSinceEpoch);
+    });
+
+    test('trycket släpper rundan, även på exakt samma stämpel', () {
+      final st = chainState(program, all, holdCompleted: true, nextRoundAt: day(4));
+      expect(st.round, 2);
+      expect(st.awaitingNext, isNull);
+      expect(st.done, isEmpty);
+      expect(st.next, a);
+      expect(st.lastRound!.round, 1);
+    });
+
+    test('en runda som blir klar efter förra trycket väntar igen', () {
+      final st = chainState(program, [...all, trained(a, 5), trained(b, 6), rested(v, 7), trained(c, 8)],
+          holdCompleted: true, nextRoundAt: day(4));
+      expect((st.round, st.awaitingNext!.round), (2, 2));
+    });
+
+    test('pågående runda och omstart väntar inte', () {
+      expect(chainState(program, [trained(a, 1)], holdCompleted: true).awaitingNext, isNull);
+      expect(chainState(program, [...all, trained(a, 5)], holdCompleted: true).awaitingNext, isNull);
+      expect(chainState(program, all, holdCompleted: true, manualRestarts: [day(5)]).awaitingNext, isNull);
+    });
+
+    test('utan holdCompleted räknas rundorna som förut (MK1-importen)', () {
+      expect(chainState(program, all).round, 2);
+    });
+  });
+
   test('senast avslutade rundan: start, slut, gjorda och överhoppade (ROUND N COMPLETE)', () {
     final st = chainState(program, [trained(a, 1), skippedOn(b, 3), rested(v, 4), trained(c, 9), trained(a, 10)]);
     expect(st.round, 2);

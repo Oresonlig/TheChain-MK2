@@ -244,9 +244,17 @@ Widget settingsSection(BuildContext context, String title, List<Widget> children
 }
 
 UserSettings _copy(UserSettings s,
-        {WeightUnit? w, TempUnit? t, bool? ambient, bool? timer, int? timerSecs, bool? finishNote, bool? wakeScreen}) =>
+        {WeightUnit? w,
+        TempUnit? t,
+        bool? ambient,
+        bool? timer,
+        int? timerSecs,
+        bool? finishNote,
+        bool? wakeScreen,
+        bool? autoStop}) =>
     s.copyWith(
       restWakeScreen: wakeScreen,
+      restAutoStop: autoStop,
       weightUnit: w,
       tempUnit: t,
       restTimerEnabled: timer,
@@ -593,6 +601,18 @@ class TrainingSettingsScreen extends StatelessWidget {
               ],
             ]),
             if (s.restTimerEnabled) _WakeScreenSection(app: app, settings: s),
+            if (s.restTimerEnabled)
+              settingsSection(context, 'ALARM AUTO-STOP', [
+                Row(children: [
+                  choiceButton(context, 'ON', s.restAutoStop, () => app.updateSettings(_copy(s, autoStop: true))),
+                  const SizedBox(width: 8),
+                  choiceButton(context, 'OFF', !s.restAutoStop, () => app.updateSettings(_copy(s, autoStop: false))),
+                ]),
+                const SizedBox(height: 8),
+                Text('On: the alarm stops by itself after 3 seconds and your music resumes. '
+                    'Off: it rings until you dismiss it, at most 60 seconds.',
+                    style: Theme.of(context).textTheme.bodySmall!.copyWith(color: context.chain.textMuted)),
+              ]),
             _HapticsSection(app: app, settings: s),
           ];
         },

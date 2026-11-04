@@ -542,11 +542,20 @@ void main() {
     await tester.enterText(find.byType(TextField).last, 'Slept 4 h');
     await tester.tap(find.text('Finish'));
     await tester.runAsync(() => pumpEventQueue());
-    // Passvyn stängs, sedan visas fönstret när kedjan är överst.
+    // Passvyn stängs. Programmet har bara pass A: rundan är klar men står kvar
+    // tills NEXT ROUND trycks (Niklas 2026-11-04).
     for (var i = 0; i < 6; i++) {
       await tester.pump(const Duration(milliseconds: 100));
     }
-    // Programmet har bara pass A: rundan blev klar → "ROUND 1 COMPLETE".
+    expect(find.text('ROUND 1 COMPLETE'), findsNothing);
+    expect(find.text('UNDO'), findsOneWidget, reason: 'avklarat pass går att ångra');
+    await tester.ensureVisible(find.text('NEXT ROUND'));
+    await tester.tap(find.text('NEXT ROUND'));
+    await tester.runAsync(() => pumpEventQueue());
+    for (var i = 0; i < 6; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    expect(find.text('NEXT ROUND'), findsNothing);
     expect(find.text('ROUND 1 COMPLETE'), findsOneWidget);
     expect(find.text('SESSION'), findsOneWidget);
     expect(find.text('NEW PR'), findsOneWidget);

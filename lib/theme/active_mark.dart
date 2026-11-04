@@ -11,6 +11,7 @@ import 'dart:ui' show PathMetric;
 import 'package:flutter/material.dart';
 
 import 'chain_theme.dart';
+import 'eye_tab.dart';
 import 'surfaces.dart';
 
 class ActiveMarkFrame extends StatefulWidget {
@@ -106,9 +107,28 @@ class _ActiveMarkFrameState extends State<ActiveMarkFrame> with SingleTickerProv
 /// temats accentBright, så den följer en ändrad accent.
 Color rimSoft(ChainTheme c) => Color.lerp(c.accentBright, const Color(0xFFFFFFFF), .4)!;
 
-/// Primärknappens kant (START SESSION, aktiv FINISH SESSION): Sakuras kant
-/// stillastående — "det lilla extra" utan rörelse (rörelse = pågående pass).
-/// Andra teman: bara barnet.
+/// Temats pågående-markör runt en primärknapp: CONTINUE SESSION och FINISH
+/// SESSION (Niklas 2026-10-23, 2026-11-04). Nanosuit: ljusspåret; Cosmic: flikens
+/// mullrande kant (inga ögon); Sakura: ljusbandet.
+class PrimaryActiveMark extends StatelessWidget {
+  const PrimaryActiveMark({super.key, required this.active, required this.animate, required this.child});
+  final bool active, animate;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.chain;
+    if (!active) return child;
+    return switch (c.activeMark) {
+      ActiveMark.tracePulse || ActiveMark.rimSweep => ActiveMarkFrame(active: true, animate: animate, child: child),
+      ActiveMark.eye => RumbleFrame(shape: raisedShape(c), color: c.raisedActive.edge, animate: animate, child: child),
+      ActiveMark.none => child,
+    };
+  }
+}
+
+/// Primärknappens kant (START SESSION): Sakuras kant stillastående — "det lilla
+/// extra" utan rörelse (rörelse = pågående pass). Andra teman: bara barnet.
 class PrimaryRim extends StatelessWidget {
   const PrimaryRim({super.key, required this.enabled, required this.child, this.inset = 8});
 

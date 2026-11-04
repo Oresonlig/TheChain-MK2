@@ -49,8 +49,13 @@ class ChainState {
     required this.next,
     this.skipped = const {},
     this.lastRound,
+    this.awaitingNext,
     this.marks = const {},
   });
+
+  /// Rundan är klar men NEXT ROUND inte tryckt (Niklas 2026-11-04): passen står
+  /// kvar som avklarade och går att ångra. Null = rundan pågår.
+  final RoundSummary? awaitingNext;
 
   /// Frö per hanterat pass = tiden för posten som gjorde det klart/överhoppat.
   /// Temats ärr och klösmärken väljer variant ur det (Niklas 2026-10-09): nytt
@@ -83,11 +88,16 @@ class ChainState {
 /// före en omstart hör till tidigare cykler. [roundOffset]: avslutade cykler
 /// före historikens början (t.ex. MK1:s räknare vid övergången).
 /// Importerad historik och pass som inte längre finns i programmet räknas inte.
+/// [holdCompleted]: en klar runda står kvar tills användaren går vidare —
+/// [nextRoundAt] är när NEXT ROUND senast trycktes; rundor som blev klara senast
+/// då är redan bekräftade. Utan [holdCompleted] räknas bara rundorna.
 ChainState chainState(
   Program program,
   Iterable<HistoryEntry> history, {
   Iterable<DateTime> manualRestarts = const [],
   int roundOffset = 0,
+  bool holdCompleted = false,
+  DateTime? nextRoundAt,
 }) {
   final all = program.sessions.map((s) => s.id).toSet();
   final rests = {for (final s in program.sessions) if (s.isRest) s.id};
@@ -103,9 +113,11 @@ ChainState chainState(
   var sets = 0;
   DateTime? start;
   RoundSummary? last;
+  var lastDone = <SessionId>{};
 
   void closeCycle({DateTime? end}) {
     completed++;
+    lastDone = done;
     // Bara en runda som fullbordades (inte en omstart) räknas som "klar".
     last = end == null || start == null
         ? null
@@ -159,6 +171,24 @@ ChainState chainState(
   while (r < restarts.length) {
     if (done.isNotEmpty || skipped.isNotEmpty) closeCycle();
     r++;
+  }
+
+  final held = last;
+  if (holdCompleted &&
+      held != null &&
+      done.isEmpty &&
+      skipped.isEmpty &&
+      (restarts.isEmpty || !restarts.last.isAfter(held.end)) &&
+      (nextRoundAt == null || held.end.isAfter(nextRoundAt))) {
+    return ChainState(
+      round: held.round,
+      done: lastDone,
+      skipped: held.skippedIds,
+      next: null,
+      lastRound: held,
+      awaitingNext: held,
+      marks: held.marks,
+    );
   }
 
   SessionId? next;

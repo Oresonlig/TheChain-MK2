@@ -72,18 +72,50 @@ void main() {
     expect(wc.canFinish, isFalse, reason: 'FINISH släckt efter avslut');
   });
 
-  test('ROUND COMPLETE även när rundan stängs med skip + vilodag (Niklas 2026-10-06)', () async {
+  test('klar runda väntar på NEXT ROUND, sedan ROUND COMPLETE en gång (Niklas 2026-11-04)', () async {
     final app = await ready();
     final before = app.repo!.chain().round;
     await app.skipSession(const SessionId('A'), 'showing a colleague');
     await app.skipSession(const SessionId('B'), 'showing a colleague');
-    expect(app.pendingRound, isNull, reason: 'vilodagen kvar');
+    expect(app.repo!.chain().awaitingNext, isNull, reason: 'vilodagen kvar');
     await app.markRestDone(const SessionId('V'));
+    final held = app.repo!.chain();
+    expect(held.round, before, reason: 'rundan står kvar');
+    expect(held.next, isNull);
+    expect(held.isDone(const SessionId('V')), isTrue);
+    expect(app.pendingRound, isNull, reason: 'inget firande förrän NEXT ROUND');
+    await app.startNextRound();
     expect(app.repo!.chain().round, before + 1);
+    expect(app.repo!.chain().awaitingNext, isNull);
     final s = app.takePendingRound()!;
     // B var redan gjord (MK1-datan): gjort vinner över överhopp.
     expect((s.round, s.skipped, s.restDays), (before, 1, 1));
     expect(app.takePendingRound(), isNull, reason: 'visas exakt en gång');
+    await app.startNextRound();
+    expect(app.repo!.chain().round, before + 1, reason: 'dubbeltryck hoppar inte över en runda');
+  });
+
+  test('UNDO under väntan på NEXT ROUND öppnar rundan; FINISH igen = väntan igen (bastun, Niklas 2026-11-04)', () async {
+    final app = await ready();
+    final round = app.repo!.chain().round;
+    await app.markRestDone(const SessionId('V'));
+    final wc = app.openWorkout(const SessionId('A'));
+    for (final r in wc.workout.exercises) {
+      logAll(wc, r);
+      wc.markDone(r.id);
+    }
+    expect(await wc.finish(), isTrue);
+    expect(app.repo!.chain().awaitingNext, isNotNull);
+    final b = app.repo!.history().whereType<WorkoutEntry>().firstWhere((e) => e.workout.sessionId == const SessionId('A'));
+    await app.undoWorkout(b);
+    expect(app.repo!.chain().awaitingNext, isNull, reason: 'ett pass är ogjort igen');
+    expect(app.repo!.chain().round, round);
+    final again = app.openWorkout(const SessionId('A'));
+    expect(await again.finish(), isTrue);
+    expect(app.repo!.chain().awaitingNext, isNotNull);
+    expect(app.repo!.chain().round, round);
+    expect(app.repo!.history().whereType<WorkoutEntry>().where((e) => e.workout.sessionId == const SessionId('A')).length, 1,
+        reason: 'ingen dubblett');
   });
 
   test('anteckning vid avslut: sparas, ändras, tas bort; UNDO behåller den', () async {
