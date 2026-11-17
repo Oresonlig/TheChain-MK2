@@ -47,6 +47,8 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+          # Låst till samma version som lokalt — opinnat drog CI in nya lints som fällde analyze (2026-11-17).
+          flutter-version: 3.47.6
           cache: true
 
       - name: Generate Android platform
