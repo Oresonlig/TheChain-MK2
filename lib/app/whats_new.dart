@@ -44,6 +44,11 @@ const whatsNewNotes = [
     'Tap a note in a session to edit it.',
     'Fixed: SAVE in the exercise sheet could hide behind the navigation bar, and two sessions in progress could lock each other out.',
   ]),
+  WhatsNewNote(build: 132, points: [
+    'NEXT ROUND: a finished round stays open until you tap NEXT ROUND, so you can still undo a session. The round summary shows on the tap.',
+    'ALARM AUTO-STOP under Settings: the rest alarm stops by itself after 3 seconds. Off by default.',
+    "FINISH SESSION carries the theme's in-progress mark when it can be tapped.",
+  ]),
 ];
 
 /// Det som sparas på telefonen.
